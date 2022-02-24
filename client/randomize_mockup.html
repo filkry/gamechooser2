@@ -10,7 +10,17 @@
         <input type="checkbox" id="allowbacklog" checked><label for="allowbacklog" title="If checked, allow choosing games that are currently owned.">Allow owned games</label>
         <input type="checkbox" id="allowbuy"><label for="allowbuy" title="If checked, allow choosing games that aren't currently owned.">Allow unowned games</label>
         <div id="choosetags">
-            <span class="tagtribox" id="couch">☐</span><label for="tagtribox" title="If checked, only pick from games with the 'couch' tag.">Couch-playable</label>
+            <span class="tagtribox" id="couch" onclick="cycle_tag_tri_box(this)">☐</span><label for="tagtribox" title="If checked, only pick from games with the 'couch' tag.">Couch-playable</label>
         </div>
     </body>
+    <script type="module">
+        import init, { cycle_tag_tri_box } from './rs-wasm-bindgen-output/gamechooser2_client.js';
+
+        async function run() {
+            await init();
+            window.cycle_tag_tri_box = cycle_tag_tri_box;
+        }
+
+        run();
+    </script>
 </html>
