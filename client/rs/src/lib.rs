@@ -7,5 +7,5 @@ extern {
 
 #[wasm_bindgen]
 pub fn greet() {
-    alert("Hello, {{project-name}}!");
+    alert("Hello, modified string!");
 }
