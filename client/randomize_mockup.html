@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Gamechooser - Randomize</title>
+        <meta name="description" content="Select random game[s] given user-selected criteria.">
+      </head>
+    <body>
+        <input type="checkbox" id="pick" checked><label for="pick" title="If checked, games will keep being randomly shown until you start a session.">Must pick</label>
+        <input type="checkbox" id="allowbacklog" checked><label for="allowbacklog" title="If checked, allow choosing games that are currently owned.">Allow owned games</label>
+        <input type="checkbox" id="allowbuy"><label for="allowbuy" title="If checked, allow choosing games that aren't currently owned.">Allow unowned games</label>
+        <div id="choosetags">
+            <span class="tagtribox" id="couch">☐</span><label for="tagtribox" title="If checked, only pick from games with the 'couch' tag.">Couch-playable</label>
+        </div>
+    </body>
+</html>

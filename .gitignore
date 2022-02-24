@@ -1,0 +1,4 @@
+rs-wasm-bindgen-output/
+client/rs/target/
+client/mongoose-5.0.exe
+gamechooser2.sublime-workspace
