@@ -1,6 +1,8 @@
+use argh::FromArgs;
+use confy;
 use gamechooser_core::*;
 use reqwest;
-//use serde::{Serialize, Deserialize};
+use serde::{Serialize, Deserialize};
 use serde::de::{DeserializeOwned};
 
 struct SReqwestTwitchAPIPostResponse {
@@ -14,6 +16,15 @@ struct SReqwestTwitchAPIPost {
 struct SReqwestTwitchAPIClient {
     client: reqwest::blocking::Client,
     token_info: Option<gamechooser_core::STwitchOauthTokenResponse>,
+}
+
+#[derive(Default, Serialize, Deserialize)]
+struct SConfigFile {
+    twitch_client_id: Option<String>,
+    twitch_client_secret: Option<String>,
+}
+
+struct SConfigStore {
 }
 
 impl gamechooser_core::TTwitchAPIPostResponse for SReqwestTwitchAPIPostResponse {
@@ -87,12 +98,77 @@ impl gamechooser_core::TTwitchAPIClient for SReqwestTwitchAPIClient {
     }
 }
 
-fn main() {
+impl gamechooser_core::TConfigStore for SConfigStore {
+    fn get_twitch_client_id(&self) -> Option<String> {
+        let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
+        cfg.twitch_client_id
+    }
 
+    fn get_twitch_client_secret(&self) -> Option<String> {
+        let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
+        cfg.twitch_client_secret
+    }
+
+    fn save_twitch_client(&self, client_id: &str, client_secret: &str) {
+        let mut cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
+        cfg.twitch_client_id = Some(client_id.to_string());
+        cfg.twitch_client_secret = Some(client_secret.to_string());
+        confy::store("gamechooser2_cli_client", cfg).unwrap();
+    }
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "test")]
+#[argh(description = "Run whatever test code is currently in test()")]
+struct SArghsTest {
+
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "set_twitch_client")]
+#[argh(description = "Set twitch client ID/Secret for using IGDB")]
+struct SArghsSetTwitchClient {
+    #[argh(positional)]
+    client_id: String,
+
+    #[argh(positional)]
+    client_secret: String,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand)]
+enum EArghsSubcommands {
+    Test(SArghsTest),
+    SetTwitchClient(SArghsSetTwitchClient),
+}
+
+#[derive(FromArgs)]
+#[argh(description = "Args")]
+struct SArghs {
+    #[argh(subcommand)]
+    subcommand: EArghsSubcommands,
+}
+
+fn test() {
     let mut client = SReqwestTwitchAPIClient {
         client: reqwest::blocking::Client::new(),
         token_info: None,
     };
 
-    gamechooser_core::test_any_client(&mut client).unwrap();
+    let config_store = SConfigStore{};
+
+    gamechooser_core::test_any_client(&mut client, &config_store).unwrap();
+}
+
+fn main() {
+    let arghs: SArghs = argh::from_env();
+    match arghs.subcommand {
+        EArghsSubcommands::Test(_) => {
+            test();
+        }
+        EArghsSubcommands::SetTwitchClient(stc) => {
+            let config_store = SConfigStore{};
+            config_store.save_twitch_client(stc.client_id.as_str(), stc.client_secret.as_str());
+        }
+    }
 }

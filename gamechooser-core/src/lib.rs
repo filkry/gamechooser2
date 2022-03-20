@@ -5,8 +5,8 @@ use std::result::{Result};
 
 #[derive(Debug, Serialize)]
 pub struct STwitchOauthTokenRequest {
-    client_id: &'static str,
-    client_secret: &'static str,
+    client_id: String,
+    client_secret: String,
     grant_type: &'static str,
 }
 
@@ -40,16 +40,22 @@ pub trait TTwitchAPIClient {
     fn access_token(&self) -> String;
 }
 
-pub fn test_any_client<T: TTwitchAPIClient>(client: &mut T) -> Result<String, &'static str> {
+pub trait TConfigStore {
+    fn get_twitch_client_id(&self) -> Option<String>;
+    fn get_twitch_client_secret(&self) -> Option<String>;
+    fn save_twitch_client(&self, client_id: &str, client_secret: &str);
+}
+
+pub fn test_any_client<T: TTwitchAPIClient, C: TConfigStore>(client: &mut T, config_store: &C) -> Result<String, &'static str> {
     let params = STwitchOauthTokenRequest{
-        client_id: "",
-        client_secret: "",
+        client_id: config_store.get_twitch_client_id().unwrap(),
+        client_secret: config_store.get_twitch_client_secret().unwrap(),
         grant_type: "client_credentials",
     };
     client.init_access_token(&params).unwrap();
 
     let searchres = client.post("https://api.igdb.com/v4/search/")
-        .header_str("Client-ID", params.client_id)
+        .header_str("Client-ID", params.client_id.as_str())
         .header_string("Authorization", format!("Bearer {}", client.access_token()))
         .body("search \"Halo\"; fields game,name;")
         .send();
