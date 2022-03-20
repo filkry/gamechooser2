@@ -1,4 +1,5 @@
 //use reqwest;
+use async_trait::async_trait;
 use serde::{Serialize, Deserialize};
 use serde::de::{DeserializeOwned};
 use std::result::{Result};
@@ -17,11 +18,13 @@ pub struct STwitchOauthTokenResponse {
     pub token_type: String,
 }
 
+#[async_trait]
 pub trait TTwitchAPIPostResponse {
-    fn json<T: DeserializeOwned>(self) -> Result<T, String>;
-    fn text(self) -> Result<String, String>;
+    async fn json<T: DeserializeOwned>(self) -> Result<T, String>;
+    async fn text(self) -> Result<String, String>;
 }
 
+#[async_trait]
 pub trait TTwitchAPIPost {
     type Response : TTwitchAPIPostResponse;
 
@@ -29,13 +32,14 @@ pub trait TTwitchAPIPost {
     fn header_string(self, field_name: &str, value: String) -> Self;
     fn body(self, value: &'static str) -> Self;
     //fn form<T: Serialize>(self, params: &T) -> Self;
-    fn send(self) -> Result<Self::Response, String>;
+    async fn send(self) -> Result<Self::Response, String>;
 }
 
+#[async_trait]
 pub trait TTwitchAPIClient {
     type Post : TTwitchAPIPost;
 
-    fn init_access_token(&mut self, params: &STwitchOauthTokenRequest) -> Result<(), String>;
+    async fn init_access_token(&mut self, params: &STwitchOauthTokenRequest) -> Result<(), String>;
     fn post(&self, url: &str) -> Self::Post;
     fn access_token(&self) -> String;
 }
@@ -46,24 +50,24 @@ pub trait TConfigStore {
     fn save_twitch_client(&self, client_id: &str, client_secret: &str);
 }
 
-pub fn test_any_client<T: TTwitchAPIClient, C: TConfigStore>(client: &mut T, config_store: &C) -> Result<String, &'static str> {
+pub async fn test_any_client<T: TTwitchAPIClient, C: TConfigStore>(client: &mut T, config_store: &C) -> Result<String, &'static str> {
     let params = STwitchOauthTokenRequest{
         client_id: config_store.get_twitch_client_id().unwrap(),
         client_secret: config_store.get_twitch_client_secret().unwrap(),
         grant_type: "client_credentials",
     };
-    client.init_access_token(&params).unwrap();
+    client.init_access_token(&params).await.unwrap();
 
     let searchres = client.post("https://api.igdb.com/v4/search/")
         .header_str("Client-ID", params.client_id.as_str())
         .header_string("Authorization", format!("Bearer {}", client.access_token()))
         .body("search \"Halo\"; fields game,name;")
-        .send();
+        .send().await;
 
     //println!("{:?}", searchres);
     let searchresp = match searchres {
         Ok(searchres_) => {
-            let searchresp : String = searchres_.text().unwrap();
+            let searchresp : String = searchres_.text().await.unwrap();
             println!("{:?}", searchresp);
             searchresp
         },

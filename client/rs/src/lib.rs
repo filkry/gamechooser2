@@ -1,6 +1,10 @@
+use async_trait::async_trait;
 use console_error_panic_hook;
+use serde::de::{DeserializeOwned};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::JsFuture;
+use web_sys::{Request, RequestInit, RequestMode, Response};
 
 use gamechooser_core;
 use gamechooser_core::TConfigStore;
@@ -30,6 +34,20 @@ struct SRandomGameQuery {
 }
 */
 
+struct SFetchTwitchAPIPostResponse {
+    inner: Response,
+}
+
+struct SFetchTwitchAPIPost {
+    url: String,
+    headers: Vec<(String, String)>,
+    inner: RequestInit,
+}
+
+struct SFetchTwitchAPIClient {
+    token_info: Option<gamechooser_core::STwitchOauthTokenResponse>,
+}
+
 impl ETagQuery {
     pub fn new_from_str(strval: &str) -> Self {
         match strval {
@@ -50,6 +68,104 @@ impl ETagQuery {
         }
 
         Self::TrueOrFalse
+    }
+}
+
+#[async_trait]
+impl gamechooser_core::TTwitchAPIPostResponse for SFetchTwitchAPIPostResponse {
+    async fn json<T: DeserializeOwned>(self) -> Result<T, String> {
+        let json = JsFuture::from(self.inner.json().unwrap()).await.unwrap();
+        let res : T = json.into_serde().unwrap();
+        Ok(res)
+    }
+
+    async fn text(self) -> Result<String, String> {
+        let text = JsFuture::from(self.inner.text().unwrap()).await.unwrap();
+        Ok(text.as_string().unwrap())
+    }
+}
+
+#[async_trait]
+impl gamechooser_core::TTwitchAPIPost for SFetchTwitchAPIPost {
+    type Response = SFetchTwitchAPIPostResponse;
+
+    fn header_str(self, field_name: &str, value: &str) -> Self {
+        self.headers.push((field_name.to_string(), value.to_string()));
+        self
+    }
+
+    fn header_string(self, field_name: &str, value: String) -> Self {
+        self.headers.push((field_name.to_string(), value));
+        self
+    }
+
+    fn body(self, value: &'static str) -> Self {
+        let value = JsValue::from_str(value);
+        self.inner.body(Some(&value));
+        self
+    }
+
+    async fn send(self) -> Result<Self::Response, String> {
+        let request = Request::new_with_str_and_init(&self.url, &self.inner).unwrap();
+        for (hname, hvalue) in self.headers {
+            request.headers().append(hname.as_str(), hvalue.as_str());
+        }
+
+        let window = web_sys::window().unwrap();
+        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await.unwrap();
+
+        assert!(resp_value.is_instance_of::<Response>());
+        let resp: Response = resp_value.dyn_into().unwrap();
+
+        Ok(SFetchTwitchAPIPostResponse{
+            inner: resp,
+        })
+    }
+}
+
+#[async_trait]
+impl gamechooser_core::TTwitchAPIClient for SFetchTwitchAPIClient {
+    type Post = SFetchTwitchAPIPost;
+
+    async fn init_access_token(&mut self, params: &gamechooser_core::STwitchOauthTokenRequest) -> Result<(), String> {
+        let mut opts = RequestInit::new();
+
+        opts.method("POST");
+        opts.mode(RequestMode::Cors);
+        let params_value = JsValue::from_serde(params).unwrap();
+        opts.body(Some(&params_value));
+
+        let url = "https://id.twitch.tv/oauth2/token";
+        let request = Request::new_with_str_and_init(&url, &opts).unwrap();
+
+        let window = web_sys::window().unwrap();
+        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await.unwrap();
+
+        assert!(resp_value.is_instance_of::<Response>());
+        let resp: Response = resp_value.dyn_into().unwrap();
+
+        let json = JsFuture::from(resp.json().unwrap()).await.unwrap();
+        let res : gamechooser_core::STwitchOauthTokenResponse = json.into_serde().unwrap();
+
+        self.token_info = Some(res);
+
+        Ok(())
+    }
+
+    fn post(&self, url: &str) -> Self::Post {
+        let mut opts = RequestInit::new();
+        opts.method("POST");
+        opts.mode(RequestMode::Cors);
+
+        SFetchTwitchAPIPost {
+            url: url.to_string(),
+            headers: Vec::new(),
+            inner: opts,
+        }
+    }
+
+    fn access_token(&self) -> String {
+        self.token_info.as_ref().unwrap().access_token.clone()
     }
 }
 
@@ -101,7 +217,7 @@ pub fn cycle_tag_tri_box(element: &web_sys::HtmlSpanElement) {
 }
 
 #[wasm_bindgen]
-pub fn twitch_api_test() {
+pub async fn twitch_api_test() {
     weblog!("twitch_api_test started");
 
     let window = web_sys::window().expect("no global `window` exists");

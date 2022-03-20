@@ -1,5 +1,7 @@
 use argh::FromArgs;
+use async_trait::async_trait;
 use confy;
+use futures::executor::block_on;
 use gamechooser_core::*;
 use reqwest;
 use serde::{Serialize, Deserialize};
@@ -37,6 +39,7 @@ impl gamechooser_core::TTwitchAPIPostResponse for SReqwestTwitchAPIPostResponse 
     }
 }
 
+#[async_trait]
 impl gamechooser_core::TTwitchAPIPost for SReqwestTwitchAPIPost {
     type Response = SReqwestTwitchAPIPostResponse;
 
@@ -58,7 +61,7 @@ impl gamechooser_core::TTwitchAPIPost for SReqwestTwitchAPIPost {
         }
     }
 
-    fn send(self) -> Result<Self::Response, String> {
+    async fn send(self) -> Result<Self::Response, String> {
         match self.inner.send() {
             Ok(res) => Ok(SReqwestTwitchAPIPostResponse {
                 inner: res,
@@ -157,7 +160,8 @@ fn test() {
 
     let config_store = SConfigStore{};
 
-    gamechooser_core::test_any_client(&mut client, &config_store).unwrap();
+    let future = gamechooser_core::test_any_client(&mut client, &config_store);
+    block_on(future).unwrap();
 }
 
 fn main() {
