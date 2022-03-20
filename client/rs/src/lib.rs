@@ -1,8 +1,15 @@
+use console_error_panic_hook;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 use gamechooser_core;
+use gamechooser_core::TConfigStore;
 
+macro_rules! weblog {
+    ( $( $t:tt )* ) => {
+        web_sys::console::log_1(&format!( $( $t )* ).into());
+    }
+}
 
 enum ETagQuery {
     TrueOrFalse,
@@ -46,6 +53,34 @@ impl ETagQuery {
     }
 }
 
+struct SConfigStore {
+    local_storage: web_sys::Storage,
+}
+
+impl SConfigStore {
+    pub fn new() -> Self {
+        let window = web_sys::window().expect("no global `window` exists");
+        Self{
+            local_storage: window.local_storage().unwrap().unwrap(),
+        }
+    }
+}
+
+impl gamechooser_core::TConfigStore for SConfigStore {
+    fn get_twitch_client_id(&self) -> Option<String> {
+        self.local_storage.get_item("twitch_client_id").unwrap()
+    }
+
+    fn get_twitch_client_secret(&self) -> Option<String> {
+        self.local_storage.get_item("twitch_client_secret").unwrap()
+    }
+
+    fn save_twitch_client(&self, client_id: &str, client_secret: &str) {
+        self.local_storage.set_item("twitch_client_id", client_id).unwrap();
+        self.local_storage.set_item("twitch_client_secret", client_secret).unwrap();
+    }
+}
+
 #[wasm_bindgen]
 extern {
 }
@@ -66,25 +101,35 @@ pub fn cycle_tag_tri_box(element: &web_sys::HtmlSpanElement) {
 }
 
 #[wasm_bindgen]
-pub fn send_random_game_query() {
-    let window = web_sys::window().expect("no global `window` exists");
-    let document = window.document().expect("should have a document on window");
-
-    let _couch = ETagQuery::new_from_element(&document.get_element_by_id("couch"));
-    let _portable = ETagQuery::new_from_element(&document.get_element_by_id("portable"));
-    let _shortok = ETagQuery::new_from_element(&document.get_element_by_id("shortok"));
-    let _longok = ETagQuery::new_from_element(&document.get_element_by_id("longok"));
-}
-
-#[wasm_bindgen]
 pub fn twitch_api_test() {
+    weblog!("twitch_api_test started");
+
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
 
     let elem = &document.get_element_by_id("twitch_api_test_output").unwrap();
 
     if let Ok(p) = elem.clone().dyn_into::<web_sys::HtmlParagraphElement>() {
-        p.set_inner_text("API test started");
+        p.set_inner_text("API test started 333");
     }
 
+    weblog!("twitch_api_test end reached");
+}
+
+#[wasm_bindgen]
+pub fn store_twitch_api_client() {
+    weblog!("store_twitch_api_client started");
+
+    console_error_panic_hook::set_once();
+
+    let window = web_sys::window().expect("no global `window` exists");
+    let document = window.document().expect("should have a document on window");
+
+    let client_id_input = &document.get_element_by_id("twitch_api_client_id").unwrap().dyn_into::<web_sys::HtmlInputElement>().unwrap();
+    let client_secret_input = &document.get_element_by_id("twitch_api_client_secret").unwrap().dyn_into::<web_sys::HtmlInputElement>().unwrap();
+
+    let cfg = SConfigStore::new();
+    cfg.save_twitch_client(client_id_input.value().as_str(), client_secret_input.value().as_str());
+
+    weblog!("store_twitch_api_client reached end");
 }

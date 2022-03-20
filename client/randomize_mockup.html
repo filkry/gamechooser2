@@ -15,18 +15,22 @@
             <span class="tagtribox" id="shortok" onclick="cycle_tag_tri_box(this)">☐</span><label for="shortok">Short</label>
             <span class="tagtribox" id="longok" onclick="cycle_tag_tri_box(this)">☐</span><label for="longok">Long</label>
         </div>
-        <button onclick="send_random_game_query()">GO</button>
+        <hr>
+        <input type="text" id="twitch_api_client_id">
+        <input type="text" id="twitch_api_client_secret">
+        <button onclick="store_twitch_api_client()">Save Twitch API Client</button>
+        <hr>
         <button onclick="twitch_api_test()">Twitch API Test</button>
         <p id="twitch_api_test_output"></p>
     </body>
     <script type="module">
-        import init, { cycle_tag_tri_box, send_random_game_query, twitch_api_test } from './rs-wasm-bindgen-output/gamechooser2_client.js';
+        import init, { cycle_tag_tri_box, twitch_api_test, store_twitch_api_client } from './rs-wasm-bindgen-output/gamechooser2_client.js';
 
         async function run() {
             await init();
             window.cycle_tag_tri_box = cycle_tag_tri_box;
-            window.send_random_game_query = send_random_game_query;
             window.twitch_api_test = twitch_api_test;
+            window.store_twitch_api_client = store_twitch_api_client;
         }
 
         run();

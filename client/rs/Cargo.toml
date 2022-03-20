@@ -7,14 +7,18 @@ edition = "2018"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+console_error_panic_hook = "0.1.7"
 gamechooser-core = { path = "../../gamechooser-core" }
 wasm-bindgen = "0.2.63"
 
 [dependencies.web-sys]
 version = "0.3.4"
 features = [
-  'Window',
+  'console',
   'Document',
+  'HtmlInputElement',
   'HtmlParagraphElement',
   'HtmlSpanElement',
+  'Storage',
+  'Window',
 ]
