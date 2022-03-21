@@ -7,17 +7,13 @@ use reqwest;
 use serde::{Serialize, Deserialize};
 use serde::de::{DeserializeOwned};
 
-struct SReqwestTwitchAPIPostResponse {
-    inner: reqwest::blocking::Response,
-}
-
-struct SReqwestTwitchAPIPost {
-    inner: reqwest::blocking::RequestBuilder,
+#[derive(Clone)]
+struct SReqestTwitchAPISession {
+    client: reqwest::blocking::Client,
+    token_info: Option<gamechooser_core::STwitchOauthTokenResponse>,
 }
 
 struct SReqwestTwitchAPIClient {
-    client: reqwest::blocking::Client,
-    token_info: Option<gamechooser_core::STwitchOauthTokenResponse>,
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -29,75 +25,61 @@ struct SConfigFile {
 struct SConfigStore {
 }
 
-impl gamechooser_core::TTwitchAPIPostResponse for SReqwestTwitchAPIPostResponse {
-    fn json<T: DeserializeOwned>(self) -> Result<T, String> {
-        Ok(self.inner.json().unwrap())
-    }
+impl SReqwestTwitchAPIClient {
+    fn prepare_request(session: &SReqestTwitchAPISession, rb: gamechooser_core::STwitchAPIRequestBuilder) -> reqwest::blocking::RequestBuilder {
+        let mut request = session.client.post(rb.url);
 
-    fn text(self) -> Result<String, String> {
-        Ok(self.inner.text().unwrap())
+        if let Some(b) = rb.body {
+            request = request.body(b);
+        }
+
+        for (hname, hvalue) in rb.headers {
+            request = request.header(hname.as_str(), hvalue.as_str());
+        }
+
+        request
     }
 }
 
-#[async_trait]
-impl gamechooser_core::TTwitchAPIPost for SReqwestTwitchAPIPost {
-    type Response = SReqwestTwitchAPIPostResponse;
-
-    fn header_str(self, field_name: &str, value: &str) -> Self {
-        Self {
-            inner: self.inner.header(field_name, value),
-        }
-    }
-
-    fn header_string(self, field_name: &str, value: String) -> Self {
-        Self {
-            inner: self.inner.header(field_name, value),
-        }
-    }
-
-    fn body(self, value: &'static str) -> Self {
-        Self {
-            inner: self.inner.body(value),
-        }
-    }
-
-    async fn send(self) -> Result<Self::Response, String> {
-        match self.inner.send() {
-            Ok(res) => Ok(SReqwestTwitchAPIPostResponse {
-                inner: res,
-            }),
-            Err(e_) =>  Err(e_.to_string()),
-        }
-    }
-}
-
+#[async_trait(?Send)]
 impl gamechooser_core::TTwitchAPIClient for SReqwestTwitchAPIClient {
-    type Post = SReqwestTwitchAPIPost;
+    type Session = SReqestTwitchAPISession;
 
-    fn init_access_token(&mut self, params: &STwitchOauthTokenRequest) -> Result<(), String> {
-        let res = self.client.post("https://id.twitch.tv/oauth2/token")
-            .form(params)
+    async fn init(params: gamechooser_core::STwitchOauthTokenRequest) -> Result<Self::Session, String> {
+        let client = reqwest::blocking::Client::new();
+
+        let res = client.post("https://id.twitch.tv/oauth2/token")
+            .form(&params)
             .send();
 
         match res {
             Ok(res_) => {
                 let resp : STwitchOauthTokenResponse = res_.json().unwrap();
                 println!("{:?}", resp);
-                self.token_info = Some(resp);
-                Ok(())
+                Ok(Self::Session{
+                    client,
+                    token_info: Some(resp),
+                })
             },
             Err(e_) => Err(e_.to_string()),
         }
+
     }
 
-    fn post(&self, url: &str) -> Self::Post {
-        SReqwestTwitchAPIPost {
-            inner: self.client.post(url),
-        }
+    async fn post_interp_json<T: DeserializeOwned>(session: Self::Session, rb: gamechooser_core::STwitchAPIRequestBuilder) -> Result<T, String> {
+        let req = Self::prepare_request(&session, rb);
+        let resp = req.send().unwrap();
+        Ok(resp.json().unwrap())
     }
 
-    fn access_token(&self) -> String {
-        self.token_info.as_ref().unwrap().access_token.clone()
+    async fn post_text(session: Self::Session, rb: gamechooser_core::STwitchAPIRequestBuilder) -> Result<String, String> {
+        let req = Self::prepare_request(&session, rb);
+        let resp = req.send().unwrap();
+        Ok(resp.text().unwrap())
+    }
+
+    fn access_token(session: &Self::Session) -> &str {
+        session.token_info.as_ref().unwrap().access_token.as_str()
     }
 }
 
@@ -153,14 +135,9 @@ struct SArghs {
 }
 
 fn test() {
-    let mut client = SReqwestTwitchAPIClient {
-        client: reqwest::blocking::Client::new(),
-        token_info: None,
-    };
-
     let config_store = SConfigStore{};
 
-    let future = gamechooser_core::test_any_client(&mut client, &config_store);
+    let future = gamechooser_core::test_any_client::<SReqwestTwitchAPIClient, SConfigStore>(&config_store);
     block_on(future).unwrap();
 }
 

@@ -34,6 +34,7 @@ struct SRandomGameQuery {
 }
 */
 
+/*
 struct SFetchTwitchAPIPostResponse {
     inner: Response,
 }
@@ -46,6 +47,11 @@ struct SFetchTwitchAPIPost {
 
 struct SFetchTwitchAPIClient {
     token_info: Option<gamechooser_core::STwitchOauthTokenResponse>,
+}
+*/
+
+struct SFetchTwitchAPIClient {
+
 }
 
 impl ETagQuery {
@@ -71,101 +77,115 @@ impl ETagQuery {
     }
 }
 
-#[async_trait]
-impl gamechooser_core::TTwitchAPIPostResponse for SFetchTwitchAPIPostResponse {
-    async fn json<T: DeserializeOwned>(self) -> Result<T, String> {
-        let json = JsFuture::from(self.inner.json().unwrap()).await.unwrap();
-        let res : T = json.into_serde().unwrap();
-        Ok(res)
-    }
+impl SFetchTwitchAPIClient {
+    fn prepare_request(rb: gamechooser_core::STwitchAPIRequestBuilder) -> Request {
+        let mut opts = RequestInit::new();
+        opts.method("POST");
+        opts.mode(RequestMode::Cors);
 
-    async fn text(self) -> Result<String, String> {
-        let text = JsFuture::from(self.inner.text().unwrap()).await.unwrap();
-        Ok(text.as_string().unwrap())
-    }
-}
-
-#[async_trait]
-impl gamechooser_core::TTwitchAPIPost for SFetchTwitchAPIPost {
-    type Response = SFetchTwitchAPIPostResponse;
-
-    fn header_str(self, field_name: &str, value: &str) -> Self {
-        self.headers.push((field_name.to_string(), value.to_string()));
-        self
-    }
-
-    fn header_string(self, field_name: &str, value: String) -> Self {
-        self.headers.push((field_name.to_string(), value));
-        self
-    }
-
-    fn body(self, value: &'static str) -> Self {
-        let value = JsValue::from_str(value);
-        self.inner.body(Some(&value));
-        self
-    }
-
-    async fn send(self) -> Result<Self::Response, String> {
-        let request = Request::new_with_str_and_init(&self.url, &self.inner).unwrap();
-        for (hname, hvalue) in self.headers {
-            request.headers().append(hname.as_str(), hvalue.as_str());
+        if let Some(b) = rb.body {
+            let body = JsValue::from_str(b.as_str());
+            opts.body(Some(&body));
         }
 
-        let window = web_sys::window().unwrap();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await.unwrap();
+        let request = Request::new_with_str_and_init(&rb.url, &opts).unwrap();
 
-        assert!(resp_value.is_instance_of::<Response>());
-        let resp: Response = resp_value.dyn_into().unwrap();
+        for (hname, hvalue) in rb.headers {
+            request.headers().append(hname.as_str(), hvalue.as_str()).unwrap();
+        }
 
-        Ok(SFetchTwitchAPIPostResponse{
-            inner: resp,
-        })
+        request
     }
 }
 
-#[async_trait]
-impl gamechooser_core::TTwitchAPIClient for SFetchTwitchAPIClient {
-    type Post = SFetchTwitchAPIPost;
+trait TStompErr {
+    type OkType;
 
-    async fn init_access_token(&mut self, params: &gamechooser_core::STwitchOauthTokenRequest) -> Result<(), String> {
+    fn stomp_err<N>(self, e: N) -> Result<Self::OkType, N>;
+}
+
+impl<T, E> TStompErr for Result<T, E> {
+    type OkType = T;
+
+    fn stomp_err<N>(self, e: N) -> Result<Self::OkType, N> {
+        match self {
+            Ok(t) => Ok(t),
+            Err(_) => Err(e),
+        }
+    }
+}
+
+#[async_trait(?Send)]
+impl gamechooser_core::TTwitchAPIClient for SFetchTwitchAPIClient {
+    type Session = gamechooser_core::STwitchOauthTokenResponse;
+
+    async fn init(params: gamechooser_core::STwitchOauthTokenRequest) -> Result<Self::Session, String> {
         let mut opts = RequestInit::new();
 
         opts.method("POST");
         opts.mode(RequestMode::Cors);
-        let params_value = JsValue::from_serde(params).unwrap();
-        opts.body(Some(&params_value));
+        /*
+        let params_value = {
+            let temp = JsValue::from_serde(&params);
+            match temp {
+                Ok(res) => res,
+                Err(_) => return Err(String::from("Failed to create JsValue from params."))
+            }
+        };
+        */
 
-        let url = "https://id.twitch.tv/oauth2/token";
-        let request = Request::new_with_str_and_init(&url, &opts).unwrap();
+        //opts.body(Some(&params_value));
+
+        //let url = "https://id.twitch.tv/oauth2/token";
+
+        let url = format!("https://id.twitch.tv/oauth2/token?client_id={}&client_secret={}&grant_type=client_credentials", params.client_id, params.client_secret);
+
+        let request = Request::new_with_str_and_init(&url, &opts).stomp_err(String::from("Failed to make request"))?;
+
+        let window = web_sys::window().ok_or(String::from("Failed to find window"))?;
+        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await.stomp_err(String::from("Fetch failed"))?;
+
+        assert!(resp_value.is_instance_of::<Response>());
+        let resp: Response = resp_value.dyn_into().stomp_err(String::from("resp was not a Response"))?;
+
+        let json_promise = resp.json().stomp_err(String::from("Couldn't get json from response - was it bad?"))?;
+
+        let json = JsFuture::from(json_promise).await.stomp_err(String::from("Couldn't get json from response"))?;
+        let res : gamechooser_core::STwitchOauthTokenResponse = json.into_serde().stomp_err(String::from("Could not resolve response into expected type"))?;
+
+        Ok(res)
+    }
+
+    async fn post_interp_json<T: DeserializeOwned>(_session: Self::Session, rb: gamechooser_core::STwitchAPIRequestBuilder) -> Result<T, String> {
+        let req = Self::prepare_request(rb);
 
         let window = web_sys::window().unwrap();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await.unwrap();
+        let resp_value = JsFuture::from(window.fetch_with_request(&req)).await.unwrap();
 
         assert!(resp_value.is_instance_of::<Response>());
         let resp: Response = resp_value.dyn_into().unwrap();
 
         let json = JsFuture::from(resp.json().unwrap()).await.unwrap();
-        let res : gamechooser_core::STwitchOauthTokenResponse = json.into_serde().unwrap();
+        let res : T = json.into_serde().unwrap();
 
-        self.token_info = Some(res);
-
-        Ok(())
+        Ok(res)
     }
 
-    fn post(&self, url: &str) -> Self::Post {
-        let mut opts = RequestInit::new();
-        opts.method("POST");
-        opts.mode(RequestMode::Cors);
+    async fn post_text(_session: Self::Session, rb: gamechooser_core::STwitchAPIRequestBuilder) -> Result<String, String> {
+        let req = Self::prepare_request(rb);
 
-        SFetchTwitchAPIPost {
-            url: url.to_string(),
-            headers: Vec::new(),
-            inner: opts,
-        }
+        let window = web_sys::window().unwrap();
+        let resp_value = JsFuture::from(window.fetch_with_request(&req)).await.unwrap();
+
+        assert!(resp_value.is_instance_of::<Response>());
+        let resp: Response = resp_value.dyn_into().unwrap();
+
+        let text = JsFuture::from(resp.text().unwrap()).await.unwrap();
+        Ok(text.as_string().unwrap())
     }
 
-    fn access_token(&self) -> String {
-        self.token_info.as_ref().unwrap().access_token.clone()
+    fn access_token(session: &Self::Session) -> &str {
+        &session.access_token
     }
 }
 
@@ -227,6 +247,16 @@ pub async fn twitch_api_test() {
 
     if let Ok(p) = elem.clone().dyn_into::<web_sys::HtmlParagraphElement>() {
         p.set_inner_text("API test started 333");
+
+        let cfg = SConfigStore::new();
+        let response_string = gamechooser_core::test_any_client::<SFetchTwitchAPIClient, SConfigStore>(&cfg).await;
+
+        if let Err(e) = response_string {
+            weblog!("test failed with error: {:?}", e);
+            return;
+        }
+
+        p.set_inner_text(response_string.unwrap().as_str());
     }
 
     weblog!("twitch_api_test end reached");

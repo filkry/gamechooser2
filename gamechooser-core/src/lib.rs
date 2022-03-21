@@ -4,20 +4,37 @@ use serde::{Serialize, Deserialize};
 use serde::de::{DeserializeOwned};
 use std::result::{Result};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct STwitchOauthTokenRequest {
-    client_id: String,
-    client_secret: String,
-    grant_type: &'static str,
+    pub client_id: String,
+    pub client_secret: String,
+    pub grant_type: &'static str,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct STwitchOauthTokenResponse {
     pub access_token: String,
     pub expires_in: u32,
     pub token_type: String,
 }
 
+pub struct STwitchAPIRequestBuilder {
+    pub url: String,
+    pub headers: Vec<(String, String)>,
+    pub body: Option<String>,
+}
+
+#[async_trait(?Send)]
+pub trait TTwitchAPIClient {
+    type Session : Clone + Send;
+
+    async fn init(params: STwitchOauthTokenRequest) -> Result<Self::Session, String>;
+    async fn post_interp_json<T: DeserializeOwned>(session: Self::Session, request: STwitchAPIRequestBuilder) -> Result<T, String>;
+    async fn post_text(session: Self::Session, request: STwitchAPIRequestBuilder) -> Result<String, String>;
+    fn access_token(session: &Self::Session) -> &str;
+}
+
+/*
 #[async_trait]
 pub trait TTwitchAPIPostResponse {
     async fn json<T: DeserializeOwned>(self) -> Result<T, String>;
@@ -43,6 +60,32 @@ pub trait TTwitchAPIClient {
     fn post(&self, url: &str) -> Self::Post;
     fn access_token(&self) -> String;
 }
+*/
+
+impl STwitchAPIRequestBuilder {
+    pub fn new() -> Self {
+        Self {
+            url: String::new(),
+            headers: Vec::new(),
+            body: None,
+        }
+    }
+
+    pub fn url(mut self, url: &str) -> Self {
+        self.url = url.to_string();
+        self
+    }
+
+    pub fn header(mut self, name: &str, value: &str) -> Self {
+        self.headers.push((name.to_string(), value.to_string()));
+        self
+    }
+
+    pub fn body(mut self, body: &str) -> Self {
+        self.body = Some(body.to_string());
+        self
+    }
+}
 
 pub trait TConfigStore {
     fn get_twitch_client_id(&self) -> Option<String>;
@@ -50,30 +93,31 @@ pub trait TConfigStore {
     fn save_twitch_client(&self, client_id: &str, client_secret: &str);
 }
 
-pub async fn test_any_client<T: TTwitchAPIClient, C: TConfigStore>(client: &mut T, config_store: &C) -> Result<String, &'static str> {
+pub async fn test_any_client<T: TTwitchAPIClient, C: TConfigStore>(config_store: &C) -> Result<String, String> {
     let params = STwitchOauthTokenRequest{
         client_id: config_store.get_twitch_client_id().unwrap(),
         client_secret: config_store.get_twitch_client_secret().unwrap(),
         grant_type: "client_credentials",
     };
-    client.init_access_token(&params).await.unwrap();
+    let session = T::init(params.clone()).await?;
 
-    let searchres = client.post("https://api.igdb.com/v4/search/")
-        .header_str("Client-ID", params.client_id.as_str())
-        .header_string("Authorization", format!("Bearer {}", client.access_token()))
-        .body("search \"Halo\"; fields game,name;")
-        .send().await;
+    let request = STwitchAPIRequestBuilder::new()
+        .url("https://api.igdb.com/v4/search/")
+        .header("Client-ID", params.client_id.as_str())
+        .header("Authorization", format!("Bearer {}", T::access_token(&session)).as_str())
+        .body("search \"Halo\"; fields game,name;");
+
+    let searchres = T::post_text(session.clone(), request).await;
 
     //println!("{:?}", searchres);
     let searchresp = match searchres {
         Ok(searchres_) => {
-            let searchresp : String = searchres_.text().await.unwrap();
-            println!("{:?}", searchresp);
-            searchresp
+            println!("{:?}", searchres_);
+            searchres_
         },
         Err(e_) => {
             println!("Err status: {:?}", e_);
-            return Err("FAIL");
+            return Err(String::from("FAIL"));
         }
     };
 
