@@ -185,5 +185,7 @@ async fn index() -> Result<String, String> {
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/", routes![index])
+    rocket::build()
+        .mount("/static", rocket::fs::FileServer::from("../client/served_files"))
+        .mount("/", routes![index])
 }
