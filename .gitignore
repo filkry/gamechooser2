@@ -1,5 +1,6 @@
 rs-wasm-bindgen-output/
 client/rs/target/
+server/target/
 cli_client/target/
 gamechooser-core/target/
 client/mongoose-5.0.exe
