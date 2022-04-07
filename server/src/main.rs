@@ -1,8 +1,11 @@
 #[macro_use] extern crate rocket;
 
 //use reqwest;
+use async_std::fs::File;
+use futures::stream::StreamExt;
 use serde::{Serialize, Deserialize};
 use serde::de::{DeserializeOwned};
+use std::error::{Error};
 use std::result::{Result};
 
 #[derive(Debug, Serialize, Clone)]
@@ -67,11 +70,9 @@ struct SReqwestTwitchAPIClient {
 
 #[derive(Default, Serialize, Deserialize)]
 struct SConfigFile {
-    twitch_client_id: Option<String>,
-    twitch_client_secret: Option<String>,
-}
-
-struct SConfigStore {
+    twitch_client_id: String,
+    twitch_client_secret: String,
+    db_path: String,
 }
 
 impl SReqwestTwitchAPIClient {
@@ -127,29 +128,12 @@ impl SReqwestTwitchAPIClient {
     }
 }
 
-impl SConfigStore {
-    fn get_twitch_client_id(&self) -> Option<String> {
-        let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
-        cfg.twitch_client_id
-    }
+async fn test_twitch_api() -> Result<String, String> {
+    let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
 
-    fn get_twitch_client_secret(&self) -> Option<String> {
-        let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
-        cfg.twitch_client_secret
-    }
-
-    fn save_twitch_client(&self, client_id: &str, client_secret: &str) {
-        let mut cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
-        cfg.twitch_client_id = Some(client_id.to_string());
-        cfg.twitch_client_secret = Some(client_secret.to_string());
-        confy::store("gamechooser2_cli_client", cfg).unwrap();
-    }
-}
-
-async fn test_client(config_store: &SConfigStore) -> Result<String, String> {
     let params = STwitchOauthTokenRequest{
-        client_id: config_store.get_twitch_client_id().unwrap(),
-        client_secret: config_store.get_twitch_client_secret().unwrap(),
+        client_id: cfg.twitch_client_id,
+        client_secret: cfg.twitch_client_secret,
         grant_type: "client_credentials",
     };
 
@@ -178,18 +162,51 @@ async fn test_client(config_store: &SConfigStore) -> Result<String, String> {
     Ok(searchresp)
 }
 
+#[derive(Clone, Debug, Deserialize)]
+struct SOwnRecord {
+    game_id: u32,
+    storefront: String,
+}
+
+async fn test_csv() -> Result<String, Box<dyn Error>> {
+    let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
+
+    let mut path = std::path::PathBuf::new();
+    path.push(cfg.db_path);
+    path.push("_own.csv");
+
+    let mut rdr = csv_async::AsyncDeserializer::from_reader(
+        File::open(path).await?
+    );
+
+    let mut result = String::new();
+
+    let mut records = rdr.deserialize::<SOwnRecord>();
+    while let Some(record) = records.next().await {
+        let record = record?;
+        result.push_str(record.storefront.as_str());
+    }
+    Ok(result)
+}
+
 #[get("/")]
 async fn index() -> Result<String, String> {
-    test_client(&SConfigStore{}).await
+    test_twitch_api().await
 }
 
 #[post("/test")]
 async fn test() -> Result<String, String> {
-    test_client(&SConfigStore{}).await
+    //test_twitch_api().await
+    match test_csv().await {
+        Ok(s) => Ok(s),
+        Err(e) => Err(e.to_string())
+    }
 }
 
 #[launch]
 fn rocket() -> _ {
+    // -- $$$FRK(TODO): verify we have valid config file, all values present
+
     rocket::build()
         .mount("/static", rocket::fs::FileServer::from("../client/served_files"))
         .mount("/", routes![index, test])

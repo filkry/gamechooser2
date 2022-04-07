@@ -1,6 +1,19 @@
 # Notes
 
-## Goals/Requirements
+## Next step
+Next step is probably to proof of concept using google docs or sheets as a storage backend...
+Actually, do I need to do this? If I'm running this on my NAS, I can store the DB in plaintext
+without issue and back it up however I like... why hit another server?
+
+## IGDB status
+Now that webasm -> rocket server -> IGDB is working, there are improvements to be made:
++ not getting a completely new bearer token for every API request
+? Not storing secret on the server, bearer token only?
+? Update bearer token from secure machine? Or server can refresh itself?
+
+## Problems with the serverless approach
+
+### Goals/Requirements
 1. Usable from my phone and my PC
 2. Use the Twitch API, I just like the data from it
 3. Ideally serverless (actually serverless)
