@@ -183,9 +183,14 @@ async fn index() -> Result<String, String> {
     test_client(&SConfigStore{}).await
 }
 
+#[post("/test")]
+async fn test() -> Result<String, String> {
+    test_client(&SConfigStore{}).await
+}
+
 #[launch]
 fn rocket() -> _ {
     rocket::build()
         .mount("/static", rocket::fs::FileServer::from("../client/served_files"))
-        .mount("/", routes![index])
+        .mount("/", routes![index, test])
 }
