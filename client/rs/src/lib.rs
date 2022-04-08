@@ -1,12 +1,10 @@
-use async_trait::async_trait;
 use console_error_panic_hook;
-use serde::de::{DeserializeOwned};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 
-use gamechooser_core;
+use gamechooser_core as core;
 
 macro_rules! weblog {
     ( $( $t:tt )* ) => {
@@ -150,7 +148,8 @@ pub async fn search_igdb() -> Result<String, String> {
     let document = window.document().expect("should have a document on window");
 
     // -- do the request
-    let text_string = {
+    let games : Vec<core::SGame> = {
+    //let text_string = {
         let name_search_string = &document.get_element_by_id("name_search_string").unwrap().dyn_into::<web_sys::HtmlInputElement>().unwrap();
 
         let mut opts = RequestInit::new();
@@ -163,11 +162,25 @@ pub async fn search_igdb() -> Result<String, String> {
         let resp_value = JsFuture::from(window.fetch_with_request(&request)).await.stomp_err(String::from("Fetch failed"))?;
         assert!(resp_value.is_instance_of::<Response>());
         let resp: Response = resp_value.dyn_into().stomp_err(String::from("resp was not a Response"))?;
+
+        /*
         let text_promise = resp.text().stomp_err(String::from("Couldn't get text from response - was it bad?"))?;
         let text = JsFuture::from(text_promise).await.stomp_err(String::from("Couldn't get text from response"))?;
 
         text.as_string().ok_or(String::from("text was not a string"))?
+        */
+
+        let json_promise = resp.json().js_error()?;
+        let json = JsFuture::from(json_promise).await.js_error()?;
+
+        json.into_serde().unwrap()
     };
+
+    let mut text_string = String::new();
+    for game in &games {
+        text_string.push_str(game.title());
+        text_string.push_str("\n");
+    }
 
     let output_elem = &document.get_element_by_id("search_igdb_output").unwrap().dyn_into::<web_sys::HtmlParagraphElement>().unwrap();
     output_elem.set_inner_text(text_string.as_str());

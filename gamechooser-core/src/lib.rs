@@ -57,6 +57,10 @@ impl SGame {
             cover_url,
         }
     }
+
+    pub fn title(&self) -> &str {
+        self.title.as_str()
+    }
 }
 
 #[cfg(test)]

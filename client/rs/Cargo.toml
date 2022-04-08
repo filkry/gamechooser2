@@ -20,6 +20,7 @@ features = [
   'console',
   'Document',
   'Headers',
+  'HtmlDivElement',
   'HtmlInputElement',
   'HtmlParagraphElement',
   'HtmlSpanElement',
