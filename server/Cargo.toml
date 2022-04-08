@@ -6,11 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-std = "1.11.0"
-csv-async = { version = "1.2.4", features=["with_serde"] }
+chrono = { version = "0.4", features=["serde"] }
 confy = "0.4"
+csv-async = { version = "1.2.4", features=["with_serde", "tokio"] }
 futures = "0.3.21"
 gamechooser-core = { path = "../gamechooser-core" }
-rocket = "0.5.0-rc.1"
+rocket = { version = "0.5.0-rc.1", features=["json"] }
 reqwest = { version = "0.11.10" , features=["blocking", "json"] }
 serde = { version = "1.0", features=["derive"] }
+tokio = "1.17"
+tokio-stream = "0.1.8"
