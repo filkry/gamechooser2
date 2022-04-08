@@ -143,3 +143,34 @@ pub async fn twitch_api_test() {
 
     weblog!("twitch_api_test end reached");
 }
+
+#[wasm_bindgen]
+pub async fn search_igdb() -> Result<String, String> {
+    let window = web_sys::window().expect("no global `window` exists");
+    let document = window.document().expect("should have a document on window");
+
+    // -- do the request
+    let text_string = {
+        let name_search_string = &document.get_element_by_id("name_search_string").unwrap().dyn_into::<web_sys::HtmlInputElement>().unwrap();
+
+        let mut opts = RequestInit::new();
+        opts.method("POST");
+        opts.mode(RequestMode::Cors);
+
+        let url = format!("http://localhost:8000/search_igdb/{}", name_search_string.value().as_str());
+        let request = Request::new_with_str_and_init(&url, &opts).js_error()?;
+
+        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await.stomp_err(String::from("Fetch failed"))?;
+        assert!(resp_value.is_instance_of::<Response>());
+        let resp: Response = resp_value.dyn_into().stomp_err(String::from("resp was not a Response"))?;
+        let text_promise = resp.text().stomp_err(String::from("Couldn't get text from response - was it bad?"))?;
+        let text = JsFuture::from(text_promise).await.stomp_err(String::from("Couldn't get text from response"))?;
+
+        text.as_string().ok_or(String::from("text was not a string"))?
+    };
+
+    let output_elem = &document.get_element_by_id("search_igdb_output").unwrap().dyn_into::<web_sys::HtmlParagraphElement>().unwrap();
+    output_elem.set_inner_text(text_string.as_str());
+
+    Ok(text_string)
+}
