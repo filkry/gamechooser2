@@ -1,4 +1,4 @@
-use console_error_panic_hook;
+//use console_error_panic_hook;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
@@ -12,12 +12,14 @@ macro_rules! weblog {
     }
 }
 
+#[allow(dead_code)]
 enum ETagQuery {
     TrueOrFalse,
     True,
     False,
 }
 
+#[allow(dead_code)]
 impl ETagQuery {
     pub fn new_from_str(strval: &str) -> Self {
         match strval {
@@ -143,7 +145,7 @@ pub async fn twitch_api_test() {
 }
 
 #[wasm_bindgen]
-pub async fn search_igdb() -> Result<String, String> {
+pub async fn search_igdb() -> Result<(), String> {
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
 
@@ -176,14 +178,22 @@ pub async fn search_igdb() -> Result<String, String> {
         json.into_serde().unwrap()
     };
 
-    let mut text_string = String::new();
+    let output_elem = &document.get_element_by_id("search_igdb_output").unwrap().dyn_into::<web_sys::HtmlDivElement>().unwrap();
+    output_elem.set_inner_html("");
     for game in &games {
-        text_string.push_str(game.title());
-        text_string.push_str("\n");
+        let game_div = document.create_element("div").js_error()?.dyn_into::<web_sys::HtmlDivElement>().unwrap();
+        output_elem.append_child(&game_div).js_error()?;
+
+        let title_elem = document.create_element("h3").js_error()?;
+        title_elem.set_text_content(Some(game.title()));
+        game_div.append_child(&title_elem).js_error()?;
+
+        if let Some(url) = game.cover_url() {
+            let img_elem = document.create_element("img").js_error()?.dyn_into::<web_sys::HtmlImageElement>().unwrap();
+            img_elem.set_src(url);
+            game_div.append_child(&img_elem).js_error()?;
+        }
     }
 
-    let output_elem = &document.get_element_by_id("search_igdb_output").unwrap().dyn_into::<web_sys::HtmlParagraphElement>().unwrap();
-    output_elem.set_inner_text(text_string.as_str());
-
-    Ok(text_string)
+    Ok(())
 }

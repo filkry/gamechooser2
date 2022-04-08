@@ -61,6 +61,13 @@ impl SGame {
     pub fn title(&self) -> &str {
         self.title.as_str()
     }
+
+    pub fn cover_url(&self) -> Option<&str> {
+        match &self.cover_url {
+            Some(s) => Some(s.as_str()),
+            None => None,
+        }
+    }
 }
 
 #[cfg(test)]
