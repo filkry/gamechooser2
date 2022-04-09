@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Gamechooser 2></title>
+      </head>
+    <header>
+        <button onclick="show_sessions()">Sessions</button>
+        <button onclick="show_collection()">Collection</button>
+        <button onclick="show_add()">Add</button>
+        <button onclick="show_randomizer()">Randomizer</button>
+        <button onclick="show_stats()">Stats</button>
+    </header>
+    <body>
+        <div id="sessions_div">
+            Sessions
+        </div>
+        <div id="collection_div" style="display:none">
+            Collection
+        </div>
+        <div id="add_div" style="display:none">
+            Add
+        </div>
+        <div id="randomizer_div" style="display:none">
+            Randomizer
+        </div>
+        <div id="stats_div" style="display:none">
+            stats
+        </div>
+    </body>
+    <script type="module">
+        import init, {
+            search_igdb,
+            show_sessions,
+            show_collection,
+            show_add,
+            show_randomizer,
+            show_stats
+        } from './rs-wasm-bindgen-output/gamechooser2_client.js';
+
+        async function run() {
+            console.log("await init()");
+            await init();
+            window.search_igdb = search_igdb;
+            window.show_sessions = show_sessions;
+            window.show_collection = show_collection;
+            window.show_add = show_add;
+            window.show_randomizer = show_randomizer;
+            window.show_stats = show_stats;
+            console.log("bindings set");
+        }
+
+        run();
+    </script>
+</html>

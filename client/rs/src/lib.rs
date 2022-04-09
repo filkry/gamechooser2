@@ -117,3 +117,44 @@ pub async fn search_igdb() -> Result<(), JsError> {
 
     Ok(())
 }
+
+fn div(id: &str) -> Result<HtmlDivElement, JsError> {
+    document().get_typed_element_by_id::<HtmlDivElement>(id).or(Err(JsError::new(format!("could not find {}", id).as_str())))
+}
+
+fn swap_section_div(tgt_id: &str) -> Result<(), JsError> {
+    div("sessions_div")?.style().set_property("display", "none").to_jserr()?;
+    div("collection_div")?.style().set_property("display", "none").to_jserr()?;
+    div("add_div")?.style().set_property("display", "none").to_jserr()?;
+    div("randomizer_div")?.style().set_property("display", "none").to_jserr()?;
+    div("stats_div")?.style().set_property("display", "none").to_jserr()?;
+
+    div(tgt_id)?.style().set_property("display", "block").to_jserr()?;
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub fn show_sessions() -> Result<(), JsError> {
+    swap_section_div("sessions_div")
+}
+
+#[wasm_bindgen]
+pub fn show_collection() -> Result<(), JsError> {
+    swap_section_div("collection_div")
+}
+
+#[wasm_bindgen]
+pub fn show_add() -> Result<(), JsError> {
+    swap_section_div("add_div")
+}
+
+#[wasm_bindgen]
+pub fn show_randomizer() -> Result<(), JsError> {
+    swap_section_div("randomizer_div")
+}
+
+#[wasm_bindgen]
+pub fn show_stats() -> Result<(), JsError> {
+    swap_section_div("stats_div")
+}

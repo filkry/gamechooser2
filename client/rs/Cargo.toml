@@ -18,9 +18,11 @@ wasm-bindgen-futures = "0.4.29"
 version = "0.3.4"
 features = [
   'console',
+  'CssStyleDeclaration',
   'Document',
   'Headers',
   'HtmlDivElement',
+  'HtmlElement',
   'HtmlImageElement',
   'HtmlInputElement',
   'HtmlParagraphElement',
