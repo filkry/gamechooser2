@@ -1,5 +1,5 @@
 use wasm_bindgen::{JsCast, JsValue, JsError};
-use web_sys::{HtmlDivElement, HtmlImageElement, HtmlInputElement, HtmlParagraphElement, HtmlSpanElement};
+use web_sys::{HtmlButtonElement, HtmlDivElement, HtmlImageElement, HtmlInputElement, HtmlParagraphElement, HtmlSpanElement};
 
 pub trait TDOMElement {
     fn tag() -> &'static str;
@@ -18,6 +18,11 @@ pub trait TToJsError {
 
 // -- Implementations start here
 
+impl TDOMElement for HtmlButtonElement {
+    fn tag() -> &'static str {
+        "button"
+    }
+}
 impl TDOMElement for HtmlDivElement {
     fn tag() -> &'static str {
         "div"

@@ -25,10 +25,10 @@ pub struct SOwn {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SGame {
-    internal_id: Option<u64>,
+    internal_id: Option<u32>,
     title: String,
     release_date: Option<chrono::naive::NaiveDate>,
-    igdb_id: Option<u64>,
+    igdb_id: Option<u32>,
     cover_url: Option<String>,
 }
 
@@ -48,7 +48,7 @@ pub struct SCollectionGame {
 }
 
 impl SGame {
-    pub fn new_igdb(title: String, release_date: Option<chrono::naive::NaiveDate>, igdb_id: u64, cover_url: Option<String>) -> Self {
+    pub fn new_igdb(title: String, release_date: Option<chrono::naive::NaiveDate>, igdb_id: u32, cover_url: Option<String>) -> Self {
         Self {
             internal_id: None,
             title,
@@ -60,6 +60,10 @@ impl SGame {
 
     pub fn title(&self) -> &str {
         self.title.as_str()
+    }
+
+    pub fn igdb_id(&self) -> &Option<u32> {
+        &self.igdb_id
     }
 
     pub fn cover_url(&self) -> Option<&str> {

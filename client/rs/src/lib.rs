@@ -1,12 +1,16 @@
 mod web;
 mod server_api;
 
+use std::sync::RwLock;
+
 //use console_error_panic_hook;
+use once_cell::sync::Lazy;
+use js_sys::Function;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
-use web_sys::{HtmlDivElement, HtmlImageElement, HtmlInputElement, HtmlParagraphElement, HtmlSpanElement};
+use web_sys::{HtmlButtonElement, HtmlDivElement, HtmlImageElement, HtmlInputElement, HtmlParagraphElement, HtmlSpanElement};
 
 use gamechooser_core as core;
 use web::{document, TToJsError, TErgonomicDocument};
@@ -17,12 +21,18 @@ macro_rules! weblog {
     }
 }
 
+struct SAppState {
+    last_search_igdb_results: Option<Vec<core::SGame>>,
+}
+
 #[allow(dead_code)]
 enum ETagQuery {
     TrueOrFalse,
     True,
     False,
 }
+
+static APP: Lazy<RwLock<SAppState>> = Lazy::new(|| RwLock::new(SAppState::new()));
 
 #[allow(dead_code)]
 impl ETagQuery {
@@ -45,6 +55,14 @@ impl ETagQuery {
         }
 
         Self::TrueOrFalse
+    }
+}
+
+impl SAppState {
+    pub fn new() -> Self {
+        Self {
+            last_search_igdb_results: None,
+        }
     }
 }
 
@@ -182,7 +200,27 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
             img_elem.set_src(url);
             game_div.append_child(&img_elem).to_jserr()?;
         }
+
+        let button_elem = document.create_element_typed::<HtmlButtonElement>()?;
+        let onclick_body = format!("add_screen_add_result({});", game.igdb_id().expect("IGDB results should have an igdb_id"));
+        let onclick = Function::new_no_args(onclick_body.as_str());
+        button_elem.set_onclick(Some(&onclick));
+        button_elem.set_inner_text("Add");
+        game_div.append_child(&button_elem).to_jserr()?;
     }
+
+    // -- cache results for later use
+    {
+        let mut app = APP.try_write().expect("Should never actually have contention.");
+        app.last_search_igdb_results = Some(games);
+    }
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
+    weblog!("Got igdb_id: {}", igdb_id);
 
     Ok(())
 }

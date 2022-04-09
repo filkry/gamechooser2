@@ -187,12 +187,12 @@ async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGame>>, String>
 
     #[derive(Deserialize)]
     struct SIGDBSearchResultCover {
-        id: u64,
+        id: u32,
         url: String,
     }
     #[derive(Deserialize)]
     struct SIGDBSearchResult {
-        id: u64,
+        id: u32,
         name: String,
         first_release_date: Option<i64>,
         cover: Option<SIGDBSearchResultCover>,
