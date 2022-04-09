@@ -5,12 +5,12 @@ use std::sync::RwLock;
 
 //use console_error_panic_hook;
 use once_cell::sync::Lazy;
-use js_sys::Function;
+use js_sys::{Date, Function};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
-use web_sys::{HtmlButtonElement, HtmlDivElement, HtmlImageElement, HtmlInputElement, HtmlParagraphElement, HtmlSpanElement};
+use web_sys::{HtmlButtonElement, HtmlDivElement, HtmlElement, HtmlImageElement, HtmlInputElement, HtmlParagraphElement, HtmlSpanElement};
 
 use gamechooser_core as core;
 use web::{document, TToJsError, TErgonomicDocument};
@@ -220,7 +220,56 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
 
 #[wasm_bindgen]
 pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
-    weblog!("Got igdb_id: {}", igdb_id);
+    let game_opt = {
+        let mut result = None;
+
+        let app = APP.try_read().expect("Should never actually have contention");
+        if let Some(games) = &app.last_search_igdb_results {
+            for g in games {
+                if let Some(inner_id) = g.igdb_id() {
+                    if *inner_id == igdb_id {
+                        result = Some(g.clone());
+                        break;
+                    }
+                }
+            }
+        }
+
+        result
+    };
+
+    if game_opt.is_none() {
+        return Err(JsError::new("Somehow adding an IGDB game that was not in search results."))
+    }
+    let game = game_opt.expect("checked above");
+
+    let header_elem = document().get_typed_element_by_id::<HtmlElement>("game_edit_header")?;
+    header_elem.set_inner_text("Add game");
+
+    let title_elem = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_title")?;
+    title_elem.set_value(game.title());
+
+    let date_elem = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_release_date")?;
+    if let Some(date) = game.release_date() {
+        let date_str = date.format("%Y-%m-%d").to_string();
+        date_elem.set_value(date_str.as_str());
+    }
+    else {
+        let date = Date::new_0();
+        let date_str = format!("{:04}-{:02}-{:02}", date.get_full_year(), date.get_month(), date.get_date());
+        date_elem.set_value(date_str.as_str());
+    }
+
+    let cover_elem = document().get_typed_element_by_id::<HtmlImageElement>("game_edit_cover_art")?;
+    if let Some(url) = game.cover_url() {
+        cover_elem.set_src(url);
+        cover_elem.style().set_property("display", "block").to_jserr()?;
+    }
+    else {
+        cover_elem.style().set_property("display", "none").to_jserr()?;
+    }
+
+    swap_section_div("game_edit_div")?;
 
     Ok(())
 }

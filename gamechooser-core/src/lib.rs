@@ -23,7 +23,7 @@ pub struct SOwn {
     ps5: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SGame {
     internal_id: Option<u32>,
     title: String,
@@ -60,6 +60,10 @@ impl SGame {
 
     pub fn title(&self) -> &str {
         self.title.as_str()
+    }
+
+    pub fn release_date(&self) -> Option<chrono::naive::NaiveDate> {
+        self.release_date.clone()
     }
 
     pub fn igdb_id(&self) -> &Option<u32> {

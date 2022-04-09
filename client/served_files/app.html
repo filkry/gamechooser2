@@ -22,13 +22,58 @@
             <h1>Add to collection</h1>
             <input type="text" id="add_screen_name_search_input">
             <button onclick="add_screen_search_igdb()">Search IGDB</button>
-            <div id="add_screen_search_igdb_output"></p>
+            <div id="add_screen_search_igdb_output"></div>
         </div>
         <div id="randomizer_div" style="display:none">
             Randomizer
         </div>
         <div id="stats_div" style="display:none">
             stats
+        </div>
+        <div id="game_edit_div" style="display:none">
+            <h1 id="game_edit_header">Add Game</h1>
+
+            <label for="game_edit_title">Title</label>
+            <input type="text" id="game_edit_title">
+
+            <label for="game_edit_release_date">Release date</label>
+            <input type="date" id="game_edit_release_date">
+
+            <img id="game_edit_cover_art"></img>
+
+            <label for="game_edit_via">Via</label>
+            <input type="text" id="game_edit_via">
+
+            <div id="game_edit_tags">
+                <h3>Tags</h3>
+                <label for="game_edit_tag_couch">Couch playable</label>
+                <input type="checkbox" id="game_edit_tag_couch">
+                <label for="game_edit_tag_portable">Portable playable</label>
+                <input type="checkbox" id="game_edit_tag_portable">
+            </div>
+            <div id="game_edit_own">
+                <h3>Owned on</h3>
+                <label for="game_edit_own_steam">Steam</label>
+                <input type="checkbox" id="game_edit_own_steam">
+                <label for="game_edit_own_egs">EGS</label>
+                <input type="checkbox" id="game_edit_own_egs">
+                <label for="game_edit_own_emulator">Emulator</label>
+                <input type="checkbox" id="game_edit_own_emulator">
+                <label for="game_edit_own_ds">DS</label>
+                <input type="checkbox" id="game_edit_own_ds">
+                <label for="game_edit_own_n3ds">3DS</label>
+                <input type="checkbox" id="game_edit_own_n3ds">
+                <label for="game_edit_own_wii">Wii</label>
+                <input type="checkbox" id="game_edit_own_wii">
+                <label for="game_edit_own_wiiu">WiiU</label>
+                <input type="checkbox" id="game_edit_own_wiiu">
+                <label for="game_edit_own_switch">Switch</label>
+                <input type="checkbox" id="game_edit_own_switch">
+                <label for="game_edit_own_ps4">PS4</label>
+                <input type="checkbox" id="game_edit_own_ps4">
+                <label for="game_edit_own_ps5">PS5</label>
+                <input type="checkbox" id="game_edit_own_ps5">
+            </div>
         </div>
     </body>
     <script type="module">
