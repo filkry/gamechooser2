@@ -19,7 +19,10 @@
             Collection
         </div>
         <div id="add_div" style="display:none">
-            Add
+            <h1>Add to collection</h1>
+            <input type="text" id="add_screen_name_search_input">
+            <button onclick="add_screen_search_igdb()">Search IGDB</button>
+            <div id="add_screen_search_igdb_output"></p>
         </div>
         <div id="randomizer_div" style="display:none">
             Randomizer
@@ -35,7 +38,8 @@
             show_collection,
             show_add,
             show_randomizer,
-            show_stats
+            show_stats,
+            add_screen_search_igdb,
         } from './rs-wasm-bindgen-output/gamechooser2_client.js';
 
         async function run() {
@@ -47,6 +51,7 @@
             window.show_add = show_add;
             window.show_randomizer = show_randomizer;
             window.show_stats = show_stats;
+            window.add_screen_search_igdb = add_screen_search_igdb;
             console.log("bindings set");
         }
 

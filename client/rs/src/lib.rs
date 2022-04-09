@@ -158,3 +158,31 @@ pub fn show_randomizer() -> Result<(), JsError> {
 pub fn show_stats() -> Result<(), JsError> {
     swap_section_div("stats_div")
 }
+
+#[wasm_bindgen]
+pub async fn add_screen_search_igdb() -> Result<(), JsError> {
+    let document = document();
+
+    // -- do the request
+    let name_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("add_screen_name_search_input")?;
+    let games : Vec<core::SGame> = server_api::search_igdb(name_search_input.value().as_str()).await?;
+
+    let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("add_screen_search_igdb_output")?;
+    output_elem.set_inner_html("");
+    for game in &games {
+        let game_div = document.create_element_typed::<HtmlDivElement>()?;
+        output_elem.append_child(&game_div).to_jserr()?;
+
+        let title_elem = document.create_element("h3").to_jserr()?;
+        title_elem.set_text_content(Some(game.title()));
+        game_div.append_child(&title_elem).to_jserr()?;
+
+        if let Some(url) = game.cover_url() {
+            let img_elem = document.create_element_typed::<HtmlImageElement>()?;
+            img_elem.set_src(url);
+            game_div.append_child(&img_elem).to_jserr()?;
+        }
+    }
+
+    Ok(())
+}
