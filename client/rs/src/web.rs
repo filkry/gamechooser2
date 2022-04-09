@@ -1,13 +1,13 @@
 use wasm_bindgen::{JsCast, JsValue, JsError};
 use web_sys::{HtmlDivElement, HtmlImageElement, HtmlInputElement, HtmlParagraphElement, HtmlSpanElement};
 
+pub trait TDOMElement {
+    fn tag() -> &'static str;
+}
+
 pub trait TErgonomicDocument {
     fn create_element_typed<T: JsCast + TDOMElement>(&self) -> Result<T, JsError>;
     fn get_typed_element_by_id<T: JsCast>(&self, id: &str) -> Result<T, JsError>;
-}
-
-trait TDOMElement {
-    fn tag() -> &'static str;
 }
 
 pub trait TToJsError {

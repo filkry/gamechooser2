@@ -1,4 +1,5 @@
 mod web;
+mod server_api;
 
 //use console_error_panic_hook;
 use wasm_bindgen::prelude::*;
@@ -111,30 +112,11 @@ pub async fn twitch_api_test() -> Result<(), JsError> {
 
 #[wasm_bindgen]
 pub async fn search_igdb() -> Result<(), JsError> {
-    let window = window();
     let document = document();
 
     // -- do the request
-    let games : Vec<core::SGame> = {
-    //let text_string = {
-        let name_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("name_search_string")?;
-
-        let mut opts = RequestInit::new();
-        opts.method("POST");
-        opts.mode(RequestMode::Cors);
-
-        let url = format!("http://localhost:8000/search_igdb/{}", name_search_input.value().as_str());
-        let request = Request::new_with_str_and_init(&url, &opts).or(Err(JsError::new("Failed to create request")))?;
-
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await.or(Err(JsError::new("Fetch failed")))?;
-        assert!(resp_value.is_instance_of::<Response>());
-        let resp: Response = resp_value.dyn_into().or(Err(JsError::new("resp_value is not a Response")))?;
-
-        let json_promise = resp.json().or(Err(JsError::new("Could not get json promise from Response")))?;
-        let json = JsFuture::from(json_promise).await.or(Err(JsError::new("Could not convert response to json")))?;
-
-        json.into_serde().unwrap()
-    };
+    let name_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("name_search_string")?;
+    let games : Vec<core::SGame> = server_api::search_igdb(name_search_input.value().as_str()).await?;
 
     let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("search_igdb_output")?;
     output_elem.set_inner_html("");

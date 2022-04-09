@@ -25,6 +25,7 @@ features = [
   'HtmlInputElement',
   'HtmlParagraphElement',
   'HtmlSpanElement',
+  'Location',
   'Request',
   'RequestInit',
   'RequestMode',
