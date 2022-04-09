@@ -3,13 +3,13 @@ mod server_api;
 
 //use console_error_panic_hook;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::{JsCast, JsValue};
+use wasm_bindgen::{JsCast};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 use web_sys::{HtmlDivElement, HtmlImageElement, HtmlInputElement, HtmlParagraphElement, HtmlSpanElement};
 
 use gamechooser_core as core;
-use web::{document, window, TToJsError, TErgonomicDocument};
+use web::{document, TToJsError, TErgonomicDocument};
 
 macro_rules! weblog {
     ( $( $t:tt )* ) => {
@@ -88,26 +88,6 @@ async fn call_test() -> Result<String, JsError> {
     let text_string = text.as_string().ok_or(JsError::new("text was not a string"))?;
 
     Ok(text_string)
-}
-
-#[wasm_bindgen]
-pub async fn twitch_api_test() -> Result<(), JsError> {
-    weblog!("twitch_api_test started");
-
-    let window = web_sys::window().expect("no global `window` exists");
-    let document = window.document().expect("should have a document on window");
-
-    let elem = &document.get_element_by_id("twitch_api_test_output").unwrap();
-
-    if let Ok(p) = elem.clone().dyn_into::<web_sys::HtmlParagraphElement>() {
-        p.set_inner_text("API test started 333");
-        let response_string = call_test().await?;
-        p.set_inner_text(response_string.as_str());
-    }
-
-    weblog!("twitch_api_test end reached");
-
-    Ok(())
 }
 
 #[wasm_bindgen]

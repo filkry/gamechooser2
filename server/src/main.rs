@@ -145,34 +145,8 @@ impl SReqwestTwitchAPIClient {
     }
 }
 
-async fn test_twitch_api() -> Result<String, String> {
-    let session = SReqwestTwitchAPIClient::new_session().await?;
-
-    let request = STwitchAPIRequestBuilder::new()
-        .url("https://api.igdb.com/v4/search/")
-        .header("Client-ID", session.twitch_client_id.as_str())
-        .header("Authorization", format!("Bearer {}", SReqwestTwitchAPIClient::access_token(&session)).as_str())
-        .body("search \"Halo\"; fields game,name;");
-
-    let searchres = SReqwestTwitchAPIClient::post_text(session.clone(), request).await;
-
-    //println!("{:?}", searchres);
-    let searchresp = match searchres {
-        Ok(searchres_) => {
-            println!("{:?}", searchres_);
-            searchres_
-        },
-        Err(e_) => {
-            println!("Err status: {:?}", e_);
-            return Err(String::from("FAIL"));
-        }
-    };
-
-    Ok(searchresp)
-}
-
 #[derive(Clone, Debug, Deserialize)]
-struct SOwnRecord {
+pub struct SOwnRecord {
     game_id: u32,
     storefront: String,
 }
@@ -198,15 +172,10 @@ async fn test_csv() -> Result<String, Box<dyn Error>> {
     Ok(result)
 }
 
-#[get("/")]
-async fn index() -> Result<String, String> {
-    test_twitch_api().await
-}
-
 #[post("/test")]
 async fn test() -> Result<String, String> {
     //test_twitch_api().await
-    match test_twitch_api().await {
+    match test_csv().await {
         Ok(s) => Ok(s),
         Err(e) => Err(e.to_string())
     }
@@ -276,5 +245,5 @@ fn rocket() -> _ {
 
     rocket::build()
         .mount("/static", rocket::fs::FileServer::from("../client/served_files"))
-        .mount("/", routes![index, test, search_igdb])
+        .mount("/", routes![test, search_igdb])
 }
