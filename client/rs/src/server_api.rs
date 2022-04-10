@@ -27,7 +27,7 @@ pub(super) async fn search_igdb(title: &str) -> Result<Vec<core::SGame>, JsError
     json.into_serde().or(Err(JsError::new("Failed to serialize json into expected type.")))
 }
 
-async fn post_return_data<T: serde::de::DeserializeOwned>(route: &str) -> Result<T, JsError> {
+async fn post_return_data<T: serde::de::DeserializeOwned>(route: &str, url_data: Option<&str>) -> Result<T, JsError> {
     let window = window();
 
     let mut opts = RequestInit::new();
@@ -35,7 +35,14 @@ async fn post_return_data<T: serde::de::DeserializeOwned>(route: &str) -> Result
     opts.mode(RequestMode::Cors);
 
     let origin = window.location().origin().to_jserr()?;
-    let url = format!("{}/{}/", origin.as_str(), route);
+    let url = {
+        if let Some(d) = url_data {
+            format!("{}/{}/{}", origin.as_str(), route, d)
+        }
+        else {
+            format!("{}/{}/", origin.as_str(), route)
+        }
+    };
     let request = Request::new_with_str_and_init(&url, &opts).to_jserr()?;
 
     let resp_value = JsFuture::from(window.fetch_with_request(&request)).await.to_jserr()?;
@@ -78,9 +85,13 @@ pub(super) async fn add_game(game: core::SCollectionGame) -> Result<(), JsError>
 }
 
 pub(super) async fn edit_game(game: core::SCollectionGame) -> Result<(), JsError> {
-    Ok(())
+    Err(JsError::new("edit_game not implemented"))
 }
 
 pub(super) async fn get_recent_collection_games() -> Result<Vec<core::SCollectionGame>, JsError> {
-    post_return_data("get_recent_collection_games").await
+    post_return_data("get_recent_collection_games", None).await
+}
+
+pub(super) async fn search_collection(query: &str) -> Result<Vec<core::SCollectionGame>, JsError> {
+    post_return_data("search_collection", Some(query)).await
 }

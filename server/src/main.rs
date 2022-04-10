@@ -9,6 +9,7 @@ use tokio_stream::StreamExt;
 use serde::{Serialize, Deserialize};
 use serde::de::{DeserializeOwned};
 use serde_json;
+use sublime_fuzzy;
 use rocket::serde::json::Json as RocketJson;
 
 use gamechooser_core as core;
@@ -348,11 +349,41 @@ async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectio
     Ok(RocketJson(result))
 }
 
+#[post("/search_collection/<query>")]
+async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollectionGame>>, String> {
+    let collection_games = load_collection()?;
+
+    struct SScore {
+        idx: usize,
+        score: isize,
+    }
+    let mut scores = Vec::with_capacity(collection_games.len());
+
+    for (idx, game) in collection_games.iter().enumerate() {
+        if let Some(m) = sublime_fuzzy::best_match(query, game.game.title()) {
+            scores.push(SScore{
+                idx,
+                score: m.score(),
+            });
+        }
+    }
+
+    scores.sort_by(|a, b| a.score.cmp(&b.score));
+    assert!(scores.len() < 2 || scores[0].score > scores[1].score);
+
+    let mut result = Vec::with_capacity(10);
+    for i in 0..std::cmp::min(10, scores.len()) {
+        result.push(collection_games[scores[i].idx].clone());
+    }
+
+    Ok(RocketJson(result))
+}
+
 #[launch]
 fn rocket() -> _ {
     // -- $$$FRK(TODO): verify we have valid config file, all values present
 
     rocket::build()
         .mount("/static", rocket::fs::FileServer::from("../client/served_files"))
-        .mount("/", routes![test, search_igdb, add_game, get_recent_collection_games])
+        .mount("/", routes![test, search_igdb, add_game, get_recent_collection_games, search_collection])
 }

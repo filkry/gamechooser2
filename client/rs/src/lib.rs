@@ -28,7 +28,7 @@ enum EGameEditMode {
 }
 
 struct SAppState {
-    collection_recent_games: Option<Vec<core::SCollectionGame>>,
+    collection_screen_games: Option<Vec<core::SCollectionGame>>,
 
     last_search_igdb_results: Option<Vec<core::SGame>>,
 
@@ -73,7 +73,7 @@ impl SAppState {
     pub fn new() -> Self {
         Self {
             last_search_igdb_results: None,
-            collection_recent_games: None,
+            collection_screen_games: None,
             game_edit_mode: EGameEditMode::Add,
             game_edit_game: None,
         }
@@ -365,12 +365,12 @@ pub async fn edit_screen_submit_edit() -> Result<(), JsError> {
     Ok(())
 }
 
-async fn enter_collection_screen() -> Result<(), JsError> {
-    let document = web::document();
-    let games = server_api::get_recent_collection_games().await?;
+fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Result<(), JsError> {
+    let document = document();
 
     let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("collection_screen_game_list")?;
     output_elem.set_inner_html("");
+
     for game in &games {
         let game_div = document.create_element_typed::<HtmlDivElement>()?;
         output_elem.append_child(&game_div).to_jserr()?;
@@ -396,10 +396,32 @@ async fn enter_collection_screen() -> Result<(), JsError> {
     // -- cache results for later use
     {
         let mut app = APP.try_write().expect("Should never actually have contention.");
-        app.collection_recent_games = Some(games);
+        app.collection_screen_games = Some(games);
     }
 
+    Ok(())
+}
+
+async fn enter_collection_screen() -> Result<(), JsError> {
+    let document = web::document();
+    let games = server_api::get_recent_collection_games().await?;
+
+    populate_collection_screen_game_list(games)?;
+
     swap_section_div("collection_div")?;
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn collection_screen_search() -> Result<(), JsError> {
+    let document = document();
+
+    // -- do the request
+    let collection_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("collection_search_input")?;
+    let games : Vec<core::SCollectionGame> = server_api::search_collection(collection_search_input.value().as_str()).await?;
+
+    populate_collection_screen_game_list(games)?;
 
     Ok(())
 }
