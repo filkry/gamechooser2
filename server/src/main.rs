@@ -190,7 +190,7 @@ async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGame>>, String>
     #[derive(Deserialize)]
     struct SIGDBSearchResultCover {
         id: u32,
-        url: String,
+        image_id: String,
     }
     #[derive(Deserialize)]
     struct SIGDBSearchResult {
@@ -201,7 +201,7 @@ async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGame>>, String>
     }
 
     let search_results : Vec<SIGDBSearchResult> = {
-        let body = format!("search \"{}\"; fields name,first_release_date,cover.url;", name);
+        let body = format!("search \"{}\"; fields name,first_release_date,cover.image_id;", name);
 
         /*
         Should be equivalent to:
@@ -225,7 +225,7 @@ async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGame>>, String>
         chrono::naive::NaiveDateTime::from_timestamp(ts, 0).date()
     }
     fn extract_cover_url(cover: SIGDBSearchResultCover) -> String {
-        cover.url
+        format!("https://images.igdb.com/igdb/image/upload/t_cover_small/{}.jpg", cover.image_id)
     }
 
     let mut results = Vec::with_capacity(search_results.len());
