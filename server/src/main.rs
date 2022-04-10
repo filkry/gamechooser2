@@ -1,12 +1,14 @@
 #[macro_use] extern crate rocket;
 
+use std::error::{Error};
+use std::result::{Result};
+
 //use reqwest;
 use tokio::fs::File;
 use tokio_stream::StreamExt;
 use serde::{Serialize, Deserialize};
 use serde::de::{DeserializeOwned};
-use std::error::{Error};
-use std::result::{Result};
+use serde_json;
 use rocket::serde::json::Json as RocketJson;
 
 use gamechooser_core as core;
@@ -240,8 +242,83 @@ async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGame>>, String>
 }
 
 #[post("/add_game", data = "<game>")]
-async fn add_game(game: RocketJson<core::SCollectionGame>) -> Result<(), String> {
+async fn add_game(mut game: RocketJson<core::SCollectionGame>) -> Result<(), String> {
     println!("{:?}", game);
+
+    let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
+    let mut path = std::path::PathBuf::new();
+    path.push(cfg.db_path);
+    path.push("collection.json");
+
+    // -- read existing collection
+    let mut collection_games : Vec<core::SCollectionGame> = {
+        if path.exists() {
+            let file = match std::fs::File::open(path.clone()) {
+                Ok(f) => f,
+                Err(e) => {
+                    println!("Failed to open collection.json with: {:?}", e);
+                    return Err(String::from("Server had local file issues."));
+                }
+            };
+            let reader = std::io::BufReader::new(file);
+
+            // Read the JSON contents of the file as an instance of `User`.
+            match serde_json::from_reader(reader) {
+                Ok(g) => g,
+                Err(e) => {
+                    println!("Failed to deserialize collection.json with: {:?}", e);
+                    return Err(String::from("Server had local file issues."));
+                }
+            }
+        }
+        else {
+            Vec::new()
+        }
+    };
+
+    let mut max_id = 0;
+    for collection_game in &collection_games {
+        max_id = std::cmp::max(max_id, collection_game.game.internal_id().expect("All collection games should have an internal ID."));
+    }
+
+    (*game).game.set_internal_id(max_id + 1);
+
+    collection_games.push(game.into_inner());
+
+    // -- write new collection
+    {
+        if path.exists() {
+            if let Err(e) = std::fs::remove_file(path.clone()) {
+                println!("Failed to delete collection.json with: {:?}", e);
+                return Err(String::from("Server had local file issues."));
+            }
+        }
+
+        let open_options = std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .append(true)
+            .open(path);
+
+        let file = match open_options {
+            Ok(f) => f,
+            Err(e) => {
+                println!("Failed to open collection.json with: {:?}", e);
+                return Err(String::from("Server had local file issues."));
+            }
+        };
+        let writer = std::io::BufWriter::new(file);
+
+        // Read the JSON contents of the file as an instance of `User`.
+        match serde_json::to_writer_pretty(writer, &collection_games) {
+            Ok(_) => {},
+            Err(e) => {
+                println!("Failed to deserialize collection.json with: {:?}", e);
+                return Err(String::from("Server had local file issues."));
+            }
+        };
+    };
+
     Ok(())
 }
 

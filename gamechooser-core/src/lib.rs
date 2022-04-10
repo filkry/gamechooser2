@@ -64,6 +64,10 @@ impl SGame {
         }
     }
 
+    pub fn internal_id(&self) -> Option<u32> {
+        self.internal_id
+    }
+
     pub fn title(&self) -> &str {
         self.title.as_str()
     }
@@ -81,6 +85,15 @@ impl SGame {
             Some(s) => Some(s.as_str()),
             None => None,
         }
+    }
+
+    pub fn set_internal_id(&mut self, internal_id: u32) {
+        if self.internal_id.is_some() {
+            println!("Trying to overwrite the internal ID of {}, this should not be done.", self.title);
+            return;
+        }
+
+        self.internal_id = Some(internal_id);
     }
 
     pub fn set_title(&mut self, title: &str) {
