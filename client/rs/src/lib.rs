@@ -21,6 +21,7 @@ macro_rules! weblog {
     }
 }
 
+#[derive(Copy, Clone)]
 enum EGameEditMode {
     Add,
     Edit,
@@ -292,7 +293,7 @@ pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
 }
 
 #[wasm_bindgen]
-pub fn edit_screen_submit_edit() -> Result<(), JsError> {
+pub async fn edit_screen_submit_edit() -> Result<(), JsError> {
     let mut game = {
         let mut app = APP.try_write().expect("Should never actually have contention.");
         app.game_edit_game.take()
@@ -327,6 +328,16 @@ pub fn edit_screen_submit_edit() -> Result<(), JsError> {
         ps4: checkbox_value("game_edit_own_ps4")?,
         ps5: checkbox_value("game_edit_own_ps5")?,
     };
+
+    let mode = APP.try_read().expect("Should never actually have contention.").game_edit_mode;
+    match mode {
+        EGameEditMode::Add => {
+            server_api::add_game(game.clone()).await?;
+        },
+        EGameEditMode::Edit => {
+            server_api::edit_game(game.clone()).await?;
+        },
+    }
 
     weblog!("Edit collection game: {:?}", game);
 

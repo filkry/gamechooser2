@@ -239,11 +239,17 @@ async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGame>>, String>
     Ok(RocketJson(results))
 }
 
+#[post("/add_game", data = "<game>")]
+async fn add_game(game: RocketJson<core::SCollectionGame>) -> Result<(), String> {
+    println!("{:?}", game);
+    Ok(())
+}
+
 #[launch]
 fn rocket() -> _ {
     // -- $$$FRK(TODO): verify we have valid config file, all values present
 
     rocket::build()
         .mount("/static", rocket::fs::FileServer::from("../client/served_files"))
-        .mount("/", routes![test, search_igdb])
+        .mount("/", routes![test, search_igdb, add_game])
 }

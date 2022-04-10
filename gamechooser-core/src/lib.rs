@@ -1,13 +1,13 @@
 use chrono;
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SGameTags {
     pub couch_playable: Option<bool>,
     pub portable_playable: Option<bool>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SOwn {
     pub steam: bool,
     pub egs: bool,
@@ -32,7 +32,7 @@ pub struct SGame {
     cover_url: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SGameCustomInfo {
     pub via: String,
 
@@ -47,7 +47,7 @@ pub struct SGameChooseState {
     ignore_passes: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SCollectionGame {
     pub game: SGame,
     pub info: SGameCustomInfo,
