@@ -80,6 +80,22 @@ impl SAppState {
     }
 }
 
+impl EGameEditMode {
+    fn header(&self) -> &str {
+        match self {
+            Self::Add => "Add game",
+            Self::Edit => "Edit game",
+        }
+    }
+
+    fn submit_button_text(&self) -> &str {
+        match self {
+            Self::Add => "Submit add",
+            Self::Edit => "Submit edit",
+        }
+    }
+}
+
 // -- I think this is necessary for something
 #[wasm_bindgen]
 extern {
@@ -234,6 +250,66 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
     Ok(())
 }
 
+fn edit_game(game: core::SCollectionGame, mode: EGameEditMode) -> Result<(), JsError> {
+    let header_elem = document().get_typed_element_by_id::<HtmlElement>("game_edit_header")?;
+    header_elem.set_inner_text(mode.header());
+    let submit_elem = document().get_typed_element_by_id::<HtmlElement>("game_edit_submit")?;
+    submit_elem.set_inner_text(mode.submit_button_text());
+
+    let title_elem = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_title")?;
+    title_elem.set_value(game.game.title());
+
+    let date_elem = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_release_date")?;
+    if let Some(date) = game.game.release_date() {
+        let date_str = date.format("%Y-%m-%d").to_string();
+        date_elem.set_value(date_str.as_str());
+    }
+    else {
+        let date = Date::new_0();
+        let date_str = format!("{:04}-{:02}-{:02}", date.get_full_year(), date.get_month(), date.get_date());
+        date_elem.set_value(date_str.as_str());
+    }
+
+    let cover_elem = document().get_typed_element_by_id::<HtmlImageElement>("game_edit_cover_art")?;
+    if let Some(url) = game.game.cover_url() {
+        cover_elem.set_src(url);
+        cover_elem.style().set_property("display", "block").to_jserr()?;
+    }
+    else {
+        cover_elem.style().set_property("display", "none").to_jserr()?;
+    }
+
+    fn populate_checkox(id: &str, value: bool) -> Result<(), JsError> {
+        let elem = document().get_typed_element_by_id::<HtmlInputElement>(id)?;
+        elem.set_checked(value);
+        Ok(())
+    }
+
+    populate_checkox("game_edit_tag_couch", game.info.tags.couch_playable)?;
+    populate_checkox("game_edit_tag_portable", game.info.tags.portable_playable)?;
+
+    populate_checkox("game_edit_own_steam", game.info.own.steam)?;
+    populate_checkox("game_edit_own_egs", game.info.own.egs)?;
+    populate_checkox("game_edit_own_emulator", game.info.own.emulator)?;
+    populate_checkox("game_edit_own_ds", game.info.own.ds)?;
+    populate_checkox("game_edit_own_n3ds", game.info.own.n3ds)?;
+    populate_checkox("game_edit_own_wii", game.info.own.wii)?;
+    populate_checkox("game_edit_own_wiiu", game.info.own.wiiu)?;
+    populate_checkox("game_edit_own_switch", game.info.own.switch)?;
+    populate_checkox("game_edit_own_ps4", game.info.own.ps4)?;
+    populate_checkox("game_edit_own_ps5", game.info.own.ps5)?;
+
+    {
+        let mut app = APP.try_write().expect("Should never actually have contention.");
+        app.game_edit_mode = mode;
+        app.game_edit_game = Some(game);
+    }
+
+    swap_section_div("game_edit_div")?;
+
+    Ok(())
+}
+
 #[wasm_bindgen]
 pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
     let game_opt = {
@@ -258,42 +334,7 @@ pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
         return Err(JsError::new("Somehow adding an IGDB game that was not in search results."))
     }
     let game = game_opt.expect("checked above");
-
-    let header_elem = document().get_typed_element_by_id::<HtmlElement>("game_edit_header")?;
-    header_elem.set_inner_text("Add game");
-    let submit_elem = document().get_typed_element_by_id::<HtmlElement>("game_edit_submit")?;
-    submit_elem.set_inner_text("Add");
-
-    let title_elem = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_title")?;
-    title_elem.set_value(game.title());
-
-    let date_elem = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_release_date")?;
-    if let Some(date) = game.release_date() {
-        let date_str = date.format("%Y-%m-%d").to_string();
-        date_elem.set_value(date_str.as_str());
-    }
-    else {
-        let date = Date::new_0();
-        let date_str = format!("{:04}-{:02}-{:02}", date.get_full_year(), date.get_month(), date.get_date());
-        date_elem.set_value(date_str.as_str());
-    }
-
-    let cover_elem = document().get_typed_element_by_id::<HtmlImageElement>("game_edit_cover_art")?;
-    if let Some(url) = game.cover_url() {
-        cover_elem.set_src(url);
-        cover_elem.style().set_property("display", "block").to_jserr()?;
-    }
-    else {
-        cover_elem.style().set_property("display", "none").to_jserr()?;
-    }
-
-    {
-        let mut app = APP.try_write().expect("Should never actually have contention.");
-        app.game_edit_mode = EGameEditMode::Add;
-        app.game_edit_game = Some(core::SCollectionGame::new(game));
-    }
-
-    swap_section_div("game_edit_div")?;
+    edit_game(core::SCollectionGame::new(game), EGameEditMode::Add)?;
 
     Ok(())
 }
@@ -317,8 +358,8 @@ async fn edit_screen_submit_edit_helper() -> Result<(), JsError> {
     }
 
     game.info_mut().tags = core::SGameTags {
-        couch_playable: Some(checkbox_value("game_edit_tag_couch")?),
-        portable_playable: Some(checkbox_value("game_edit_tag_portable")?),
+        couch_playable: checkbox_value("game_edit_tag_couch")?,
+        portable_playable: checkbox_value("game_edit_tag_portable")?,
     };
 
     game.info_mut().own = core::SOwn {
@@ -352,15 +393,30 @@ async fn edit_screen_submit_edit_helper() -> Result<(), JsError> {
 #[wasm_bindgen]
 pub async fn edit_screen_submit_edit() -> Result<(), JsError> {
     let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message")?;
+
+    let edit_mode = {
+        let app = APP.try_read().expect("Should never actually have contention");
+        app.game_edit_mode
+    };
+
     match edit_screen_submit_edit_helper().await {
         Ok(_) => {
-            p.set_inner_text("Successfully added game.");
+            let text = match edit_mode {
+                EGameEditMode::Add => "Successfully added game.",
+                EGameEditMode::Edit => "Successfully edited game.",
+            };
+            p.set_inner_text(text);
         }
         Err(e) => {
-            p.set_inner_text("Failed to add game, error in console.");
+            let text = match edit_mode {
+                EGameEditMode::Add => "Failed to add game.",
+                EGameEditMode::Edit => "Failed to edit game.",
+            };
+            p.set_inner_text(text);
             return Err(e);
         }
-    }
+    };
+
     swap_section_div("result_div")?;
     Ok(())
 }
@@ -424,4 +480,31 @@ pub async fn collection_screen_search() -> Result<(), JsError> {
     populate_collection_screen_game_list(games)?;
 
     Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn collection_screen_edit_game(internal_id: u32) -> Result<(), JsError> {
+    let game_opt = {
+        let mut result = None;
+
+        let app = APP.try_read().expect("Should never actually have contention");
+        if let Some(games) = &app.collection_screen_games {
+            for g in games {
+                if let Some(inner_id) = g.game.internal_id() {
+                    if inner_id == internal_id {
+                        result = Some(g.clone());
+                        break;
+                    }
+                }
+                else {
+                    weblog!("Game in collection_screen_games missing internal_id!");
+                }
+            }
+        }
+
+        result
+    };
+    let game = game_opt.ok_or(JsError::new("Somehow adding an IGDB game that was not in search results."))?;
+
+    edit_game(game, EGameEditMode::Edit)
 }

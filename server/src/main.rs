@@ -137,6 +137,7 @@ impl SReqwestTwitchAPIClient {
         Ok(resp.json().await?)
     }
 
+    #[allow(dead_code)]
     async fn post_text(session: SReqwestTwitchAPISession, rb: STwitchAPIRequestBuilder) -> Result<String, String> {
         let req = Self::prepare_request(&session, rb);
         let resp = req.send().await.unwrap();
@@ -149,6 +150,7 @@ impl SReqwestTwitchAPIClient {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct SOwnRecord {
     game_id: u32,
     storefront: String,
@@ -161,7 +163,7 @@ fn load_collection() -> Result<Vec<core::SCollectionGame>, String> {
     path.push("collection.json");
 
     // -- read existing collection
-    let mut collection_games : Vec<core::SCollectionGame> = {
+    let collection_games : Vec<core::SCollectionGame> = {
         if path.exists() {
             let file = match std::fs::File::open(path.clone()) {
                 Ok(f) => f,
@@ -187,6 +189,46 @@ fn load_collection() -> Result<Vec<core::SCollectionGame>, String> {
     };
 
     Ok(collection_games)
+}
+
+fn save_collection(collection_games: Vec<core::SCollectionGame>) -> Result<(), String> {
+    let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
+    let mut path = std::path::PathBuf::new();
+    path.push(cfg.db_path);
+    path.push("collection.json");
+
+    if path.exists() {
+        if let Err(e) = std::fs::remove_file(path.clone()) {
+            println!("Failed to delete collection.json with: {:?}", e);
+            return Err(String::from("Server had local file issues."));
+        }
+    }
+
+    let open_options = std::fs::OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .append(true)
+        .open(path);
+
+    let file = match open_options {
+        Ok(f) => f,
+        Err(e) => {
+            println!("Failed to open collection.json with: {:?}", e);
+            return Err(String::from("Server had local file issues."));
+        }
+    };
+    let writer = std::io::BufWriter::new(file);
+
+    // Read the JSON contents of the file as an instance of `User`.
+    match serde_json::to_writer_pretty(writer, &collection_games) {
+        Ok(_) => {},
+        Err(e) => {
+            println!("Failed to deserialize collection.json with: {:?}", e);
+            return Err(String::from("Server had local file issues."));
+        }
+    };
+
+    Ok(())
 }
 
 async fn test_csv() -> Result<String, Box<dyn Error>> {
@@ -224,6 +266,7 @@ async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGame>>, String>
     let session = SReqwestTwitchAPIClient::new_session().await?;
 
     #[derive(Deserialize)]
+    #[allow(dead_code)]
     struct SIGDBSearchResultCover {
         id: u32,
         image_id: String,
@@ -279,8 +322,6 @@ async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGame>>, String>
 
 #[post("/add_game", data = "<game>")]
 async fn add_game(mut game: RocketJson<core::SCollectionGame>) -> Result<(), String> {
-    println!("{:?}", game);
-
     let mut collection_games = load_collection()?;
 
     let mut max_id = 0;
@@ -292,44 +333,26 @@ async fn add_game(mut game: RocketJson<core::SCollectionGame>) -> Result<(), Str
 
     collection_games.push(game.into_inner());
 
-    // -- write new collection
-    {
-        let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
-        let mut path = std::path::PathBuf::new();
-        path.push(cfg.db_path);
-        path.push("collection.json");
+    save_collection(collection_games)?;
 
-        if path.exists() {
-            if let Err(e) = std::fs::remove_file(path.clone()) {
-                println!("Failed to delete collection.json with: {:?}", e);
-                return Err(String::from("Server had local file issues."));
-            }
+    Ok(())
+}
+
+#[post("/edit_game", data = "<game>")]
+async fn edit_game(game: RocketJson<core::SCollectionGame>) -> Result<(), String> {
+    let mut collection_games = load_collection()?;
+
+    let edit_internal_id = game.game.internal_id().ok_or(String::from("Trying to edit a game but didn't pass it's internal ID"))?;
+
+    for collection_game in &mut collection_games {
+        let internal_id = collection_game.game.internal_id().expect("All collection games should have an internal ID.");
+        if internal_id == edit_internal_id {
+            *collection_game = game.into_inner();
+            break;
         }
+    }
 
-        let open_options = std::fs::OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .append(true)
-            .open(path);
-
-        let file = match open_options {
-            Ok(f) => f,
-            Err(e) => {
-                println!("Failed to open collection.json with: {:?}", e);
-                return Err(String::from("Server had local file issues."));
-            }
-        };
-        let writer = std::io::BufWriter::new(file);
-
-        // Read the JSON contents of the file as an instance of `User`.
-        match serde_json::to_writer_pretty(writer, &collection_games) {
-            Ok(_) => {},
-            Err(e) => {
-                println!("Failed to deserialize collection.json with: {:?}", e);
-                return Err(String::from("Server had local file issues."));
-            }
-        };
-    };
+    save_collection(collection_games)?;
 
     Ok(())
 }
@@ -385,5 +408,5 @@ fn rocket() -> _ {
 
     rocket::build()
         .mount("/static", rocket::fs::FileServer::from("../client/served_files"))
-        .mount("/", routes![test, search_igdb, add_game, get_recent_collection_games, search_collection])
+        .mount("/", routes![test, search_igdb, add_game, edit_game, get_recent_collection_games, search_collection])
 }

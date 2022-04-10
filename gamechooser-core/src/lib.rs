@@ -3,8 +3,8 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SGameTags {
-    pub couch_playable: Option<bool>,
-    pub portable_playable: Option<bool>,
+    pub couch_playable: bool,
+    pub portable_playable: bool,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -40,6 +40,7 @@ pub struct SGameCustomInfo {
     pub own: SOwn,
 }
 
+#[allow(dead_code)]
 pub struct SGameChooseState {
     next_valid_proposal_date: chrono::naive::NaiveDate,
     retired: bool,

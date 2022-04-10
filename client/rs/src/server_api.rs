@@ -85,7 +85,8 @@ pub(super) async fn add_game(game: core::SCollectionGame) -> Result<(), JsError>
 }
 
 pub(super) async fn edit_game(game: core::SCollectionGame) -> Result<(), JsError> {
-    Err(JsError::new("edit_game not implemented"))
+    post_data("edit_game", game).await?;
+    Ok(())
 }
 
 pub(super) async fn get_recent_collection_games() -> Result<Vec<core::SCollectionGame>, JsError> {
