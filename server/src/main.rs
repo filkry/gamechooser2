@@ -153,6 +153,41 @@ pub struct SOwnRecord {
     storefront: String,
 }
 
+fn load_collection() -> Result<Vec<core::SCollectionGame>, String> {
+    let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
+    let mut path = std::path::PathBuf::new();
+    path.push(cfg.db_path);
+    path.push("collection.json");
+
+    // -- read existing collection
+    let mut collection_games : Vec<core::SCollectionGame> = {
+        if path.exists() {
+            let file = match std::fs::File::open(path.clone()) {
+                Ok(f) => f,
+                Err(e) => {
+                    println!("Failed to open collection.json with: {:?}", e);
+                    return Err(String::from("Server had local file issues."));
+                }
+            };
+            let reader = std::io::BufReader::new(file);
+
+            // Read the JSON contents of the file as an instance of `User`.
+            match serde_json::from_reader(reader) {
+                Ok(g) => g,
+                Err(e) => {
+                    println!("Failed to deserialize collection.json with: {:?}", e);
+                    return Err(String::from("Server had local file issues."));
+                }
+            }
+        }
+        else {
+            Vec::new()
+        }
+    };
+
+    Ok(collection_games)
+}
+
 async fn test_csv() -> Result<String, Box<dyn Error>> {
     let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
 
@@ -245,36 +280,7 @@ async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGame>>, String>
 async fn add_game(mut game: RocketJson<core::SCollectionGame>) -> Result<(), String> {
     println!("{:?}", game);
 
-    let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
-    let mut path = std::path::PathBuf::new();
-    path.push(cfg.db_path);
-    path.push("collection.json");
-
-    // -- read existing collection
-    let mut collection_games : Vec<core::SCollectionGame> = {
-        if path.exists() {
-            let file = match std::fs::File::open(path.clone()) {
-                Ok(f) => f,
-                Err(e) => {
-                    println!("Failed to open collection.json with: {:?}", e);
-                    return Err(String::from("Server had local file issues."));
-                }
-            };
-            let reader = std::io::BufReader::new(file);
-
-            // Read the JSON contents of the file as an instance of `User`.
-            match serde_json::from_reader(reader) {
-                Ok(g) => g,
-                Err(e) => {
-                    println!("Failed to deserialize collection.json with: {:?}", e);
-                    return Err(String::from("Server had local file issues."));
-                }
-            }
-        }
-        else {
-            Vec::new()
-        }
-    };
+    let mut collection_games = load_collection()?;
 
     let mut max_id = 0;
     for collection_game in &collection_games {
@@ -287,6 +293,11 @@ async fn add_game(mut game: RocketJson<core::SCollectionGame>) -> Result<(), Str
 
     // -- write new collection
     {
+        let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
+        let mut path = std::path::PathBuf::new();
+        path.push(cfg.db_path);
+        path.push("collection.json");
+
         if path.exists() {
             if let Err(e) = std::fs::remove_file(path.clone()) {
                 println!("Failed to delete collection.json with: {:?}", e);
@@ -322,11 +333,26 @@ async fn add_game(mut game: RocketJson<core::SCollectionGame>) -> Result<(), Str
     Ok(())
 }
 
+#[post("/get_recent_collection_games")]
+async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectionGame>>, String> {
+    let mut collection_games = load_collection()?;
+
+    let mut result = Vec::with_capacity(10);
+
+    let mut count = 0;
+    while count < 10 && collection_games.len() > 0 {
+        result.push(collection_games.pop().expect("len checked above"));
+        count += 1;
+    }
+
+    Ok(RocketJson(result))
+}
+
 #[launch]
 fn rocket() -> _ {
     // -- $$$FRK(TODO): verify we have valid config file, all values present
 
     rocket::build()
         .mount("/static", rocket::fs::FileServer::from("../client/served_files"))
-        .mount("/", routes![test, search_igdb, add_game])
+        .mount("/", routes![test, search_igdb, add_game, get_recent_collection_games])
 }

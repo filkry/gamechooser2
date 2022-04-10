@@ -28,7 +28,10 @@ enum EGameEditMode {
 }
 
 struct SAppState {
+    collection_recent_games: Option<Vec<core::SCollectionGame>>,
+
     last_search_igdb_results: Option<Vec<core::SGame>>,
+
     game_edit_game: Option<core::SCollectionGame>,
     game_edit_mode: EGameEditMode,
 }
@@ -70,6 +73,7 @@ impl SAppState {
     pub fn new() -> Self {
         Self {
             last_search_igdb_results: None,
+            collection_recent_games: None,
             game_edit_mode: EGameEditMode::Add,
             game_edit_game: None,
         }
@@ -156,6 +160,8 @@ fn swap_section_div(tgt_id: &str) -> Result<(), JsError> {
     div("add_div")?.style().set_property("display", "none").to_jserr()?;
     div("randomizer_div")?.style().set_property("display", "none").to_jserr()?;
     div("stats_div")?.style().set_property("display", "none").to_jserr()?;
+    div("game_edit_div")?.style().set_property("display", "none").to_jserr()?;
+    div("result_div")?.style().set_property("display", "none").to_jserr()?;
 
     div(tgt_id)?.style().set_property("display", "block").to_jserr()?;
 
@@ -168,8 +174,8 @@ pub fn show_sessions() -> Result<(), JsError> {
 }
 
 #[wasm_bindgen]
-pub fn show_collection() -> Result<(), JsError> {
-    swap_section_div("collection_div")
+pub async fn show_collection() -> Result<(), JsError> {
+    enter_collection_screen().await
 }
 
 #[wasm_bindgen]
@@ -292,8 +298,7 @@ pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
     Ok(())
 }
 
-#[wasm_bindgen]
-pub async fn edit_screen_submit_edit() -> Result<(), JsError> {
+async fn edit_screen_submit_edit_helper() -> Result<(), JsError> {
     let mut game = {
         let mut app = APP.try_write().expect("Should never actually have contention.");
         app.game_edit_game.take()
@@ -340,6 +345,61 @@ pub async fn edit_screen_submit_edit() -> Result<(), JsError> {
     }
 
     weblog!("Edit collection game: {:?}", game);
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn edit_screen_submit_edit() -> Result<(), JsError> {
+    let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message")?;
+    match edit_screen_submit_edit_helper().await {
+        Ok(_) => {
+            p.set_inner_text("Successfully added game.");
+        }
+        Err(e) => {
+            p.set_inner_text("Failed to add game, error in console.");
+            return Err(e);
+        }
+    }
+    swap_section_div("result_div")?;
+    Ok(())
+}
+
+async fn enter_collection_screen() -> Result<(), JsError> {
+    let document = web::document();
+    let games = server_api::get_recent_collection_games().await?;
+
+    let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("collection_screen_game_list")?;
+    output_elem.set_inner_html("");
+    for game in &games {
+        let game_div = document.create_element_typed::<HtmlDivElement>()?;
+        output_elem.append_child(&game_div).to_jserr()?;
+
+        let title_elem = document.create_element("h3").to_jserr()?;
+        title_elem.set_text_content(Some(game.game.title()));
+        game_div.append_child(&title_elem).to_jserr()?;
+
+        if let Some(url) = game.game.cover_url() {
+            let img_elem = document.create_element_typed::<HtmlImageElement>()?;
+            img_elem.set_src(url);
+            game_div.append_child(&img_elem).to_jserr()?;
+        }
+
+        let button_elem = document.create_element_typed::<HtmlButtonElement>()?;
+        let onclick_body = format!("collection_screen_edit_game({});", game.game.internal_id().expect("Games in collection should have internal ID"));
+        let onclick = Function::new_no_args(onclick_body.as_str());
+        button_elem.set_onclick(Some(&onclick));
+        button_elem.set_inner_text("Edit");
+        game_div.append_child(&button_elem).to_jserr()?;
+    }
+
+    // -- cache results for later use
+    {
+        let mut app = APP.try_write().expect("Should never actually have contention.");
+        app.collection_recent_games = Some(games);
+    }
+
+    swap_section_div("collection_div")?;
 
     Ok(())
 }

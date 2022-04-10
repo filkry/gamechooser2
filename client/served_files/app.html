@@ -16,7 +16,10 @@
             Sessions
         </div>
         <div id="collection_div" style="display:none">
-            Collection
+            <h1 id="collection_header">Collection</h1>
+            <input type="text" id="collection_search_input">
+            <button onclick="collection_screen_search()">Search collection</button>
+            <div id="collection_screen_game_list"></div>
         </div>
         <div id="add_div" style="display:none">
             <h1>Add to collection</h1>
@@ -75,6 +78,9 @@
                 <input type="checkbox" id="game_edit_own_ps5">
             </div>
             <button id="game_edit_submit" onclick="edit_screen_submit_edit()">Add Game</button>
+        </div>
+        <div id="result_div" style="display:none">
+            <p id="result_message"></p>
         </div>
     </body>
     <script type="module">
