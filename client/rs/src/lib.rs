@@ -4,8 +4,9 @@ mod server_api;
 use std::sync::RwLock;
 
 //use console_error_panic_hook;
+use chrono;
 use once_cell::sync::Lazy;
-use js_sys::{Date, Function};
+use js_sys::{Function};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast};
 use wasm_bindgen_futures::JsFuture;
@@ -256,19 +257,38 @@ fn edit_game(game: core::SCollectionGame, mode: EGameEditMode) -> Result<(), JsE
     let submit_elem = document().get_typed_element_by_id::<HtmlElement>("game_edit_submit")?;
     submit_elem.set_inner_text(mode.submit_button_text());
 
-    let title_elem = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_title")?;
-    title_elem.set_value(game.game.title());
+    fn populate_text_input(id: &str, value: &str) -> Result<(), JsError> {
+        let elem = document().get_typed_element_by_id::<HtmlInputElement>(id)?;
+        elem.set_value(value);
+        Ok(())
+    }
 
-    let date_elem = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_release_date")?;
-    if let Some(date) = game.game.release_date() {
+    fn populate_date_input(id: &str, value: Option<chrono::naive::NaiveDate>) -> Result<(), JsError> {
+        let date_elem = document().get_typed_element_by_id::<HtmlInputElement>(id)?;
+        let date = match value {
+            Some(d) => d,
+            None => chrono::offset::Local::now().naive_local().date(),
+        };
         let date_str = date.format("%Y-%m-%d").to_string();
         date_elem.set_value(date_str.as_str());
+        Ok(())
     }
-    else {
-        let date = Date::new_0();
-        let date_str = format!("{:04}-{:02}-{:02}", date.get_full_year(), date.get_month(), date.get_date());
-        date_elem.set_value(date_str.as_str());
+
+    fn populate_checkox_input(id: &str, value: bool) -> Result<(), JsError> {
+        let elem = document().get_typed_element_by_id::<HtmlInputElement>(id)?;
+        elem.set_checked(value);
+        Ok(())
     }
+
+    fn populate_number_input(id: &str, value: f64) -> Result<(), JsError> {
+        let elem = document().get_typed_element_by_id::<HtmlInputElement>(id)?;
+        elem.set_value_as_number(value);
+        Ok(())
+    }
+
+
+    populate_text_input("game_edit_title", game.game.title())?;
+    populate_date_input("game_edit_release_date", game.game.release_date())?;
 
     let cover_elem = document().get_typed_element_by_id::<HtmlImageElement>("game_edit_cover_art")?;
     if let Some(url) = game.game.cover_url() {
@@ -279,25 +299,25 @@ fn edit_game(game: core::SCollectionGame, mode: EGameEditMode) -> Result<(), JsE
         cover_elem.style().set_property("display", "none").to_jserr()?;
     }
 
-    fn populate_checkox(id: &str, value: bool) -> Result<(), JsError> {
-        let elem = document().get_typed_element_by_id::<HtmlInputElement>(id)?;
-        elem.set_checked(value);
-        Ok(())
-    }
+    populate_checkox_input("game_edit_tag_couch", game.info.tags.couch_playable)?;
+    populate_checkox_input("game_edit_tag_portable", game.info.tags.portable_playable)?;
 
-    populate_checkox("game_edit_tag_couch", game.info.tags.couch_playable)?;
-    populate_checkox("game_edit_tag_portable", game.info.tags.portable_playable)?;
+    populate_checkox_input("game_edit_own_steam", game.info.own.steam)?;
+    populate_checkox_input("game_edit_own_egs", game.info.own.egs)?;
+    populate_checkox_input("game_edit_own_emulator", game.info.own.emulator)?;
+    populate_checkox_input("game_edit_own_ds", game.info.own.ds)?;
+    populate_checkox_input("game_edit_own_n3ds", game.info.own.n3ds)?;
+    populate_checkox_input("game_edit_own_wii", game.info.own.wii)?;
+    populate_checkox_input("game_edit_own_wiiu", game.info.own.wiiu)?;
+    populate_checkox_input("game_edit_own_switch", game.info.own.switch)?;
+    populate_checkox_input("game_edit_own_ps4", game.info.own.ps4)?;
+    populate_checkox_input("game_edit_own_ps5", game.info.own.ps5)?;
 
-    populate_checkox("game_edit_own_steam", game.info.own.steam)?;
-    populate_checkox("game_edit_own_egs", game.info.own.egs)?;
-    populate_checkox("game_edit_own_emulator", game.info.own.emulator)?;
-    populate_checkox("game_edit_own_ds", game.info.own.ds)?;
-    populate_checkox("game_edit_own_n3ds", game.info.own.n3ds)?;
-    populate_checkox("game_edit_own_wii", game.info.own.wii)?;
-    populate_checkox("game_edit_own_wiiu", game.info.own.wiiu)?;
-    populate_checkox("game_edit_own_switch", game.info.own.switch)?;
-    populate_checkox("game_edit_own_ps4", game.info.own.ps4)?;
-    populate_checkox("game_edit_own_ps5", game.info.own.ps5)?;
+    populate_date_input("game_edit_next_valid_proposal_date", Some(game.choose_state.next_valid_proposal_date))?;
+    populate_checkox_input("game_edit_retired", game.choose_state.retired)?;
+    populate_number_input("game_edit_passes", game.choose_state.passes as f64)?;
+    populate_checkox_input("game_edit_ignore_passes", game.choose_state.ignore_passes)?;
+
 
     {
         let mut app = APP.try_write().expect("Should never actually have contention.");
@@ -374,6 +394,12 @@ async fn edit_screen_submit_edit_helper() -> Result<(), JsError> {
         ps4: checkbox_value("game_edit_own_ps4")?,
         ps5: checkbox_value("game_edit_own_ps5")?,
     };
+
+    let choose_date_str = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_next_valid_proposal_date")?.value();
+    game.choose_state.next_valid_proposal_date = chrono::naive::NaiveDate::parse_from_str(choose_date_str.as_str(), "%Y-%m-%d")?;
+    game.choose_state.retired = checkbox_value("game_edit_retired")?;
+    game.choose_state.passes = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_passes")?.value_as_number() as u16;
+    game.choose_state.ignore_passes = checkbox_value("game_edit_ignore_passes")?;
 
     let mode = APP.try_read().expect("Should never actually have contention.").game_edit_mode;
     match mode {

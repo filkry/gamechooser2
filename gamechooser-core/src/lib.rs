@@ -41,17 +41,21 @@ pub struct SGameCustomInfo {
 }
 
 #[allow(dead_code)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct SGameChooseState {
-    next_valid_proposal_date: chrono::naive::NaiveDate,
-    retired: bool,
-    passes: u16,
-    ignore_passes: bool,
+    pub next_valid_proposal_date: chrono::naive::NaiveDate,
+    pub retired: bool,
+    pub passes: u16,
+    pub ignore_passes: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SCollectionGame {
     pub game: SGame,
     pub info: SGameCustomInfo,
+
+    #[serde(default)]
+    pub choose_state: SGameChooseState,
 }
 
 impl SGame {
@@ -131,6 +135,7 @@ impl SCollectionGame {
         Self {
             game,
             info: SGameCustomInfo::new(),
+            choose_state: Default::default(),
         }
     }
 
@@ -140,6 +145,17 @@ impl SCollectionGame {
 
     pub fn info_mut(&mut self) -> &mut SGameCustomInfo {
         &mut self.info
+    }
+}
+
+impl Default for SGameChooseState {
+    fn default() -> Self {
+        Self {
+            next_valid_proposal_date: chrono::offset::Local::now().naive_local().date(),
+            retired: false,
+            passes: 0,
+            ignore_passes: false,
+        }
     }
 }
 
