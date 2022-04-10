@@ -21,8 +21,15 @@ macro_rules! weblog {
     }
 }
 
+enum EGameEditMode {
+    Add,
+    Edit,
+}
+
 struct SAppState {
     last_search_igdb_results: Option<Vec<core::SGame>>,
+    game_edit_game: Option<core::SCollectionGame>,
+    game_edit_mode: EGameEditMode,
 }
 
 #[allow(dead_code)]
@@ -62,6 +69,8 @@ impl SAppState {
     pub fn new() -> Self {
         Self {
             last_search_igdb_results: None,
+            game_edit_mode: EGameEditMode::Add,
+            game_edit_game: None,
         }
     }
 }
@@ -245,6 +254,8 @@ pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
 
     let header_elem = document().get_typed_element_by_id::<HtmlElement>("game_edit_header")?;
     header_elem.set_inner_text("Add game");
+    let submit_elem = document().get_typed_element_by_id::<HtmlElement>("game_edit_submit")?;
+    submit_elem.set_inner_text("Add");
 
     let title_elem = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_title")?;
     title_elem.set_value(game.title());
@@ -269,7 +280,55 @@ pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
         cover_elem.style().set_property("display", "none").to_jserr()?;
     }
 
+    {
+        let mut app = APP.try_write().expect("Should never actually have contention.");
+        app.game_edit_mode = EGameEditMode::Add;
+        app.game_edit_game = Some(core::SCollectionGame::new(game));
+    }
+
     swap_section_div("game_edit_div")?;
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub fn edit_screen_submit_edit() -> Result<(), JsError> {
+    let mut game = {
+        let mut app = APP.try_write().expect("Should never actually have contention.");
+        app.game_edit_game.take()
+    }.ok_or(JsError::new("Trying to submit, but edit_game that does not exist"))?;
+
+    game.game_mut().set_title(document().get_typed_element_by_id::<HtmlInputElement>("game_edit_title")?.value().as_str());
+    let date_str = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_release_date")?.value();
+    if let Err(_) = game.game_mut().set_release_date_str(date_str.as_str()) {
+        return Err(JsError::new("Could not parse date from game_edit_release_date element."));
+    }
+
+    game.info_mut().via = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_via")?.value();
+
+    fn checkbox_value(id: &str) -> Result<bool, JsError> {
+        Ok(document().get_typed_element_by_id::<HtmlInputElement>(id)?.checked())
+    }
+
+    game.info_mut().tags = core::SGameTags {
+        couch_playable: Some(checkbox_value("game_edit_tag_couch")?),
+        portable_playable: Some(checkbox_value("game_edit_tag_portable")?),
+    };
+
+    game.info_mut().own = core::SOwn {
+        steam: checkbox_value("game_edit_own_steam")?,
+        egs: checkbox_value("game_edit_own_egs")?,
+        emulator: checkbox_value("game_edit_own_emulator")?,
+        ds: checkbox_value("game_edit_own_ds")?,
+        n3ds: checkbox_value("game_edit_own_n3ds")?,
+        wii: checkbox_value("game_edit_own_wii")?,
+        wiiu: checkbox_value("game_edit_own_wiiu")?,
+        switch: checkbox_value("game_edit_own_switch")?,
+        ps4: checkbox_value("game_edit_own_ps4")?,
+        ps5: checkbox_value("game_edit_own_ps5")?,
+    };
+
+    weblog!("Edit collection game: {:?}", game);
 
     Ok(())
 }

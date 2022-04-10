@@ -1,26 +1,26 @@
 use chrono;
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct SGameTags {
-    couch_playable: Option<bool>,
-    portable_playable: Option<bool>,
+    pub couch_playable: Option<bool>,
+    pub portable_playable: Option<bool>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct SOwn {
-    steam: bool,
-    egs: bool,
-    emulator: bool,
+    pub steam: bool,
+    pub egs: bool,
+    pub emulator: bool,
 
-    ds: bool,
-    n3ds: bool,
-    wii: bool,
-    wiiu: bool,
-    switch: bool,
+    pub ds: bool,
+    pub n3ds: bool,
+    pub wii: bool,
+    pub wiiu: bool,
+    pub switch: bool,
 
-    ps4: bool,
-    ps5: bool,
+    pub ps4: bool,
+    pub ps5: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -33,18 +33,24 @@ pub struct SGame {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SCollectionGame {
-    game: SGame,
+pub struct SGameCustomInfo {
+    pub via: String,
 
-    via: String,
+    pub tags: SGameTags,
+    pub own: SOwn,
+}
 
-    tags: SGameTags,
-    own: SOwn,
-
+pub struct SGameChooseState {
     next_valid_proposal_date: chrono::naive::NaiveDate,
     retired: bool,
     passes: u16,
     ignore_passes: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SCollectionGame {
+    pub game: SGame,
+    pub info: SGameCustomInfo,
 }
 
 impl SGame {
@@ -75,6 +81,51 @@ impl SGame {
             Some(s) => Some(s.as_str()),
             None => None,
         }
+    }
+
+    pub fn set_title(&mut self, title: &str) {
+        self.title = title.to_string();
+    }
+
+    pub fn set_release_date(&mut self, date: chrono::naive::NaiveDate) {
+        self.release_date = Some(date);
+    }
+
+    pub fn set_release_date_str(&mut self, date_str: &str) -> Result<(), ()> {
+        if let Ok(date) = chrono::naive::NaiveDate::parse_from_str(date_str, "%Y-%m-%d") {
+            self.release_date = Some(date);
+            Ok(())
+        }
+        else {
+            Err(())
+        }
+    }
+}
+
+impl SGameCustomInfo {
+    pub fn new() -> Self {
+        Self {
+            via: String::new(),
+            tags: Default::default(),
+            own: Default::default(),
+        }
+    }
+}
+
+impl SCollectionGame {
+    pub fn new(game: SGame) -> Self {
+        Self {
+            game,
+            info: SGameCustomInfo::new(),
+        }
+    }
+
+    pub fn game_mut(&mut self) -> &mut SGame {
+        &mut self.game
+    }
+
+    pub fn info_mut(&mut self) -> &mut SGameCustomInfo {
+        &mut self.info
     }
 }
 

@@ -74,6 +74,7 @@
                 <label for="game_edit_own_ps5">PS5</label>
                 <input type="checkbox" id="game_edit_own_ps5">
             </div>
+            <button id="game_edit_submit" onclick="edit_screen_submit_edit()">Add Game</button>
         </div>
     </body>
     <script type="module">
@@ -86,6 +87,7 @@
             show_stats,
             add_screen_search_igdb,
             add_screen_add_result,
+            edit_screen_submit_edit,
         } from './rs-wasm-bindgen-output/gamechooser2_client.js';
 
         async function run() {
@@ -99,6 +101,7 @@
             window.show_stats = show_stats;
             window.add_screen_search_igdb = add_screen_search_igdb;
             window.add_screen_add_result = add_screen_add_result;
+            window.edit_screen_submit_edit = edit_screen_submit_edit;
             console.log("bindings set");
         }
 
