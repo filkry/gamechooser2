@@ -501,6 +501,28 @@ async fn start_session(game_internal_id: u32) -> Result<(), String> {
     Ok(())
 }
 
+#[post("/finish_session/<session_internal_id>/<memorable>")]
+async fn finish_session(session_internal_id: u32, memorable: bool) -> Result<(), String> {
+    let mut sessions = load_sessions()?;
+
+    let mut found_session = false;
+    for s in &mut sessions {
+        if s.internal_id == session_internal_id {
+            s.finish(memorable);
+            found_session = true;
+            break;
+        }
+    }
+
+    if !found_session {
+        return Err(String::from("Could not find session with matching internal_id to finish."))
+    }
+
+    save_sessions(sessions)?;
+
+    Ok(())
+}
+
 #[post("/get_active_sessions")]
 async fn get_active_sessions() -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, String> {
     let games = load_collection()?;
@@ -547,6 +569,7 @@ fn rocket() -> _ {
             get_recent_collection_games,
             search_collection,
             start_session,
+            finish_session,
             get_active_sessions,
         ])
 }

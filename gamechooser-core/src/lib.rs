@@ -56,7 +56,7 @@ pub struct SAddCollectionGame {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SCollectionGame {
-    pub internal_id: u32,
+    pub internal_id: u32, // $$$FRK(TODO): These internal IDs should have a type for type validation, but I'm lazy right now
     pub game_info: SGameInfo,
     pub custom_info: SGameCustomInfo,
 
@@ -183,6 +183,13 @@ impl SSession {
             game_internal_id,
             start_date: chrono::offset::Local::now().naive_local().date(),
             state: ESessionState::Ongoing,
+        }
+    }
+
+    pub fn finish(&mut self, memorable: bool) {
+        self.state = ESessionState::Finished {
+            end_date: chrono::offset::Local::now().naive_local().date(),
+            memorable,
         }
     }
 }

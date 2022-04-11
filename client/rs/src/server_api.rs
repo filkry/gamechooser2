@@ -129,3 +129,8 @@ pub(super) async fn start_session(internal_id: u32) -> Result<(), JsError> {
     let data_str = format!("{}", internal_id);
     post("start_session", Some(data_str.as_str())).await
 }
+
+pub(super) async fn finish_session(internal_id: u32, memorable: bool) -> Result<(), JsError> {
+    let data_str = format!("{}/{}", internal_id, memorable);
+    post("finish_session", Some(data_str.as_str())).await
+}

@@ -497,7 +497,7 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
     let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("session_screen_session_list")?;
     output_elem.set_inner_html("");
 
-    for (idx, session) in sessions.iter().enumerate() {
+    for session in &sessions {
         let session_div = document.create_element_typed::<HtmlDivElement>()?;
         output_elem.append_child(&session_div).to_jserr()?;
 
@@ -513,7 +513,7 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
 
         let memorable_elem = document.create_element_typed::<HtmlInputElement>()?;
         memorable_elem.set_type("checkbox");
-        let memorable_elem_id = format!("session_screen_memorable_idx_{}", idx);
+        let memorable_elem_id = format!("session_screen_memorable_{}", session.session.internal_id);
         memorable_elem.set_id(memorable_elem_id.as_str());
         session_div.append_child(&memorable_elem).to_jserr()?;
 
@@ -523,7 +523,7 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
         session_div.append_child(&memorable_elem_label).to_jserr()?;
 
         let button_elem = document.create_element_typed::<HtmlButtonElement>()?;
-        let onclick_body = format!("session_screen_finish_session({});", idx);
+        let onclick_body = format!("session_screen_finish_session({});", session.session.internal_id);
         let onclick = Function::new_no_args(onclick_body.as_str());
         button_elem.set_onclick(Some(&onclick));
         button_elem.set_inner_text("Finish session");
@@ -628,9 +628,6 @@ pub async fn collection_screen_edit_game(internal_id: u32) -> Result<(), JsError
                     result = Some(g.clone());
                     break;
                 }
-                else {
-                    weblog!("Trying to edit game with internal_id {} but it's not in the list!", internal_id);
-                }
             }
         }
 
@@ -653,9 +650,6 @@ pub async fn collection_screen_start_session(internal_id: u32) -> Result<(), JsE
                     result = Some(g.clone());
                     break;
                 }
-                else {
-                    weblog!("Trying to start session for game with internal_id {} but it's not in the list!", internal_id);
-                }
             }
         }
 
@@ -668,6 +662,42 @@ pub async fn collection_screen_start_session(internal_id: u32) -> Result<(), JsE
     match server_api::start_session(game.internal_id).await {
         Ok(_) => p.set_inner_text("Successfully started session."),
         Err(_) => p.set_inner_text("Failed to start session."),
+    }
+
+    swap_section_div("result_div")?;
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn session_screen_finish_session(internal_id: u32) -> Result<(), JsError> {
+    let session_opt = {
+        let mut result = None;
+
+        let app = APP.try_read().expect("Should never actually have contention");
+        if let Some(sessions) = &app.session_screen_sessions {
+            for s in sessions {
+                if s.session.internal_id == internal_id {
+                    result = Some(s.clone());
+                    break;
+                }
+                else {
+                    weblog!("Trying to finish session for internal_id {} but it's not in the list!", internal_id);
+                }
+            }
+        }
+
+        result
+    };
+    session_opt.ok_or(JsError::new("Somehow finishing session not in the list."))?;
+
+    let checkbox_id = format!("session_screen_memorable_{}", internal_id);
+    let memorable = checkbox_value(checkbox_id.as_str())?;
+
+    let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message")?;
+    match server_api::finish_session(internal_id, memorable).await {
+        Ok(_) => p.set_inner_text("Successfully finished session."),
+        Err(_) => p.set_inner_text("Failed to finish session."),
     }
 
     swap_section_div("result_div")?;
