@@ -224,8 +224,8 @@ impl SRandomizerFilter {
             result = result && portable == game.custom_info.tags.portable_playable;
         }
 
-        result = result && self.allow_unowned || game.custom_info.own.owned();
-        result = result && game.choose_state.passes <= self.max_passes;
+        result = result && (self.allow_unowned || game.custom_info.own.owned());
+        result = result && (game.choose_state.passes <= self.max_passes);
 
         result
     }
