@@ -488,7 +488,13 @@ async fn start_session(game_internal_id: u32) -> Result<(), String> {
     }
 
     let mut sessions = load_sessions()?;
-    sessions.push(core::SSession::new(game_internal_id));
+
+    let mut max_id = 0;
+    for session in &sessions {
+        max_id = std::cmp::max(max_id, session.internal_id);
+    }
+
+    sessions.push(core::SSession::new(max_id + 1, game_internal_id));
 
     save_sessions(sessions)?;
 

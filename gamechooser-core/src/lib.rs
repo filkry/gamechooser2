@@ -75,6 +75,7 @@ pub enum ESessionState {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct SSession {
+    pub internal_id: u32,
     pub game_internal_id: u32,
     pub start_date: chrono::naive::NaiveDate,
     pub state: ESessionState,
@@ -176,8 +177,9 @@ impl Default for SGameChooseState {
 }
 
 impl SSession {
-    pub fn new(game_internal_id: u32) -> Self {
+    pub fn new(id: u32, game_internal_id: u32) -> Self {
         Self {
+            internal_id: id,
             game_internal_id,
             start_date: chrono::offset::Local::now().naive_local().date(),
             state: ESessionState::Ongoing,
