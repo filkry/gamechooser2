@@ -559,12 +559,19 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
             game_div.append_child(&img_elem).to_jserr()?;
         }
 
-        let button_elem = document.create_element_typed::<HtmlButtonElement>()?;
+        let edit_button_elem = document.create_element_typed::<HtmlButtonElement>()?;
         let onclick_body = format!("collection_screen_edit_game({});", game.internal_id);
         let onclick = Function::new_no_args(onclick_body.as_str());
-        button_elem.set_onclick(Some(&onclick));
-        button_elem.set_inner_text("Edit");
-        game_div.append_child(&button_elem).to_jserr()?;
+        edit_button_elem.set_onclick(Some(&onclick));
+        edit_button_elem.set_inner_text("Edit");
+        game_div.append_child(&edit_button_elem).to_jserr()?;
+
+        let start_sesion_button_elem = document.create_element_typed::<HtmlButtonElement>()?;
+        let onclick_body = format!("collection_screen_start_session({});", game.internal_id);
+        let onclick = Function::new_no_args(onclick_body.as_str());
+        start_sesion_button_elem.set_onclick(Some(&onclick));
+        start_sesion_button_elem.set_inner_text("Start session");
+        game_div.append_child(&start_sesion_button_elem).to_jserr()?;
     }
 
     // -- cache results for later use
@@ -622,7 +629,7 @@ pub async fn collection_screen_edit_game(internal_id: u32) -> Result<(), JsError
                     break;
                 }
                 else {
-                    weblog!("Game in collection_screen_games missing internal_id!");
+                    weblog!("Trying to edit game with internal_id {} but it's not in the list!", internal_id);
                 }
             }
         }
@@ -632,4 +639,38 @@ pub async fn collection_screen_edit_game(internal_id: u32) -> Result<(), JsError
     let game = game_opt.ok_or(JsError::new("Somehow adding an IGDB game that was not in search results."))?;
 
     edit_game(game)
+}
+
+#[wasm_bindgen]
+pub async fn collection_screen_start_session(internal_id: u32) -> Result<(), JsError> {
+    let game_opt = {
+        let mut result = None;
+
+        let app = APP.try_read().expect("Should never actually have contention");
+        if let Some(games) = &app.collection_screen_games {
+            for g in games {
+                if internal_id == g.internal_id {
+                    result = Some(g.clone());
+                    break;
+                }
+                else {
+                    weblog!("Trying to start session for game with internal_id {} but it's not in the list!", internal_id);
+                }
+            }
+        }
+
+        result
+    };
+    let game = game_opt.ok_or(JsError::new("Somehow starting session for game not in the list."))?;
+
+    let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message")?;
+
+    match server_api::start_session(game.internal_id).await {
+        Ok(_) => p.set_inner_text("Successfully started session."),
+        Err(_) => p.set_inner_text("Failed to start session."),
+    }
+
+    swap_section_div("result_div")?;
+
+    Ok(())
 }

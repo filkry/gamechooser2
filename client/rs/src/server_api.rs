@@ -79,6 +79,30 @@ async fn post_data<T: serde::Serialize>(route: &str, data: T) -> Result<(), JsEr
     }
 }
 
+async fn post(route: &str, url_data: Option<&str>) -> Result<(), JsError> {
+    let window = window();
+
+    let mut opts = RequestInit::new();
+    opts.method("POST");
+    opts.mode(RequestMode::Cors);
+
+    let origin = window.location().origin().to_jserr()?;
+    let url = {
+        if let Some(d) = url_data {
+            format!("{}/{}/{}", origin.as_str(), route, d)
+        }
+        else {
+            format!("{}/{}/", origin.as_str(), route)
+        }
+    };
+    let request = Request::new_with_str_and_init(&url, &opts).to_jserr()?;
+
+    match JsFuture::from(window.fetch_with_request(&request)).await.to_jserr() {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
+    }
+}
+
 pub(super) async fn add_game(game: core::SAddCollectionGame) -> Result<(), JsError> {
     post_data("add_game", game).await?;
     Ok(())
@@ -99,4 +123,9 @@ pub(super) async fn search_collection(query: &str) -> Result<Vec<core::SCollecti
 
 pub(super) async fn get_active_sessions() -> Result<Vec<core::SSessionAndGameInfo>, JsError> {
     post_return_data("get_active_sessions", None).await
+}
+
+pub(super) async fn start_session(internal_id: u32) -> Result<(), JsError> {
+    let data_str = format!("{}", internal_id);
+    post("start_session", Some(data_str.as_str())).await
 }

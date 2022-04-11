@@ -107,6 +107,7 @@
             edit_screen_submit,
             collection_screen_search,
             collection_screen_edit_game,
+            collection_screen_start_session,
         } from './rs-wasm-bindgen-output/gamechooser2_client.js';
 
         async function run() {
@@ -123,6 +124,7 @@
             window.edit_screen_submit = edit_screen_submit;
             window.collection_screen_search = collection_screen_search;
             window.collection_screen_edit_game = collection_screen_edit_game;
+            window.collection_screen_start_session = collection_screen_start_session;
             console.log("bindings set");
 
             show_sessions();

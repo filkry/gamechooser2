@@ -175,6 +175,16 @@ impl Default for SGameChooseState {
     }
 }
 
+impl SSession {
+    pub fn new(game_internal_id: u32) -> Self {
+        Self {
+            game_internal_id,
+            start_date: chrono::offset::Local::now().naive_local().date(),
+            state: ESessionState::Ongoing,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

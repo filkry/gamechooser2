@@ -471,6 +471,30 @@ async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollecti
     Ok(RocketJson(result))
 }
 
+#[post("/start_session/<game_internal_id>")]
+async fn start_session(game_internal_id: u32) -> Result<(), String> {
+    let collection_games = load_collection()?;
+
+    let mut found_game = false;
+    for game in &collection_games {
+        if game.internal_id == game_internal_id {
+            found_game = true;
+            break;
+        }
+    }
+
+    if !found_game {
+        return Err(String::from("Could not find a game with matching internal_id to start session for."))
+    }
+
+    let mut sessions = load_sessions()?;
+    sessions.push(core::SSession::new(game_internal_id));
+
+    save_sessions(sessions)?;
+
+    Ok(())
+}
+
 #[post("/get_active_sessions")]
 async fn get_active_sessions() -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, String> {
     let games = load_collection()?;
@@ -516,6 +540,7 @@ fn rocket() -> _ {
             edit_game,
             get_recent_collection_games,
             search_collection,
+            start_session,
             get_active_sessions,
         ])
 }
