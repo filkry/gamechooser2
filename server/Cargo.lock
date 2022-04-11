@@ -1322,6 +1322,7 @@ dependencies = [
  "csv-async",
  "futures",
  "gamechooser-core",
+ "rand",
  "reqwest",
  "rocket",
  "serde",

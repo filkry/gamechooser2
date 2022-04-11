@@ -8,6 +8,12 @@ pub struct SGameTags {
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct SGameTagsFilter {
+    pub couch_playable: Option<bool>,
+    pub portable_playable: Option<bool>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SOwn {
     pub steam: bool,
     pub egs: bool,
@@ -85,6 +91,19 @@ pub struct SSession {
 pub struct SSessionAndGameInfo {
     pub session: SSession,
     pub game_info: SGameInfo,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SRandomizerFilter {
+    pub tags: SGameTagsFilter,
+    pub allow_unowned: bool,
+    pub max_passes: u16,
+}
+
+impl SOwn {
+    fn owned(&self) -> bool {
+        self.steam || self.egs || self.emulator || self.ds || self.n3ds || self.wii || self.wiiu || self.switch || self.ps4 || self.ps5
+    }
 }
 
 impl SGameInfo {
@@ -191,6 +210,24 @@ impl SSession {
             end_date: chrono::offset::Local::now().naive_local().date(),
             memorable,
         }
+    }
+}
+
+impl SRandomizerFilter {
+    pub fn game_passes(&self, game: &SCollectionGame) -> bool {
+        let mut result = true;
+
+        if let Some(couch) = self.tags.couch_playable {
+            result = result && couch == game.custom_info.tags.couch_playable;
+        }
+        if let Some(portable) = self.tags.portable_playable {
+            result = result && portable == game.custom_info.tags.portable_playable;
+        }
+
+        result = result && self.allow_unowned || game.custom_info.own.owned();
+        result = result && game.choose_state.passes <= self.max_passes;
+
+        result
     }
 }
 

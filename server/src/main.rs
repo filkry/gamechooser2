@@ -542,7 +542,7 @@ async fn get_active_sessions() -> Result<RocketJson<Vec<core::SSessionAndGameInf
                 }
             }
 
-            println!("Session {:?} had no valid game in collection!", session);
+            //println!("Session {:?} had no valid game in collection!", session);
             let game = game_opt.ok_or(String::from("Server has bad data, won't be able to continue until it's fixed."))?;
 
             result.push(core::SSessionAndGameInfo{
@@ -551,6 +551,34 @@ async fn get_active_sessions() -> Result<RocketJson<Vec<core::SSessionAndGameInf
             });
         }
     }
+
+    Ok(RocketJson(result))
+}
+
+#[post("/get_randomizer_games", data = "<filter>")]
+async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Result<RocketJson<Vec<core::SCollectionGame>>, String> {
+    let filter_inner = filter.into_inner();
+
+    let collection_games = load_collection()?;
+    let sessions = load_sessions()?;
+
+    let mut active_session_game_ids = std::collections::HashSet::new();
+    for session in sessions {
+        if let core::ESessionState::Ongoing = session.state {
+            active_session_game_ids.insert(session.game_internal_id);
+        }
+    }
+
+    let mut result = Vec::with_capacity(collection_games.len());
+
+    for game in collection_games {
+        if !active_session_game_ids.contains(&game.internal_id) && filter_inner.game_passes(&game) {
+            result.push(game);
+        }
+    }
+
+    use rand::seq::SliceRandom;
+    result.shuffle(&mut rand::thread_rng());
 
     Ok(RocketJson(result))
 }
@@ -571,5 +599,6 @@ fn rocket() -> _ {
             start_session,
             finish_session,
             get_active_sessions,
+            get_randomizer_games,
         ])
 }

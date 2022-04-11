@@ -29,7 +29,23 @@
             <div id="add_screen_search_igdb_output"></div>
         </div>
         <div id="randomizer_div" style="display:none">
-            Randomizer
+            <h1>Randomizer</h1>
+            <div id="randomizer_options_div">
+                <h2>Options</h2>
+                <input type="checkbox" id="randomizer_screen_couch">
+                <label for="randomizer_screen_couch">Couch playable</label>
+                <input type="checkbox" id="randomizer_screen_portable">
+                <label for="randomizer_screen_portable">Portable playable</label>
+                <input type="checkbox" id="randomizer_screen_allow_unowned">
+                <label for="randomizer_screen_allow_unowned">Allow unowned games</label>
+                <button onclick="randomizer_screen_start()">Start choosin'</button>
+            </div>
+            <div id="randomizer_game_div">
+                <h3 id="randomizer_game_title"></h3>
+                <img id="randomizer_game_cover">
+                <button onclick="randomizer_pick_current_game()">Start this game!</button>
+                <button onclick="randomizer_pass_current_game()">Pass this game :(</button>
+            </div>
         </div>
         <div id="stats_div" style="display:none">
             stats
@@ -96,6 +112,7 @@
     </body>
     <script type="module">
         import init, {
+            cycle_tag_tri_box,
             search_igdb,
             show_sessions,
             show_collection,
@@ -109,11 +126,13 @@
             collection_screen_edit_game,
             collection_screen_start_session,
             session_screen_finish_session,
+            randomizer_screen_start,
         } from './rs-wasm-bindgen-output/gamechooser2_client.js';
 
         async function run() {
             console.log("await init()");
             await init();
+            window.cycle_tag_tri_box = cycle_tag_tri_box;
             window.search_igdb = search_igdb;
             window.show_sessions = show_sessions;
             window.show_collection = show_collection;
@@ -127,6 +146,7 @@
             window.collection_screen_edit_game = collection_screen_edit_game;
             window.collection_screen_start_session = collection_screen_start_session;
             window.session_screen_finish_session = session_screen_finish_session;
+            window.randomizer_screen_start = randomizer_screen_start;
             console.log("bindings set");
 
             show_sessions();

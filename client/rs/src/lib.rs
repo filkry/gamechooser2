@@ -26,6 +26,16 @@ enum EGameEdit {
     Edit(core::SCollectionGame),
 }
 
+struct SGameRandomizerSession {
+    games: Vec<core::SCollectionGame>,
+    cur_idx: usize,
+}
+
+enum EGameRandomizer {
+    Uninit,
+    Choosing(SGameRandomizerSession),
+}
+
 struct SAppState {
     session_screen_sessions: Option<Vec<core::SSessionAndGameInfo>>,
 
@@ -34,6 +44,8 @@ struct SAppState {
     last_search_igdb_results: Option<Vec<core::SGameInfo>>,
 
     game_edit: EGameEdit,
+
+    game_randomizer: EGameRandomizer,
 }
 
 #[allow(dead_code)]
@@ -76,6 +88,7 @@ impl SAppState {
             last_search_igdb_results: None,
             collection_screen_games: None,
             game_edit: EGameEdit::None,
+            game_randomizer: EGameRandomizer::Uninit,
         }
     }
 }
@@ -236,6 +249,12 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
     Ok(())
 }
 
+fn populate_inner_text(id: &str, value: &str) -> Result<(), JsError> {
+    let elem = document().get_typed_element_by_id::<HtmlElement>(id)?;
+    elem.set_inner_text(value);
+    Ok(())
+}
+
 fn populate_text_input(id: &str, value: &str) -> Result<(), JsError> {
     let elem = document().get_typed_element_by_id::<HtmlInputElement>(id)?;
     elem.set_value(value);
@@ -265,18 +284,23 @@ fn populate_number_input(id: &str, value: f64) -> Result<(), JsError> {
     Ok(())
 }
 
+fn populate_img(id: &str, src: Option<&str>) -> Result<(), JsError> {
+    let elem = document().get_typed_element_by_id::<HtmlImageElement>(id)?;
+    if let Some(url) = src {
+        elem.set_src(url);
+        elem.style().set_property("display", "block").to_jserr()?;
+    }
+    else {
+        elem.style().set_property("display", "none").to_jserr()?;
+    }
+
+    Ok(())
+}
+
 fn edit_screen_populate_game_info(game_info: &core::SGameInfo) -> Result<(), JsError> {
     populate_text_input("game_edit_title", game_info.title())?;
     populate_date_input("game_edit_release_date", game_info.release_date())?;
-
-    let cover_elem = document().get_typed_element_by_id::<HtmlImageElement>("game_edit_cover_art")?;
-    if let Some(url) = game_info.cover_url() {
-        cover_elem.set_src(url);
-        cover_elem.style().set_property("display", "block").to_jserr()?;
-    }
-    else {
-        cover_elem.style().set_property("display", "none").to_jserr()?;
-    }
+    populate_img("game_edit_cover_art", game_info.cover_url())?;
 
     Ok(())
 }
@@ -701,6 +725,64 @@ pub async fn session_screen_finish_session(internal_id: u32) -> Result<(), JsErr
     }
 
     swap_section_div("result_div")?;
+
+    Ok(())
+}
+
+fn populate_randomizer_choose_screen() -> Result<(), JsError> {
+    let game = {
+        let app = APP.try_read().expect("Should never actually have contention.");
+        if let EGameRandomizer::Choosing(session) = &app.game_randomizer {
+            session.games[session.cur_idx].clone()
+        }
+        else {
+            return Err(JsError::new("populate_randomizer_choose_screen was called without any data."));
+        }
+    };
+
+    populate_inner_text("randomizer_game_title", game.game_info.title())?;
+    populate_img("randomizer_game_cover", game.game_info.cover_url())?;
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn randomizer_screen_start() -> Result<(), JsError> {
+    let couch = if checkbox_value("randomizer_screen_couch")? {
+        Some(true)
+    }
+    else {
+        None
+    };
+    let portable = if checkbox_value("randomizer_screen_portable")? {
+        Some(true)
+    }
+    else {
+        None
+    };
+
+    let max_passes = 3;
+
+    let filter = core::SRandomizerFilter {
+        tags: core::SGameTagsFilter{
+            couch_playable: couch,
+            portable_playable: portable,
+        },
+        allow_unowned: checkbox_value("randomizer_screen_allow_unowned")?,
+        max_passes,
+    };
+
+    let games = server_api::get_randomizer_games(filter).await?;
+
+    {
+        let mut app = APP.try_write().expect("Should never actually have contention.");
+        app.game_randomizer = EGameRandomizer::Choosing(SGameRandomizerSession{
+            games,
+            cur_idx: 0,
+        });
+    }
+
+    populate_randomizer_choose_screen()?;
 
     Ok(())
 }
