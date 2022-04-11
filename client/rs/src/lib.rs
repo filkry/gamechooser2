@@ -9,7 +9,7 @@ use once_cell::sync::Lazy;
 use js_sys::{Function};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast};
-use web_sys::{HtmlButtonElement, HtmlDivElement, HtmlElement, HtmlImageElement, HtmlInputElement, HtmlParagraphElement};
+use web_sys::{HtmlButtonElement, HtmlDivElement, HtmlElement, HtmlImageElement, HtmlInputElement, HtmlLabelElement, HtmlParagraphElement};
 
 use gamechooser_core as core;
 use web::{document, TToJsError, TErgonomicDocument};
@@ -27,6 +27,8 @@ enum EGameEdit {
 }
 
 struct SAppState {
+    session_screen_sessions: Option<Vec<core::SSessionAndGameInfo>>,
+
     collection_screen_games: Option<Vec<core::SCollectionGame>>,
 
     last_search_igdb_results: Option<Vec<core::SGameInfo>>,
@@ -70,6 +72,7 @@ impl ETagQuery {
 impl SAppState {
     pub fn new() -> Self {
         Self {
+            session_screen_sessions: None,
             last_search_igdb_results: None,
             collection_screen_games: None,
             game_edit: EGameEdit::None,
@@ -488,43 +491,50 @@ pub async fn edit_screen_submit() -> Result<(), JsError> {
     Ok(())
 }
 
-fn populate_sessions_screen_list(games: Vec<core::SSession>) -> Result<(), JsError> {
+fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Result<(), JsError> {
     let document = document();
 
     let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("session_screen_session_list")?;
     output_elem.set_inner_html("");
 
-    /*
-    for session in &session {
+    for (idx, session) in sessions.iter().enumerate() {
         let session_div = document.create_element_typed::<HtmlDivElement>()?;
         output_elem.append_child(&session_div).to_jserr()?;
 
         let title_elem = document.create_element("h3").to_jserr()?;
-        title_elem.set_text_content(Some(game.game.title()));
-        game_div.append_child(&title_elem).to_jserr()?;
+        title_elem.set_text_content(Some(session.game_info.title()));
+        session_div.append_child(&title_elem).to_jserr()?;
 
-        if let Some(url) = game.game.cover_url() {
+        if let Some(url) = session.game_info.cover_url() {
             let img_elem = document.create_element_typed::<HtmlImageElement>()?;
             img_elem.set_src(url);
-            game_div.append_child(&img_elem).to_jserr()?;
+            session_div.append_child(&img_elem).to_jserr()?;
         }
 
+        let memorable_elem = document.create_element_typed::<HtmlInputElement>()?;
+        memorable_elem.set_type("checkbox");
+        let memorable_elem_id = format!("session_screen_memorable_idx_{}", idx);
+        memorable_elem.set_id(memorable_elem_id.as_str());
+        session_div.append_child(&memorable_elem).to_jserr()?;
+
+        let memorable_elem_label = document.create_element_typed::<HtmlLabelElement>()?;
+        memorable_elem_label.set_html_for(memorable_elem_id.as_str());
+        memorable_elem_label.set_inner_text("Memorable");
+        session_div.append_child(&memorable_elem_label).to_jserr()?;
+
         let button_elem = document.create_element_typed::<HtmlButtonElement>()?;
-        let onclick_body = format!("collection_screen_edit_game({});", game.game.internal_id().expect("Games in collection should have internal ID"));
+        let onclick_body = format!("session_screen_finish_session({});", idx);
         let onclick = Function::new_no_args(onclick_body.as_str());
         button_elem.set_onclick(Some(&onclick));
-        button_elem.set_inner_text("Edit");
-        game_div.append_child(&button_elem).to_jserr()?;
+        button_elem.set_inner_text("Finish session");
+        session_div.append_child(&button_elem).to_jserr()?;
     }
 
     // -- cache results for later use
     {
         let mut app = APP.try_write().expect("Should never actually have contention.");
-        app.collection_screen_games = Some(games);
+        app.session_screen_sessions = Some(sessions);
     }
-
-    Ok(())
-    */
 
     Ok(())
 }

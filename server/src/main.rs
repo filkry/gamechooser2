@@ -473,7 +473,6 @@ async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollecti
 
 #[post("/get_active_sessions")]
 async fn get_active_sessions() -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, String> {
-    /*
     let games = load_collection()?;
     let sessions = load_sessions()?;
 
@@ -483,22 +482,25 @@ async fn get_active_sessions() -> Result<RocketJson<Vec<core::SSessionAndGameInf
         if let core::ESessionState::Ongoing = session.state {
 
             // -- find the game
-            let game = {
-                for temp_game in &games {
-                    if temp_game.game.internal_id() == sessions.game_internal_id {
-                        game.game.clone();
-                    }
+            let mut game_opt = None;
+            for temp_game in &games {
+                if temp_game.internal_id == session.game_internal_id {
+                    game_opt = Some(temp_game.clone());
+                    break;
                 }
-                return
-            };
+            }
 
-            result.push(session.clone());
+            println!("Session {:?} had no valid game in collection!", session);
+            let game = game_opt.ok_or(String::from("Server has bad data, won't be able to continue until it's fixed."))?;
+
+            result.push(core::SSessionAndGameInfo{
+                session: session.clone(),
+                game_info: game.game_info,
+            });
         }
     }
 
     Ok(RocketJson(result))
-    */
-    Err(String::from("not implement"))
 }
 
 #[launch]

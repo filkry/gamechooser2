@@ -97,6 +97,6 @@ pub(super) async fn search_collection(query: &str) -> Result<Vec<core::SCollecti
     post_return_data("search_collection", Some(query)).await
 }
 
-pub(super) async fn get_active_sessions() -> Result<Vec<core::SSession>, JsError> {
+pub(super) async fn get_active_sessions() -> Result<Vec<core::SSessionAndGameInfo>, JsError> {
     post_return_data("get_active_sessions", None).await
 }

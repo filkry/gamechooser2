@@ -83,7 +83,7 @@ pub struct SSession {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SSessionAndGameInfo {
     pub session: SSession,
-    pub game: SGameInfo,
+    pub game_info: SGameInfo,
 }
 
 impl SGameInfo {
