@@ -556,7 +556,7 @@ async fn get_active_sessions() -> Result<RocketJson<Vec<core::SSessionAndGameInf
 }
 
 #[post("/get_randomizer_games", data = "<filter>")]
-async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Result<RocketJson<Vec<core::SCollectionGame>>, String> {
+async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Result<RocketJson<core::SRandomizerList>, String> {
     let filter_inner = filter.into_inner();
 
     let collection_games = load_collection()?;
@@ -577,10 +577,48 @@ async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Re
         }
     }
 
-    use rand::seq::SliceRandom;
-    result.shuffle(&mut rand::thread_rng());
+    let mut indices = Vec::with_capacity(result.len());
+    for i in 0..result.len() {
+        indices.push(i);
+    }
 
-    Ok(RocketJson(result))
+    use rand::seq::SliceRandom;
+    indices.shuffle(&mut rand::thread_rng());
+
+    Ok(RocketJson(core::SRandomizerList{
+        games: result,
+        shuffled_indices: indices,
+    }))
+}
+
+#[post("/update_choose_state", data = "<games>")]
+async fn update_choose_state(games: RocketJson<Vec<core::SCollectionGame>>) -> Result<(), String> {
+    let games_inner = games.into_inner();
+    let mut collection_games = load_collection()?;
+
+    let mut input_idx = 0;
+    let mut output_idx = 0;
+
+    while input_idx < games_inner.len() && output_idx < collection_games.len() {
+        if games_inner[input_idx].internal_id == collection_games[output_idx].internal_id {
+            collection_games[output_idx].choose_state = games_inner[input_idx].choose_state;
+            input_idx = input_idx + 1;
+            output_idx = output_idx + 1;
+        }
+        else {
+            output_idx = output_idx + 1;
+
+            // -- EVERY game in games should be present in collection_games, and both vecs
+            // -- should be strictly in order.
+            if collection_games[output_idx].internal_id > games_inner[input_idx].internal_id {
+                return Err(String::from("During update_choose_state, either games or collection_games as out of order!"));
+            }
+        }
+    }
+
+    save_collection(collection_games)?;
+
+    Ok(())
 }
 
 #[launch]
@@ -600,5 +638,6 @@ fn rocket() -> _ {
             finish_session,
             get_active_sessions,
             get_randomizer_games,
+            update_choose_state,
         ])
 }

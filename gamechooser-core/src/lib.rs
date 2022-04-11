@@ -100,6 +100,13 @@ pub struct SRandomizerFilter {
     pub max_passes: u16,
 }
 
+// -- $$$FRK(TODO): need to guarantee that internal_ids are always in order after loading from JSON, for this to be reliable
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SRandomizerList {
+    pub games: Vec<SCollectionGame>,
+    pub shuffled_indices: Vec<usize>,
+}
+
 impl SOwn {
     fn owned(&self) -> bool {
         self.steam || self.egs || self.emulator || self.ds || self.n3ds || self.wii || self.wiiu || self.switch || self.ps4 || self.ps5

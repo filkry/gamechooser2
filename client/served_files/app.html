@@ -127,6 +127,7 @@
             collection_screen_start_session,
             session_screen_finish_session,
             randomizer_screen_start,
+            randomizer_pick_current_game,
         } from './rs-wasm-bindgen-output/gamechooser2_client.js';
 
         async function run() {
@@ -147,6 +148,7 @@
             window.collection_screen_start_session = collection_screen_start_session;
             window.session_screen_finish_session = session_screen_finish_session;
             window.randomizer_screen_start = randomizer_screen_start;
+            window.randomizer_pick_current_game = randomizer_pick_current_game;
             console.log("bindings set");
 
             show_sessions();

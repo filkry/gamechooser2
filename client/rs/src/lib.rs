@@ -27,7 +27,7 @@ enum EGameEdit {
 }
 
 struct SGameRandomizerSession {
-    games: Vec<core::SCollectionGame>,
+    randomizer_list: core::SRandomizerList,
     cur_idx: usize,
 }
 
@@ -114,6 +114,12 @@ impl EGameEdit{
             Self::Add(_) => "Submit add",
             Self::Edit(_) => "Submit edit",
         }
+    }
+}
+
+impl Default for EGameRandomizer {
+    fn default() -> Self {
+        Self::Uninit
     }
 }
 
@@ -733,7 +739,8 @@ fn populate_randomizer_choose_screen() -> Result<(), JsError> {
     let game = {
         let app = APP.try_read().expect("Should never actually have contention.");
         if let EGameRandomizer::Choosing(session) = &app.game_randomizer {
-            session.games[session.cur_idx].clone()
+            let game_idx = session.randomizer_list.shuffled_indices[session.cur_idx];
+            session.randomizer_list.games[game_idx].clone()
         }
         else {
             return Err(JsError::new("populate_randomizer_choose_screen was called without any data."));
@@ -772,17 +779,44 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
         max_passes,
     };
 
-    let games = server_api::get_randomizer_games(filter).await?;
+    let randomizer_list = server_api::get_randomizer_games(filter).await?;
 
     {
         let mut app = APP.try_write().expect("Should never actually have contention.");
         app.game_randomizer = EGameRandomizer::Choosing(SGameRandomizerSession{
-            games,
+            randomizer_list,
             cur_idx: 0,
         });
     }
 
     populate_randomizer_choose_screen()?;
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn randomizer_pick_current_game() -> Result<(), JsError> {
+    let randomizer = {
+        let mut app = APP.try_write().expect("Should never actually have contention.");
+        std::mem::take(&mut app.game_randomizer)
+    };
+
+    if let EGameRandomizer::Choosing(session) = randomizer {
+        // -- start the session
+        {
+            let cur_game_idx = session.randomizer_list.shuffled_indices[session.cur_idx];
+            let game_internal_id = session.randomizer_list.games[cur_game_idx].internal_id;
+            server_api::start_session(game_internal_id).await?;
+        }
+
+        // -- update all the choose date on games
+        {
+            server_api::update_choose_state(session.randomizer_list.games).await?;
+        }
+    }
+    else {
+        return Err(JsError::new("populate_randomizer_choose_screen was called without any data."));
+    }
 
     Ok(())
 }

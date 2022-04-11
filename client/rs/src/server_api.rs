@@ -163,6 +163,11 @@ pub(super) async fn finish_session(internal_id: u32, memorable: bool) -> Result<
     post("finish_session", Some(data_str.as_str())).await
 }
 
-pub(super) async fn get_randomizer_games(filter: core::SRandomizerFilter) -> Result<Vec<core::SCollectionGame>, JsError> {
+pub(super) async fn get_randomizer_games(filter: core::SRandomizerFilter) -> Result<core::SRandomizerList, JsError> {
     post_data_return_data("get_randomizer_games", filter).await
+}
+
+pub(super) async fn update_choose_state(games: Vec<core::SCollectionGame>) -> Result<(), JsError> {
+    post_data("update_choose_state", games).await?;
+    Ok(())
 }
