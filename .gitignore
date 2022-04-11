@@ -3,5 +3,7 @@ client/rs/target/
 server/target/
 cli_client/target/
 gamechooser-core/target/
+igdb_api_client/target/
+importer/target/
 client/mongoose-5.0.exe
 gamechooser2.sublime-workspace

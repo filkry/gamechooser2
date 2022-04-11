@@ -1,11 +1,8 @@
 use argh::FromArgs;
-use async_trait::async_trait;
 use confy;
-use futures::executor::block_on;
-use gamechooser_core::*;
-use reqwest;
-use serde::{Serialize, Deserialize};
-use serde::de::{DeserializeOwned};
+//use gamechooser_core::*;
+
+use igdb_api_client::SConfigFile;
 
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "test")]
@@ -40,10 +37,6 @@ struct SArghs {
 }
 
 fn test() {
-    let config_store = SConfigStore{};
-
-    let future = gamechooser_core::test_any_client::<SReqwestTwitchAPIClient, SConfigStore>(&config_store);
-    block_on(future).unwrap();
 }
 
 fn main() {
@@ -53,8 +46,9 @@ fn main() {
             test();
         }
         EArghsSubcommands::SetTwitchClient(stc) => {
-            let config_store = SConfigStore{};
-            config_store.save_twitch_client(stc.client_id.as_str(), stc.client_secret.as_str());
+            let mut cfg : SConfigFile = confy::load("gamechooser2_igdb_api_client").unwrap();
+            cfg.set_twitch_client(stc.client_id.as_str(), stc.client_secret.as_str());
+            confy::store("gamechooser2_igdb_api_client", cfg).unwrap()
         }
     }
 }
