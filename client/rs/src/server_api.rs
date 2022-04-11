@@ -6,7 +6,7 @@ use web_sys::{Request, RequestInit, RequestMode, Response};
 use gamechooser_core as core;
 use super::web::{window, TToJsError};
 
-pub(super) async fn search_igdb(title: &str) -> Result<Vec<core::SGame>, JsError> {
+pub(super) async fn search_igdb(title: &str) -> Result<Vec<core::SGameInfo>, JsError> {
     let window = window();
 
     let mut opts = RequestInit::new();
@@ -79,7 +79,7 @@ async fn post_data<T: serde::Serialize>(route: &str, data: T) -> Result<(), JsEr
     }
 }
 
-pub(super) async fn add_game(game: core::SCollectionGame) -> Result<(), JsError> {
+pub(super) async fn add_game(game: core::SAddCollectionGame) -> Result<(), JsError> {
     post_data("add_game", game).await?;
     Ok(())
 }
@@ -95,4 +95,8 @@ pub(super) async fn get_recent_collection_games() -> Result<Vec<core::SCollectio
 
 pub(super) async fn search_collection(query: &str) -> Result<Vec<core::SCollectionGame>, JsError> {
     post_return_data("search_collection", Some(query)).await
+}
+
+pub(super) async fn get_active_sessions() -> Result<Vec<core::SSession>, JsError> {
+    post_return_data("get_active_sessions", None).await
 }

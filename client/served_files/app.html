@@ -13,7 +13,8 @@
     </header>
     <body>
         <div id="sessions_div">
-            Sessions
+            <h1 id="sessions_header">Sessions</h1>
+            <div id="session_screen_session_list"></div>
         </div>
         <div id="collection_div" style="display:none">
             <h1 id="collection_header">Collection</h1>
@@ -87,7 +88,7 @@
                 <input type="checkbox" id="game_edit_ignore_passes">
                 <label for="game_edit_ignore_passes">Ignore passes during randomizer</label>
             </div>
-            <button id="game_edit_submit" onclick="edit_screen_submit_edit()">Add Game</button>
+            <button id="game_edit_submit" onclick="edit_screen_submit()">Add Game</button>
         </div>
         <div id="result_div" style="display:none">
             <p id="result_message"></p>
@@ -103,7 +104,7 @@
             show_stats,
             add_screen_search_igdb,
             add_screen_add_result,
-            edit_screen_submit_edit,
+            edit_screen_submit,
             collection_screen_search,
             collection_screen_edit_game,
         } from './rs-wasm-bindgen-output/gamechooser2_client.js';
@@ -119,10 +120,12 @@
             window.show_stats = show_stats;
             window.add_screen_search_igdb = add_screen_search_igdb;
             window.add_screen_add_result = add_screen_add_result;
-            window.edit_screen_submit_edit = edit_screen_submit_edit;
+            window.edit_screen_submit = edit_screen_submit;
             window.collection_screen_search = collection_screen_search;
             window.collection_screen_edit_game = collection_screen_edit_game;
             console.log("bindings set");
+
+            show_sessions();
         }
 
         run();

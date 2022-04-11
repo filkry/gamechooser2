@@ -191,6 +191,39 @@ fn load_collection() -> Result<Vec<core::SCollectionGame>, String> {
     Ok(collection_games)
 }
 
+fn load_sessions() -> Result<Vec<core::SSession>, String> {
+    let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
+    let mut path = std::path::PathBuf::new();
+    path.push(cfg.db_path);
+    path.push("sessions.json");
+
+    let sessions : Vec<core::SSession> = {
+        if path.exists() {
+            let file = match std::fs::File::open(path.clone()) {
+                Ok(f) => f,
+                Err(e) => {
+                    println!("Failed to open sessions.json with: {:?}", e);
+                    return Err(String::from("Server had local file issues."));
+                }
+            };
+            let reader = std::io::BufReader::new(file);
+
+            match serde_json::from_reader(reader) {
+                Ok(g) => g,
+                Err(e) => {
+                    println!("Failed to deserialize sessions.json with: {:?}", e);
+                    return Err(String::from("Server had local file issues."));
+                }
+            }
+        }
+        else {
+            Vec::new()
+        }
+    };
+
+    Ok(sessions)
+}
+
 fn save_collection(collection_games: Vec<core::SCollectionGame>) -> Result<(), String> {
     let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
     let mut path = std::path::PathBuf::new();
@@ -219,11 +252,49 @@ fn save_collection(collection_games: Vec<core::SCollectionGame>) -> Result<(), S
     };
     let writer = std::io::BufWriter::new(file);
 
-    // Read the JSON contents of the file as an instance of `User`.
     match serde_json::to_writer_pretty(writer, &collection_games) {
         Ok(_) => {},
         Err(e) => {
-            println!("Failed to deserialize collection.json with: {:?}", e);
+            println!("Failed to serialize collection.json with: {:?}", e);
+            return Err(String::from("Server had local file issues."));
+        }
+    };
+
+    Ok(())
+}
+
+fn save_sessions(sessions: Vec<core::SSession>) -> Result<(), String> {
+    let cfg : SConfigFile = confy::load("gamechooser2_cli_client").unwrap();
+    let mut path = std::path::PathBuf::new();
+    path.push(cfg.db_path);
+    path.push("sessions.json");
+
+    if path.exists() {
+        if let Err(e) = std::fs::remove_file(path.clone()) {
+            println!("Failed to delete sessions.json with: {:?}", e);
+            return Err(String::from("Server had local file issues."));
+        }
+    }
+
+    let open_options = std::fs::OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .append(true)
+        .open(path);
+
+    let file = match open_options {
+        Ok(f) => f,
+        Err(e) => {
+            println!("Failed to open sessions.json with: {:?}", e);
+            return Err(String::from("Server had local file issues."));
+        }
+    };
+    let writer = std::io::BufWriter::new(file);
+
+    match serde_json::to_writer_pretty(writer, &sessions) {
+        Ok(_) => {},
+        Err(e) => {
+            println!("Failed to serialize sessions.json with: {:?}", e);
             return Err(String::from("Server had local file issues."));
         }
     };
@@ -262,7 +333,7 @@ async fn test() -> Result<String, String> {
 }
 
 #[post("/search_igdb/<name>")]
-async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGame>>, String> {
+async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGameInfo>>, String> {
     let session = SReqwestTwitchAPIClient::new_session().await?;
 
     #[derive(Deserialize)]
@@ -309,7 +380,7 @@ async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGame>>, String>
 
     let mut results = Vec::with_capacity(search_results.len());
     for search_res in search_results {
-        results.push(core::SGame::new_igdb(
+        results.push(core::SGameInfo::new_igdb(
             search_res.name,
             search_res.first_release_date.map(timestamp_to_chrono),
             search_res.id,
@@ -321,17 +392,15 @@ async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGame>>, String>
 }
 
 #[post("/add_game", data = "<game>")]
-async fn add_game(mut game: RocketJson<core::SCollectionGame>) -> Result<(), String> {
+async fn add_game(game: RocketJson<core::SAddCollectionGame>) -> Result<(), String> {
     let mut collection_games = load_collection()?;
 
     let mut max_id = 0;
     for collection_game in &collection_games {
-        max_id = std::cmp::max(max_id, collection_game.game.internal_id().expect("All collection games should have an internal ID."));
+        max_id = std::cmp::max(max_id, collection_game.internal_id);
     }
 
-    (*game).game.set_internal_id(max_id + 1);
-
-    collection_games.push(game.into_inner());
+    collection_games.push(core::SCollectionGame::new(game.into_inner(), max_id + 1));
 
     save_collection(collection_games)?;
 
@@ -342,10 +411,10 @@ async fn add_game(mut game: RocketJson<core::SCollectionGame>) -> Result<(), Str
 async fn edit_game(game: RocketJson<core::SCollectionGame>) -> Result<(), String> {
     let mut collection_games = load_collection()?;
 
-    let edit_internal_id = game.game.internal_id().ok_or(String::from("Trying to edit a game but didn't pass it's internal ID"))?;
+    let edit_internal_id = game.internal_id;
 
     for collection_game in &mut collection_games {
-        let internal_id = collection_game.game.internal_id().expect("All collection games should have an internal ID.");
+        let internal_id = collection_game.internal_id;
         if internal_id == edit_internal_id {
             *collection_game = game.into_inner();
             break;
@@ -383,7 +452,7 @@ async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollecti
     let mut scores = Vec::with_capacity(collection_games.len());
 
     for (idx, game) in collection_games.iter().enumerate() {
-        if let Some(m) = sublime_fuzzy::best_match(query, game.game.title()) {
+        if let Some(m) = sublime_fuzzy::best_match(query, game.game_info.title()) {
             scores.push(SScore{
                 idx,
                 score: m.score(),
@@ -402,11 +471,49 @@ async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollecti
     Ok(RocketJson(result))
 }
 
+#[post("/get_active_sessions")]
+async fn get_active_sessions() -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, String> {
+    /*
+    let games = load_collection()?;
+    let sessions = load_sessions()?;
+
+    let mut result = Vec::with_capacity(10);
+
+    for session in &sessions {
+        if let core::ESessionState::Ongoing = session.state {
+
+            // -- find the game
+            let game = {
+                for temp_game in &games {
+                    if temp_game.game.internal_id() == sessions.game_internal_id {
+                        game.game.clone();
+                    }
+                }
+                return
+            };
+
+            result.push(session.clone());
+        }
+    }
+
+    Ok(RocketJson(result))
+    */
+    Err(String::from("not implement"))
+}
+
 #[launch]
 fn rocket() -> _ {
     // -- $$$FRK(TODO): verify we have valid config file, all values present
 
     rocket::build()
         .mount("/static", rocket::fs::FileServer::from("../client/served_files"))
-        .mount("/", routes![test, search_igdb, add_game, edit_game, get_recent_collection_games, search_collection])
+        .mount("/", routes![
+            test,
+            search_igdb,
+            add_game,
+            edit_game,
+            get_recent_collection_games,
+            search_collection,
+            get_active_sessions,
+        ])
 }

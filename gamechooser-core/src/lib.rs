@@ -24,8 +24,7 @@ pub struct SOwn {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SGame {
-    internal_id: Option<u32>,
+pub struct SGameInfo {
     title: String,
     release_date: Option<chrono::naive::NaiveDate>,
     igdb_id: Option<u32>,
@@ -50,27 +49,51 @@ pub struct SGameChooseState {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SAddCollectionGame {
+    pub game_info: SGameInfo,
+    pub custom_info: SGameCustomInfo,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SCollectionGame {
-    pub game: SGame,
-    pub info: SGameCustomInfo,
+    pub internal_id: u32,
+    pub game_info: SGameInfo,
+    pub custom_info: SGameCustomInfo,
 
     #[serde(default)]
     pub choose_state: SGameChooseState,
 }
 
-impl SGame {
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub enum ESessionState {
+    Ongoing,
+    Finished {
+        end_date: chrono::naive::NaiveDate,
+        memorable: bool,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct SSession {
+    pub game_internal_id: u32,
+    pub start_date: chrono::naive::NaiveDate,
+    pub state: ESessionState,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SSessionAndGameInfo {
+    pub session: SSession,
+    pub game: SGameInfo,
+}
+
+impl SGameInfo {
     pub fn new_igdb(title: String, release_date: Option<chrono::naive::NaiveDate>, igdb_id: u32, cover_url: Option<String>) -> Self {
         Self {
-            internal_id: None,
             title,
             release_date,
             igdb_id: Some(igdb_id),
             cover_url,
         }
-    }
-
-    pub fn internal_id(&self) -> Option<u32> {
-        self.internal_id
     }
 
     pub fn title(&self) -> &str {
@@ -90,15 +113,6 @@ impl SGame {
             Some(s) => Some(s.as_str()),
             None => None,
         }
-    }
-
-    pub fn set_internal_id(&mut self, internal_id: u32) {
-        if self.internal_id.is_some() {
-            println!("Trying to overwrite the internal ID of {}, this should not be done.", self.title);
-            return;
-        }
-
-        self.internal_id = Some(internal_id);
     }
 
     pub fn set_title(&mut self, title: &str) {
@@ -130,21 +144,23 @@ impl SGameCustomInfo {
     }
 }
 
-impl SCollectionGame {
-    pub fn new(game: SGame) -> Self {
+impl SAddCollectionGame {
+    pub fn new(game_info: SGameInfo) -> Self {
         Self {
-            game,
-            info: SGameCustomInfo::new(),
-            choose_state: Default::default(),
+            game_info,
+            custom_info: SGameCustomInfo::new(),
         }
     }
+}
 
-    pub fn game_mut(&mut self) -> &mut SGame {
-        &mut self.game
-    }
-
-    pub fn info_mut(&mut self) -> &mut SGameCustomInfo {
-        &mut self.info
+impl SCollectionGame {
+    pub fn new(add: SAddCollectionGame, id: u32) -> Self {
+        Self {
+            internal_id: id,
+            game_info: add.game_info,
+            custom_info: add.custom_info,
+            choose_state: Default::default(),
+        }
     }
 }
 
