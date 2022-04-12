@@ -27,6 +27,7 @@ struct STwitchOauthTokenResponse {
     token_type: String,
 }
 
+#[derive(Clone)]
 pub struct STwitchAPIRequestBuilder {
     pub url: String,
     pub headers: Vec<(String, String)>,
@@ -127,6 +128,7 @@ impl SReqwestTwitchAPIClient {
     async fn post_interp_json<T: DeserializeOwned>(session: SReqwestTwitchAPISession, rb: STwitchAPIRequestBuilder) -> Result<T, Box<dyn Error>> {
         let req = Self::prepare_request(&session, rb);
         let resp = req.send().await?;
+        println!("Response: {:?}", resp);
         Ok(resp.json().await?)
     }
 
@@ -194,6 +196,149 @@ impl SReqwestTwitchAPIClient {
                 search_res.cover.map(extract_cover_url),
             ));
         }
+
+        Ok(results)
+    }
+
+    pub async fn multi_search(session: &SReqwestTwitchAPISession, names: &[&str]) -> Result<Vec<Vec<core::SGameInfo>>, String> {
+
+        if names.len() > 10 {
+            return Err(String::from("Cannot multi-search for more than 10 games"));
+        }
+
+        #[derive(Deserialize)]
+        #[allow(dead_code)]
+        struct SIGDBSearchResultCover {
+            id: u32,
+            image_id: String,
+        }
+        #[derive(Deserialize)]
+        struct SIGDBSearchResult {
+            id: u32,
+            name: String,
+            first_release_date: Option<i64>,
+            cover: Option<SIGDBSearchResultCover>,
+        }
+
+        #[derive(Deserialize)]
+        struct SIGDBMultiSearchResults {
+            r0: Option<Vec<SIGDBSearchResult>>,
+            r1: Option<Vec<SIGDBSearchResult>>,
+            r2: Option<Vec<SIGDBSearchResult>>,
+            r3: Option<Vec<SIGDBSearchResult>>,
+            r4: Option<Vec<SIGDBSearchResult>>,
+            r5: Option<Vec<SIGDBSearchResult>>,
+            r6: Option<Vec<SIGDBSearchResult>>,
+            r7: Option<Vec<SIGDBSearchResult>>,
+            r8: Option<Vec<SIGDBSearchResult>>,
+            r9: Option<Vec<SIGDBSearchResult>>,
+        }
+
+        impl SIGDBMultiSearchResults {
+            fn to_vec(self) -> Vec<Vec<SIGDBSearchResult>> {
+                let mut result = Vec::with_capacity(10);
+
+                if let Some(r) = self.r0 {
+                    result.push(r);
+                }
+                if let Some(r) = self.r1 {
+                    result.push(r);
+                }
+                if let Some(r) = self.r2 {
+                    result.push(r);
+                }
+                if let Some(r) = self.r3 {
+                    result.push(r);
+                }
+                if let Some(r) = self.r4 {
+                    result.push(r);
+                }
+                if let Some(r) = self.r5 {
+                    result.push(r);
+                }
+                if let Some(r) = self.r6 {
+                    result.push(r);
+                }
+                if let Some(r) = self.r7 {
+                    result.push(r);
+                }
+                if let Some(r) = self.r8 {
+                    result.push(r);
+                }
+                if let Some(r) = self.r9 {
+                    result.push(r);
+                }
+
+                result
+            }
+        }
+
+        let mq_results : SIGDBMultiSearchResults = {
+            let mut body = String::new();
+
+            for (idx, name) in names.iter().enumerate() {
+                let name_query = format!("
+query games \"r{}\" {{
+    search \"{}\";
+    fields name,first_release_date,cover.image_id;
+}};\n",
+                idx, name);
+
+                body.push_str(name_query.as_str());
+            }
+
+            //println!("{}", body);
+
+            let request = STwitchAPIRequestBuilder::new()
+                .url("https://api.igdb.com/v4/multiquery/")
+                .header("Client-ID", session.twitch_client_id.as_str())
+                .header("Authorization", format!("Bearer {}", SReqwestTwitchAPIClient::access_token(&session)).as_str())
+                .header("Accept", "application/json")
+                .body(body.as_str());
+
+            println!("\n\n\nTEXT\n\n\n");
+
+            match SReqwestTwitchAPIClient::post_text(session.clone(), request.clone()).await {
+                Ok(res) => {
+                    println!("{:?}", res);
+                },
+                Err(e) => {
+                    return Err(format!("Failed with error {:?}", e));
+                },
+            }
+
+            println!("\n\n\nJSON\n\n\n");
+
+            match SReqwestTwitchAPIClient::post_interp_json::<SIGDBMultiSearchResults>(session.clone(), request).await {
+                Ok(res) => Ok(res),
+                Err(e) => Err(format!("Failed with error {:?}", e)),
+            }
+        }?;
+
+        fn timestamp_to_chrono(ts: i64) -> chrono::naive::NaiveDate {
+            chrono::naive::NaiveDateTime::from_timestamp(ts, 0).date()
+        }
+        fn extract_cover_url(cover: SIGDBSearchResultCover) -> String {
+            format!("https://images.igdb.com/igdb/image/upload/t_cover_small/{}.jpg", cover.image_id)
+        }
+
+        let mq_results_vec = mq_results.to_vec();
+
+        let mut results = Vec::with_capacity(mq_results_vec.len());
+        for query_result in mq_results_vec {
+            let mut name_result = Vec::with_capacity(query_result.len());
+            for igdb_game in query_result {
+                name_result.push(core::SGameInfo::new_igdb(
+                    igdb_game.name,
+                    igdb_game.first_release_date.map(timestamp_to_chrono),
+                    igdb_game.id,
+                    igdb_game.cover.map(extract_cover_url),
+                ));
+            }
+            results.push(name_result);
+        }
+
+        assert!(results.len() == names.len());
 
         Ok(results)
     }
