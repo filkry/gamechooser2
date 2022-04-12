@@ -128,7 +128,6 @@ impl SReqwestTwitchAPIClient {
     async fn post_interp_json<T: DeserializeOwned>(session: SReqwestTwitchAPISession, rb: STwitchAPIRequestBuilder) -> Result<T, Box<dyn Error>> {
         let req = Self::prepare_request(&session, rb);
         let resp = req.send().await?;
-        println!("Response: {:?}", resp);
         Ok(resp.json().await?)
     }
 
@@ -200,7 +199,9 @@ impl SReqwestTwitchAPIClient {
         Ok(results)
     }
 
-    pub async fn multi_search(session: &SReqwestTwitchAPISession, names: &[&str]) -> Result<Vec<Vec<core::SGameInfo>>, String> {
+    // -- not pub because the API doesn't seem to work when you have 'search' in the queries
+    #[allow(dead_code)]
+    async fn multi_search(session: &SReqwestTwitchAPISession, names: &[&str]) -> Result<Vec<Vec<core::SGameInfo>>, String> {
 
         if names.len() > 10 {
             return Err(String::from("Cannot multi-search for more than 10 games"));
@@ -287,7 +288,7 @@ query games \"r{}\" {{
                 body.push_str(name_query.as_str());
             }
 
-            //println!("{}", body);
+            println!("{}", body);
 
             let request = STwitchAPIRequestBuilder::new()
                 .url("https://api.igdb.com/v4/multiquery/")

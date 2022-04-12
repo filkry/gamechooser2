@@ -123,6 +123,15 @@ impl SGameInfo {
         }
     }
 
+    pub fn new_custom(title: String, release_date: Option<chrono::naive::NaiveDate>) -> Self {
+        Self {
+            title,
+            release_date,
+            igdb_id: None,
+            cover_url: None,
+        }
+    }
+
     pub fn title(&self) -> &str {
         self.title.as_str()
     }
