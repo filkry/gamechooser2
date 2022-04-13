@@ -68,40 +68,6 @@
           "passes": 0,
           "ignore_passes": false
         }
-      },
-      {
-        "internal_id": 3,
-        "game_info": {
-          "title": "Doritos Crash Course 2",
-          "release_date": "2013-05-08",
-          "igdb_id": 18042,
-          "cover_url": "https://images.igdb.com/igdb/image/upload/t_cover_small/tv6zgpx1vjhj9sc2wpyc.jpg"
-        },
-        "custom_info": {
-          "via": "",
-          "tags": {
-            "couch_playable": false,
-            "portable_playable": false
-          },
-          "own": {
-            "steam": false,
-            "egs": false,
-            "emulator": false,
-            "ds": false,
-            "n3ds": false,
-            "wii": false,
-            "wiiu": false,
-            "switch": false,
-            "ps4": false,
-            "ps5": false
-          }
-        },
-        "choose_state": {
-          "next_valid_proposal_date": "2022-04-13",
-          "retired": false,
-          "passes": 0,
-          "ignore_passes": false
-        }
       }
     ],
     "sessions": []

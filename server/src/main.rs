@@ -1,11 +1,8 @@
 #[macro_use] extern crate rocket;
 
-use std::error::{Error};
 use std::result::{Result};
 
 //use reqwest;
-use tokio::fs::File;
-use tokio_stream::StreamExt;
 use serde::{Serialize, Deserialize};
 use serde_json;
 use sublime_fuzzy;
@@ -66,11 +63,24 @@ fn load_db() -> Result<core::EDatabase, String> {
 fn save_db(db: core::EDatabase) -> Result<(), String> {
     let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
     let mut path = std::path::PathBuf::new();
-    path.push(cfg.db_path);
+    path.push(cfg.db_path.clone());
     path.push("database.json");
 
     if path.exists() {
-        if let Err(e) = std::fs::remove_file(path.clone()) {
+        let mut backup_path = std::path::PathBuf::new();
+        backup_path.push(cfg.db_path);
+        backup_path.push("bak");
+
+        if !backup_path.exists() {
+            if let Err(_) = std::fs::create_dir(backup_path.clone()) {
+                return Err(String::from("Server failed to back up DB before overwriting, aborted."));
+            }
+        }
+
+        let bak_file_name = format!("database_{}.json", chrono::offset::Utc::now().timestamp());
+        backup_path.push(bak_file_name);
+
+        if let Err(e) = std::fs::rename(path.clone(), backup_path) {
             println!("Failed to delete database.json with: {:?}", e);
             return Err(String::from("Server had local file issues."));
         }
