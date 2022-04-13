@@ -107,6 +107,40 @@ pub struct SRandomizerList {
     pub shuffled_indices: Vec<usize>,
 }
 
+// -- newest version always omits a version number to keep updating code simple
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SDatabase {
+    pub games: Vec<SCollectionGame>,
+    pub sessions: Vec<SSession>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum EDatabase {
+    V0(SDatabase),
+}
+
+impl std::ops::Deref for EDatabase {
+    type Target = SDatabase;
+
+    fn deref(&self) -> &Self::Target {
+        #[allow(irrefutable_let_patterns)]
+        if let Self::V0(inner) = self {
+            return inner;
+        }
+        panic!("Trying to deref on database that is not of current version.");
+    }
+}
+
+impl std::ops::DerefMut for EDatabase {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        #[allow(irrefutable_let_patterns)]
+        if let Self::V0(inner) = self {
+            return inner;
+        }
+        panic!("Trying to deref on database that is not of current version.");
+    }
+}
+
 impl SOwn {
     fn owned(&self) -> bool {
         self.steam || self.egs || self.emulator || self.ds || self.n3ds || self.wii || self.wiiu || self.switch || self.ps4 || self.ps5
@@ -244,6 +278,23 @@ impl SRandomizerFilter {
         result = result && (game.choose_state.passes <= self.max_passes);
 
         result
+    }
+}
+
+impl EDatabase {
+    pub fn new() -> Self {
+        let empty = SDatabase{
+            games: Vec::new(),
+            sessions: Vec::new(),
+        };
+
+        Self::V0(empty)
+    }
+
+    pub fn to_latest_version(self) -> Self {
+        match self {
+            EDatabase::V0(_) => self
+        }
     }
 }
 

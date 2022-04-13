@@ -1,0 +1,75 @@
+{
+  "V0": {
+    "games": [
+      {
+        "internal_id": 1,
+        "game_info": {
+          "title": "Arnold the Adventurer II",
+          "release_date": "2022-04-13",
+          "igdb_id": 58861,
+          "cover_url": "https://images.igdb.com/igdb/image/upload/t_cover_small/xruajshequzrgm7ztsuk.jpg"
+        },
+        "custom_info": {
+          "via": "",
+          "tags": {
+            "couch_playable": false,
+            "portable_playable": false
+          },
+          "own": {
+            "steam": false,
+            "egs": false,
+            "emulator": false,
+            "ds": false,
+            "n3ds": false,
+            "wii": false,
+            "wiiu": false,
+            "switch": false,
+            "ps4": false,
+            "ps5": false
+          }
+        },
+        "choose_state": {
+          "next_valid_proposal_date": "2022-04-13",
+          "retired": false,
+          "passes": 0,
+          "ignore_passes": false
+        }
+      },
+      {
+        "internal_id": 2,
+        "game_info": {
+          "title": "Burger King Orientation CD-i Training",
+          "release_date": "1997-11-12",
+          "igdb_id": 182507,
+          "cover_url": "https://images.igdb.com/igdb/image/upload/t_cover_small/co49pt.jpg"
+        },
+        "custom_info": {
+          "via": "",
+          "tags": {
+            "couch_playable": false,
+            "portable_playable": false
+          },
+          "own": {
+            "steam": false,
+            "egs": false,
+            "emulator": false,
+            "ds": false,
+            "n3ds": false,
+            "wii": false,
+            "wiiu": false,
+            "switch": false,
+            "ps4": false,
+            "ps5": false
+          }
+        },
+        "choose_state": {
+          "next_valid_proposal_date": "2022-04-13",
+          "retired": false,
+          "passes": 0,
+          "ignore_passes": false
+        }
+      }
+    ],
+    "sessions": []
+  }
+}

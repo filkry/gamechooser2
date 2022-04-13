@@ -204,32 +204,7 @@ async fn gc1_data_populate_igdb_info(state: SArghsGC1DataPopulateIGDBInfo) -> Re
                     stdin.read_line(&mut buffer).unwrap();
 
                     if buffer.trim().eq("keep") {
-                        // -- go to custom handler
-                        println!("Keeping data from GC1.");
-                        break;
-                    }
-
-                    if let Ok(idx) = buffer.trim().parse::<usize>() {
-                        if idx < game_infos.len() {
-                            println!("Copying IGDB data from \"{}\".", game_infos[idx].title());
-                            chosen_game_info = Some(game_infos[idx].clone());
-                            break;
-                        }
-                    }
-
-                    println!("Could not understand input, try again.");
-                }
-            }
-            else {
-                println!("Found no matching games on IGDB. Keeping gc1 data.");
-            }
-
-            if chosen_game_info.is_none() {
-                let title = games[cur_idx].title.clone();
-
-                let mut release_date : Option<chrono::naive::NaiveDate> = None;
-                if let Some(year) = games[cur_idx].release_year {
-                    release_date = Some(chrono::naive::NaiveDate::from_ymd(year as i32, 1, 1));
+                        // -- go to custorelease_date = Some(chrono::naive::NaiveDate::from_ymd(year as i32, 1, 1));
                 }
 
                 chosen_game_info = Some(core::SGameInfo::new_custom(title, release_date));

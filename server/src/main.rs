@@ -26,19 +26,19 @@ struct SOwnRecord {
     storefront: String,
 }
 
-fn load_collection() -> Result<Vec<core::SCollectionGame>, String> {
+fn load_db() -> Result<core::EDatabase, String> {
     let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
     let mut path = std::path::PathBuf::new();
     path.push(cfg.db_path);
-    path.push("collection.json");
+    path.push("database.json");
 
     // -- read existing collection
-    let collection_games : Vec<core::SCollectionGame> = {
+    let db : core::EDatabase = {
         if path.exists() {
             let file = match std::fs::File::open(path.clone()) {
                 Ok(f) => f,
                 Err(e) => {
-                    println!("Failed to open collection.json with: {:?}", e);
+                    println!("Failed to open database.json with: {:?}", e);
                     return Err(String::from("Server had local file issues."));
                 }
             };
@@ -48,61 +48,30 @@ fn load_collection() -> Result<Vec<core::SCollectionGame>, String> {
             match serde_json::from_reader(reader) {
                 Ok(g) => g,
                 Err(e) => {
-                    println!("Failed to deserialize collection.json with: {:?}", e);
+                    println!("Failed to deserialize database.json with: {:?}", e);
                     return Err(String::from("Server had local file issues."));
                 }
             }
         }
         else {
-            Vec::new()
+            core::EDatabase::new()
         }
     };
 
-    Ok(collection_games)
+    let updated_db = db.to_latest_version();
+
+    Ok(updated_db)
 }
 
-fn load_sessions() -> Result<Vec<core::SSession>, String> {
+fn save_db(db: core::EDatabase) -> Result<(), String> {
     let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
     let mut path = std::path::PathBuf::new();
     path.push(cfg.db_path);
-    path.push("sessions.json");
-
-    let sessions : Vec<core::SSession> = {
-        if path.exists() {
-            let file = match std::fs::File::open(path.clone()) {
-                Ok(f) => f,
-                Err(e) => {
-                    println!("Failed to open sessions.json with: {:?}", e);
-                    return Err(String::from("Server had local file issues."));
-                }
-            };
-            let reader = std::io::BufReader::new(file);
-
-            match serde_json::from_reader(reader) {
-                Ok(g) => g,
-                Err(e) => {
-                    println!("Failed to deserialize sessions.json with: {:?}", e);
-                    return Err(String::from("Server had local file issues."));
-                }
-            }
-        }
-        else {
-            Vec::new()
-        }
-    };
-
-    Ok(sessions)
-}
-
-fn save_collection(collection_games: Vec<core::SCollectionGame>) -> Result<(), String> {
-    let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
-    let mut path = std::path::PathBuf::new();
-    path.push(cfg.db_path);
-    path.push("collection.json");
+    path.push("database.json");
 
     if path.exists() {
         if let Err(e) = std::fs::remove_file(path.clone()) {
-            println!("Failed to delete collection.json with: {:?}", e);
+            println!("Failed to delete database.json with: {:?}", e);
             return Err(String::from("Server had local file issues."));
         }
     }
@@ -116,90 +85,21 @@ fn save_collection(collection_games: Vec<core::SCollectionGame>) -> Result<(), S
     let file = match open_options {
         Ok(f) => f,
         Err(e) => {
-            println!("Failed to open collection.json with: {:?}", e);
+            println!("Failed to open database.json with: {:?}", e);
             return Err(String::from("Server had local file issues."));
         }
     };
     let writer = std::io::BufWriter::new(file);
 
-    match serde_json::to_writer_pretty(writer, &collection_games) {
+    match serde_json::to_writer_pretty(writer, &db) {
         Ok(_) => {},
         Err(e) => {
-            println!("Failed to serialize collection.json with: {:?}", e);
+            println!("Failed to serialize database.json with: {:?}", e);
             return Err(String::from("Server had local file issues."));
         }
     };
 
     Ok(())
-}
-
-fn save_sessions(sessions: Vec<core::SSession>) -> Result<(), String> {
-    let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
-    let mut path = std::path::PathBuf::new();
-    path.push(cfg.db_path);
-    path.push("sessions.json");
-
-    if path.exists() {
-        if let Err(e) = std::fs::remove_file(path.clone()) {
-            println!("Failed to delete sessions.json with: {:?}", e);
-            return Err(String::from("Server had local file issues."));
-        }
-    }
-
-    let open_options = std::fs::OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .append(true)
-        .open(path);
-
-    let file = match open_options {
-        Ok(f) => f,
-        Err(e) => {
-            println!("Failed to open sessions.json with: {:?}", e);
-            return Err(String::from("Server had local file issues."));
-        }
-    };
-    let writer = std::io::BufWriter::new(file);
-
-    match serde_json::to_writer_pretty(writer, &sessions) {
-        Ok(_) => {},
-        Err(e) => {
-            println!("Failed to serialize sessions.json with: {:?}", e);
-            return Err(String::from("Server had local file issues."));
-        }
-    };
-
-    Ok(())
-}
-
-async fn test_csv() -> Result<String, Box<dyn Error>> {
-    let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
-
-    let mut path = std::path::PathBuf::new();
-    path.push(cfg.db_path);
-    path.push("_own.csv");
-
-    let mut rdr = csv_async::AsyncDeserializer::from_reader(
-        File::open(path).await?
-    );
-
-    let mut result = String::new();
-
-    let mut records = rdr.deserialize::<SOwnRecord>();
-    while let Some(record) = records.next().await {
-        let record = record?;
-        result.push_str(record.storefront.as_str());
-    }
-    Ok(result)
-}
-
-#[post("/test")]
-async fn test() -> Result<String, String> {
-    //test_twitch_api().await
-    match test_csv().await {
-        Ok(s) => Ok(s),
-        Err(e) => Err(e.to_string())
-    }
 }
 
 #[post("/search_igdb/<name>")]
@@ -211,27 +111,27 @@ async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGameInfo>>, Str
 
 #[post("/add_game", data = "<game>")]
 async fn add_game(game: RocketJson<core::SAddCollectionGame>) -> Result<(), String> {
-    let mut collection_games = load_collection()?;
+    let mut db = load_db()?;
 
     let mut max_id = 0;
-    for collection_game in &collection_games {
+    for collection_game in &db.games {
         max_id = std::cmp::max(max_id, collection_game.internal_id);
     }
 
-    collection_games.push(core::SCollectionGame::new(game.into_inner(), max_id + 1));
+    db.games.push(core::SCollectionGame::new(game.into_inner(), max_id + 1));
 
-    save_collection(collection_games)?;
+    save_db(db)?;
 
     Ok(())
 }
 
 #[post("/edit_game", data = "<game>")]
 async fn edit_game(game: RocketJson<core::SCollectionGame>) -> Result<(), String> {
-    let mut collection_games = load_collection()?;
+    let mut db = load_db()?;
 
     let edit_internal_id = game.internal_id;
 
-    for collection_game in &mut collection_games {
+    for collection_game in &mut db.games {
         let internal_id = collection_game.internal_id;
         if internal_id == edit_internal_id {
             *collection_game = game.into_inner();
@@ -239,20 +139,20 @@ async fn edit_game(game: RocketJson<core::SCollectionGame>) -> Result<(), String
         }
     }
 
-    save_collection(collection_games)?;
+    save_db(db)?;
 
     Ok(())
 }
 
 #[post("/get_recent_collection_games")]
 async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectionGame>>, String> {
-    let mut collection_games = load_collection()?;
+    let mut db = load_db()?;
 
     let mut result = Vec::with_capacity(10);
 
     let mut count = 0;
-    while count < 10 && collection_games.len() > 0 {
-        result.push(collection_games.pop().expect("len checked above"));
+    while count < 10 && db.games.len() > 0 {
+        result.push(db.games.pop().expect("len checked above"));
         count += 1;
     }
 
@@ -261,15 +161,15 @@ async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectio
 
 #[post("/search_collection/<query>")]
 async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollectionGame>>, String> {
-    let collection_games = load_collection()?;
+    let db = load_db()?;
 
     struct SScore {
         idx: usize,
         score: isize,
     }
-    let mut scores = Vec::with_capacity(collection_games.len());
+    let mut scores = Vec::with_capacity(db.games.len());
 
-    for (idx, game) in collection_games.iter().enumerate() {
+    for (idx, game) in db.games.iter().enumerate() {
         if let Some(m) = sublime_fuzzy::best_match(query, game.game_info.title()) {
             scores.push(SScore{
                 idx,
@@ -283,7 +183,7 @@ async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollecti
 
     let mut result = Vec::with_capacity(10);
     for i in 0..std::cmp::min(10, scores.len()) {
-        result.push(collection_games[scores[i].idx].clone());
+        result.push(db.games[scores[i].idx].clone());
     }
 
     Ok(RocketJson(result))
@@ -291,10 +191,10 @@ async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollecti
 
 #[post("/start_session/<game_internal_id>")]
 async fn start_session(game_internal_id: u32) -> Result<(), String> {
-    let collection_games = load_collection()?;
+    let mut db = load_db()?;
 
     let mut found_game = false;
-    for game in &collection_games {
+    for game in &db.games {
         if game.internal_id == game_internal_id {
             found_game = true;
             break;
@@ -305,26 +205,24 @@ async fn start_session(game_internal_id: u32) -> Result<(), String> {
         return Err(String::from("Could not find a game with matching internal_id to start session for."))
     }
 
-    let mut sessions = load_sessions()?;
-
     let mut max_id = 0;
-    for session in &sessions {
+    for session in &db.sessions {
         max_id = std::cmp::max(max_id, session.internal_id);
     }
 
-    sessions.push(core::SSession::new(max_id + 1, game_internal_id));
+    db.sessions.push(core::SSession::new(max_id + 1, game_internal_id));
 
-    save_sessions(sessions)?;
+    save_db(db)?;
 
     Ok(())
 }
 
 #[post("/finish_session/<session_internal_id>/<memorable>")]
 async fn finish_session(session_internal_id: u32, memorable: bool) -> Result<(), String> {
-    let mut sessions = load_sessions()?;
+    let mut db = load_db()?;
 
     let mut found_session = false;
-    for s in &mut sessions {
+    for s in &mut db.sessions {
         if s.internal_id == session_internal_id {
             s.finish(memorable);
             found_session = true;
@@ -336,24 +234,23 @@ async fn finish_session(session_internal_id: u32, memorable: bool) -> Result<(),
         return Err(String::from("Could not find session with matching internal_id to finish."))
     }
 
-    save_sessions(sessions)?;
+    save_db(db)?;
 
     Ok(())
 }
 
 #[post("/get_active_sessions")]
 async fn get_active_sessions() -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, String> {
-    let games = load_collection()?;
-    let sessions = load_sessions()?;
+    let db = load_db()?;
 
     let mut result = Vec::with_capacity(10);
 
-    for session in &sessions {
+    for session in &db.sessions {
         if let core::ESessionState::Ongoing = session.state {
 
             // -- find the game
             let mut game_opt = None;
-            for temp_game in &games {
+            for temp_game in &db.games {
                 if temp_game.internal_id == session.game_internal_id {
                     game_opt = Some(temp_game.clone());
                     break;
@@ -377,21 +274,20 @@ async fn get_active_sessions() -> Result<RocketJson<Vec<core::SSessionAndGameInf
 async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Result<RocketJson<core::SRandomizerList>, String> {
     let filter_inner = filter.into_inner();
 
-    let collection_games = load_collection()?;
-    let sessions = load_sessions()?;
+    let db = load_db()?;
 
     let mut active_session_game_ids = std::collections::HashSet::new();
-    for session in sessions {
+    for session in &db.sessions {
         if let core::ESessionState::Ongoing = session.state {
             active_session_game_ids.insert(session.game_internal_id);
         }
     }
 
-    let mut result = Vec::with_capacity(collection_games.len());
+    let mut result = Vec::with_capacity(db.games.len());
 
-    for game in collection_games {
+    for game in &db.games {
         if !active_session_game_ids.contains(&game.internal_id) && filter_inner.game_passes(&game) {
-            result.push(game);
+            result.push(game.clone());
         }
     }
 
@@ -412,14 +308,14 @@ async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Re
 #[post("/update_choose_state", data = "<games>")]
 async fn update_choose_state(games: RocketJson<Vec<core::SCollectionGame>>) -> Result<(), String> {
     let games_inner = games.into_inner();
-    let mut collection_games = load_collection()?;
+    let mut db = load_db()?;
 
     let mut input_idx = 0;
     let mut output_idx = 0;
 
-    while input_idx < games_inner.len() && output_idx < collection_games.len() {
-        if games_inner[input_idx].internal_id == collection_games[output_idx].internal_id {
-            collection_games[output_idx].choose_state = games_inner[input_idx].choose_state;
+    while input_idx < games_inner.len() && output_idx < db.games.len() {
+        if games_inner[input_idx].internal_id == db.games[output_idx].internal_id {
+            db.games[output_idx].choose_state = games_inner[input_idx].choose_state;
             input_idx = input_idx + 1;
             output_idx = output_idx + 1;
         }
@@ -428,13 +324,13 @@ async fn update_choose_state(games: RocketJson<Vec<core::SCollectionGame>>) -> R
 
             // -- EVERY game in games should be present in collection_games, and both vecs
             // -- should be strictly in order.
-            if collection_games[output_idx].internal_id > games_inner[input_idx].internal_id {
+            if db.games[output_idx].internal_id > games_inner[input_idx].internal_id {
                 return Err(String::from("During update_choose_state, either games or collection_games as out of order!"));
             }
         }
     }
 
-    save_collection(collection_games)?;
+    save_db(db)?;
 
     Ok(())
 }
@@ -446,7 +342,6 @@ fn rocket() -> _ {
     rocket::build()
         .mount("/static", rocket::fs::FileServer::from("../client/served_files"))
         .mount("/", routes![
-            test,
             search_igdb,
             add_game,
             edit_game,
