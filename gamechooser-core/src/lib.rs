@@ -15,18 +15,42 @@ pub struct SGameTagsFilter {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SOwn {
+    pub free: bool,
     pub steam: bool,
+    pub gmg: bool,
+    pub gog: bool,
+    pub humble: bool,
+    pub origin: bool,
     pub egs: bool,
+    pub battlenet: bool,
+    pub itch: bool,
+    pub standalone_launcher: bool,
+
     pub emulator: bool,
 
+    pub gba: bool,
     pub ds: bool,
     pub n3ds: bool,
+    pub gamecube: bool,
     pub wii: bool,
     pub wiiu: bool,
     pub switch: bool,
 
+    pub ps1: bool,
+    pub ps2: bool,
+    pub ps3: bool,
     pub ps4: bool,
     pub ps5: bool,
+    pub psp: bool,
+    pub vita: bool,
+
+    pub xbox: bool,
+
+    pub ios: bool,
+
+    pub oculus_quest: bool,
+
+    pub ban_owned: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -65,8 +89,6 @@ pub struct SCollectionGame {
     pub internal_id: u32, // $$$FRK(TODO): These internal IDs should have a type for type validation, but I'm lazy right now
     pub game_info: SGameInfo,
     pub custom_info: SGameCustomInfo,
-
-    #[serde(default)]
     pub choose_state: SGameChooseState,
 }
 
@@ -281,14 +303,18 @@ impl SRandomizerFilter {
     }
 }
 
-impl EDatabase {
+impl SDatabase {
     pub fn new() -> Self {
-        let empty = SDatabase{
+        Self {
             games: Vec::new(),
             sessions: Vec::new(),
-        };
+        }
+    }
+}
 
-        Self::V0(empty)
+impl EDatabase {
+    pub fn new() -> Self {
+        Self::V0(SDatabase::new())
     }
 
     pub fn to_latest_version(self) -> Self {

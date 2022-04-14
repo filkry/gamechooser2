@@ -24,7 +24,8 @@ struct SConfigFile {
     gc1_data_populate_igdb_next_idx: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct SGC1Game {
     id: u32,
     title: String,
@@ -41,6 +42,21 @@ struct SGC1Game {
 
     eternal: Option<u8>,
     next_valid_date: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct SGC1Own {
+    game_id: u32,
+    storefront: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct SGC1Session {
+    game_id: u32,
+    start_date: Option<String>,
+    outcome: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -73,10 +89,17 @@ struct SArghsSetGC1Dir {
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "gc1_to_gc2")]
+#[argh(description = "Create a GC2 database from GC1 data + igdb info map")]
+struct SArghsCreateGC2DBFromGC1Data {
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand)]
 enum EArghsSubcommands {
     SetGC1Dir(SArghsSetGC1Dir),
     GC1DataPopulateIGDBInfo(SArghsGC1DataPopulateIGDBInfo),
+    CreateGC2DBFromGC1Data(SArghsCreateGC2DBFromGC1Data),
 }
 
 #[derive(FromArgs)]
@@ -84,6 +107,249 @@ enum EArghsSubcommands {
 struct SArghs {
     #[argh(subcommand)]
     subcommand: EArghsSubcommands,
+}
+
+fn read_gc1_csv<D: serde::de::DeserializeOwned>(name: &str) -> Result<Vec<D>, String> {
+    let cfg : SConfigFile = confy::load(CONFIG_NAME).unwrap();
+    let mut path = std::path::PathBuf::new();
+    path.push(cfg.gc1_dir.clone());
+    path.push(name);
+
+    let mut output = Vec::new();
+
+    let rdr_opt = csv::ReaderBuilder::new()
+        .has_headers(true)
+        .from_path(path);
+    if let Err(e) = rdr_opt {
+        return Err(format!("Failed to load gc1 {} with error: {:?}", name, e));
+    }
+    let mut rdr = rdr_opt.expect("checked above");
+
+    for result in rdr.deserialize() {
+        if let Err(e) = &result {
+            return Err(format!("Failed to deserialize gc1 {} with error: {:?}", name, e));
+        }
+        let data: D = result.expect("checked above");
+        output.push(data);
+    }
+
+    Ok(output)
+}
+
+fn create_gc2_db_from_gc1_data() {
+    let cfg : SConfigFile = confy::load(CONFIG_NAME).unwrap();
+    let mut path = std::path::PathBuf::new();
+    path.push(cfg.gc1_dir.clone());
+
+    let mut map_path = path.clone();
+    map_path.push("gc1_to_gc2_game_info_map.json");
+
+    // -- load the existing map from disc
+    let map : std::collections::HashMap<u32, SGC1GameToGameInfoMap> = {
+        if map_path.exists() {
+            let file = match std::fs::File::open(map_path.clone()) {
+                Ok(f) => f,
+                Err(e) => {
+                    eprintln!("Failed to open gc1_to_gc2_game_info_map.json file with error: {}", e);
+                    return;
+                }
+            };
+            let reader = std::io::BufReader::new(file);
+
+            match serde_json::from_reader(reader) {
+                Ok(g) => g,
+                Err(e) => {
+                    eprintln!("Failed to deserialize gc1_to_gc2_game_info_map.json file with error: {}", e);
+                    return;
+                }
+            }
+        }
+        else {
+            eprintln!("No gc1_to_gc2_game_info_map.json file in gc1 dir.");
+            return;
+        }
+    };
+
+    let gc1_games : Vec<SGC1Game> = match read_gc1_csv("_game.csv") {
+        Ok(g) => g,
+        Err(e) => {
+            eprintln!("{}", e);
+            return;
+        }
+    };
+
+    let gc1_own : Vec<SGC1Own> = match read_gc1_csv("_own.csv") {
+        Ok(g) => g,
+        Err(e) => {
+            eprintln!("{}", e);
+            return;
+        }
+    };
+
+    let gc1_sessions : Vec<SGC1Session> = match read_gc1_csv("_session.csv") {
+        Ok(g) => g,
+        Err(e) => {
+            eprintln!("{}", e);
+            return;
+        }
+    };
+
+    let mut db_inner = core::SDatabase::new();
+
+    for game in gc1_games {
+        let id = game.id;
+        let game_info = match map.get(&id) {
+            Some(gi) => {
+                assert!(gi.gc1_id == id);
+                gi.game_info.clone()
+            },
+            None => {
+                eprintln!("gc1 to gc2 map is missing entry for game with ID {}", id);
+                return;
+            }
+        };
+
+        let custom_info = core::SGameCustomInfo {
+            via: game.via,
+            tags: core::SGameTags{
+                couch_playable: match game.couch {
+                    Some(c) => if c > 0 { true } else { false },
+                    None => false,
+                },
+                portable_playable: match game.portable {
+                    Some(p) => if p > 0 { true } else { false },
+                    None => false,
+                },
+            },
+            own: Default::default(),
+        };
+
+        let date_result = chrono::NaiveDate::parse_from_str(game.next_valid_date.as_str(), "%Y-%m-%d");
+        let date = match date_result {
+            Ok(d) => d,
+            Err(_) => {
+                eprintln!("Could not parse date \"{}\" for game with ID {}, using today as next valid date", game.next_valid_date, game.id);
+                chrono::offset::Local::now().naive_local().date()
+            },
+        };
+
+        let choose_state = core::SGameChooseState {
+            next_valid_proposal_date: date,
+            retired: match game.play_more {
+                Some(p) => if p > 0 { false } else { true },
+                None => false,
+            },
+            passes: game.passes,
+            ignore_passes: match game.eternal {
+                Some(e) => if e > 0 { true } else { false },
+                None => false,
+            },
+        };
+
+        db_inner.games.push(core::SCollectionGame {
+            internal_id: game.id,
+            game_info,
+            custom_info,
+            choose_state,
+        });
+    }
+
+    fn game_mut(db: &mut core::SDatabase, id: u32) -> Option<&mut core::SCollectionGame> {
+        for cand_game in &mut db.games {
+            if cand_game.internal_id == id {
+                return Some(cand_game);
+            }
+        }
+        None
+    }
+
+    for own in gc1_own {
+        let mut game = match game_mut(&mut db_inner, own.game_id) {
+            Some(g) => g,
+            None => {
+                continue;
+            }
+        };
+
+        match own.storefront.as_str() {
+            "free" => game.custom_info.own.free = true,
+            "f2p" => game.custom_info.own.free = true,
+            "steam" => game.custom_info.own.steam = true,
+            " steam" => game.custom_info.own.steam = true,
+            "stea," => game.custom_info.own.steam = true,
+            "steam,humble" => game.custom_info.own.steam = true,
+            "steam, rom" => {
+                game.custom_info.own.steam = true;
+                game.custom_info.own.emulator = true;
+            },
+            "bansteam" => {
+                game.custom_info.own.steam = true;
+                game.custom_info.own.ban_owned = true;
+            },
+            "gmg" => game.custom_info.own.gmg = true,
+            "gog" => game.custom_info.own.gog = true,
+            "humble" => game.custom_info.own.humble = true,
+            "origin" => game.custom_info.own.origin = true,
+            "banorigin" => {
+                game.custom_info.own.origin = true;
+                game.custom_info.own.ban_owned = true;
+            },
+            "egs" => game.custom_info.own.egs = true,
+            "battlenet" => game.custom_info.own.battlenet = true,
+            "itchio" => game.custom_info.own.battlenet = true,
+            "square" => game.custom_info.own.standalone_launcher = true,
+            "gc" => game.custom_info.own.gamecube = true,
+            "emu" => game.custom_info.own.emulator = true,
+            "rom" => game.custom_info.own.emulator = true,
+            "mister" => game.custom_info.own.emulator = true,
+            "gba" => game.custom_info.own.gba = true,
+            "ds" => game.custom_info.own.ds = true,
+            "3ds" => game.custom_info.own.n3ds = true,
+            "ban3ds" => {
+                game.custom_info.own.n3ds = true;
+                game.custom_info.own.ban_owned = true;
+            },
+            "wii" => game.custom_info.own.wii = true,
+            "wiiu" => game.custom_info.own.wiiu = true,
+            "switch" => game.custom_info.own.switch = true,
+            "switvh" => game.custom_info.own.switch = true,
+            "eshop" => game.custom_info.own.switch = true,
+            "switcheshop" => game.custom_info.own.switch = true,
+            "ps1" => game.custom_info.own.ps1 = true,
+            "ps2" => game.custom_info.own.ps2 = true,
+            "ps3" => game.custom_info.own.ps3 = true,
+            "ps4" => game.custom_info.own.ps4 = true,
+            "ps5" => game.custom_info.own.ps5 = true,
+            "psp" => game.custom_info.own.psp = true,
+            "vita" => game.custom_info.own.vita = true,
+            "psn" => game.custom_info.own.ps4 = true,
+            "xbox" => game.custom_info.own.xbox = true,
+            "ios" => game.custom_info.own.ios = true,
+            "quest" => game.custom_info.own.oculus_quest = true,
+            "indiegamestand->steam" => (),
+            "desura" => (),
+            "indieroyale" => (),
+            "devpage" => (),
+            "pc" => (),
+            "beta" => (),
+            "eso" => (),
+            "uplay" => (),
+            "gamepass" => (),
+            "applearcade" => (),
+            "freetrial" => (),
+            "n" => (),
+            "jeremylent" => (),
+            _ => {
+                eprintln!("Encountered unknown own platform \"{}\"", own.storefront.as_str());
+                return;
+            }
+        }
+
+        /*
+        game_id: u32,
+        storefront: String,
+        */
+    }
 }
 
 async fn gc1_data_populate_igdb_info(state: SArghsGC1DataPopulateIGDBInfo) -> Result<(), String> {
@@ -204,7 +470,32 @@ async fn gc1_data_populate_igdb_info(state: SArghsGC1DataPopulateIGDBInfo) -> Re
                     stdin.read_line(&mut buffer).unwrap();
 
                     if buffer.trim().eq("keep") {
-                        // -- go to custorelease_date = Some(chrono::naive::NaiveDate::from_ymd(year as i32, 1, 1));
+                        // -- go to custom handler
+                        println!("Keeping data from GC1.");
+                        break;
+                    }
+
+                    if let Ok(idx) = buffer.trim().parse::<usize>() {
+                        if idx < game_infos.len() {
+                            println!("Copying IGDB data from \"{}\".", game_infos[idx].title());
+                            chosen_game_info = Some(game_infos[idx].clone());
+                            break;
+                        }
+                    }
+
+                    println!("Could not understand input, try again.");
+                }
+            }
+            else {
+                println!("Found no matching games on IGDB. Keeping gc1 data.");
+            }
+
+            if chosen_game_info.is_none() {
+                let title = games[cur_idx].title.clone();
+
+                let mut release_date : Option<chrono::naive::NaiveDate> = None;
+                if let Some(year) = games[cur_idx].release_year {
+                    release_date = Some(chrono::naive::NaiveDate::from_ymd(year as i32, 1, 1));
                 }
 
                 chosen_game_info = Some(core::SGameInfo::new_custom(title, release_date));
@@ -294,6 +585,9 @@ async fn main() {
         }
         EArghsSubcommands::GC1DataPopulateIGDBInfo(state) => {
             gc1_data_populate_igdb_info(state).await.unwrap();
+        }
+        EArghsSubcommands::CreateGC2DBFromGC1Data(_) => {
+            create_gc2_db_from_gc1_data();
         }
     }
 }
