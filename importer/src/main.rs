@@ -55,7 +55,7 @@ struct SGC1Own {
 #[allow(dead_code)]
 struct SGC1Session {
     game_id: u32,
-    start_date: Option<String>,
+    started: Option<String>,
     outcome: String,
 }
 
@@ -354,17 +354,23 @@ fn create_gc2_db_from_gc1_data() {
     let mut next_session_id = 0;
     for session in gc1_sessions {
 
-        if session.start_date.is_none() {
+        if session.started.is_none() {
             continue; // no way to provide reasonable data for these entries, drop them
         }
 
-        let start_date_str = session.start_date.as_ref().expect("checked above").as_str();
+        let start_date_str = session.started.as_ref().expect("checked above").as_str();
         let date_result = chrono::NaiveDate::parse_from_str(start_date_str, "%Y-%m-%d");
         let date = match date_result {
             Ok(d) => d,
             Err(_) => {
-                eprintln!("Could not parse date \"{}\" for session of game with ID {}", start_date_str, session.game_id);
-                return;
+                let datetime_result = chrono::NaiveDateTime::parse_from_str(start_date_str, "%Y-%m-%d %H:%M:%S");
+                match datetime_result {
+                    Ok(dt) => dt.date(),
+                    Err(_) => {
+                        eprintln!("Could not parse date \"{}\" for session of game with ID {}", start_date_str, session.game_id);
+                        return;
+                    }
+                }
             },
         };
 
@@ -372,6 +378,10 @@ fn create_gc2_db_from_gc1_data() {
             "stuck" => core::ESessionState::Finished {
                 end_date: date.succ(), // we don't have this info, so it's day + 1 for now
                 memorable: true,
+            },
+            "tansient" => core::ESessionState::Finished {
+                end_date: date.succ(), // we don't have this info, so it's day + 1 for now
+                memorable: false,
             },
             "transient" => core::ESessionState::Finished {
                 end_date: date.succ(), // we don't have this info, so it's day + 1 for now

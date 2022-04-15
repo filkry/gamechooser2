@@ -5,15 +5,17 @@ pub trait TDOMElement {
     fn tag() -> &'static str;
 }
 
+// -- $$$FRK(TODO): the error for this is simple, doesn't need to be a string
 pub trait TErgonomicDocument {
-    fn create_element_typed<T: JsCast + TDOMElement>(&self) -> Result<T, JsError>;
-    fn get_typed_element_by_id<T: JsCast>(&self, id: &str) -> Result<T, JsError>;
+    fn create_element_typed<T: JsCast + TDOMElement>(&self) -> Result<T, String>;
+    fn get_typed_element_by_id<T: JsCast>(&self, id: &str) -> Result<T, String>;
 }
 
 pub trait TToJsError {
     type OkType;
 
     fn to_jserr(self) -> Result<Self::OkType, JsError>;
+    fn to_str_err(self) -> Result<Self::OkType, String>;
 }
 
 // -- Implementations start here
@@ -66,24 +68,51 @@ impl<T> TToJsError for Result<T, JsValue> {
             }
         }
     }
+
+    fn to_str_err(self) -> Result<Self::OkType, String> {
+        match self {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                let temp = format!("{:?}", e);
+                Err(temp)
+            }
+        }
+    }
 }
 
-impl TErgonomicDocument for web_sys::Document {
-    fn create_element_typed<T: JsCast + TDOMElement>(&self) -> Result<T, JsError> {
-        let elem = document().create_element(T::tag()).or(Err(JsError::new("Failed to create element")))?;
+impl<T> TToJsError for Result<T, String> {
+    type OkType = T;
 
-        match elem.dyn_into::<T>() {
-            Ok(res) => Ok(res),
-            Err(_) => Err(JsError::new("Created an element, but it somehow had the wrong type."))
+    fn to_jserr(self) -> Result<Self::OkType, JsError> {
+        match self {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                Err(JsError::new(e.as_str()))
+            }
         }
     }
 
-    fn get_typed_element_by_id<T: JsCast>(&self, id: &str) -> Result<T, JsError> {
-        let elem = document().get_element_by_id(id).ok_or(JsError::new("Element did not exist"))?;
+    fn to_str_err(self) -> Result<Self::OkType, String> {
+        self
+    }
+}
+
+impl TErgonomicDocument for web_sys::Document {
+    fn create_element_typed<T: JsCast + TDOMElement>(&self) -> Result<T, String> {
+        let elem = document().create_element(T::tag()).or(Err(String::from("Failed to create element")))?;
 
         match elem.dyn_into::<T>() {
             Ok(res) => Ok(res),
-            Err(_) => Err(JsError::new("get_typed_element_by_id found element, but it wasn't the desired type"))
+            Err(_) => Err(String::from("Created an element, but it somehow had the wrong type."))
+        }
+    }
+
+    fn get_typed_element_by_id<T: JsCast>(&self, id: &str) -> Result<T, String> {
+        let elem = document().get_element_by_id(id).ok_or(String::from("Element did not exist"))?;
+
+        match elem.dyn_into::<T>() {
+            Ok(res) => Ok(res),
+            Err(_) => Err(String::from("get_typed_element_by_id found element, but it wasn't the desired type"))
         }
     }
 }

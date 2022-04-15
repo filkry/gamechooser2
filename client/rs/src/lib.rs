@@ -148,13 +148,13 @@ pub async fn search_igdb() -> Result<(), JsError> {
     let document = document();
 
     // -- do the request
-    let name_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("name_search_string")?;
-    let games : Vec<core::SGameInfo> = server_api::search_igdb(name_search_input.value().as_str()).await?;
+    let name_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("name_search_string").to_jserr()?;
+    let games : Vec<core::SGameInfo> = server_api::search_igdb(name_search_input.value().as_str()).await.to_jserr()?;
 
-    let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("search_igdb_output")?;
+    let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("search_igdb_output").to_jserr()?;
     output_elem.set_inner_html("");
     for game in &games {
-        let game_div = document.create_element_typed::<HtmlDivElement>()?;
+        let game_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
         output_elem.append_child(&game_div).to_jserr()?;
 
         let title_elem = document.create_element("h3").to_jserr()?;
@@ -162,7 +162,7 @@ pub async fn search_igdb() -> Result<(), JsError> {
         game_div.append_child(&title_elem).to_jserr()?;
 
         if let Some(url) = game.cover_url() {
-            let img_elem = document.create_element_typed::<HtmlImageElement>()?;
+            let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
             img_elem.set_src(url);
             game_div.append_child(&img_elem).to_jserr()?;
         }
@@ -219,13 +219,19 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
     let document = document();
 
     // -- do the request
-    let name_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("add_screen_name_search_input")?;
-    let games : Vec<core::SGameInfo> = server_api::search_igdb(name_search_input.value().as_str()).await?;
+    let name_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("add_screen_name_search_input").to_jserr()?;
+    let games : Vec<core::SGameInfo> = match server_api::search_igdb(name_search_input.value().as_str()).await {
+        Ok(g) => g,
+        Err(e) => {
+            show_error(e)?;
+            return Ok(());
+        },
+    };
 
-    let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("add_screen_search_igdb_output")?;
+    let output_elem = div("add_screen_search_igdb_output")?;
     output_elem.set_inner_html("");
     for game in &games {
-        let game_div = document.create_element_typed::<HtmlDivElement>()?;
+        let game_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
         output_elem.append_child(&game_div).to_jserr()?;
 
         let title_elem = document.create_element("h3").to_jserr()?;
@@ -233,12 +239,12 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
         game_div.append_child(&title_elem).to_jserr()?;
 
         if let Some(url) = game.cover_url() {
-            let img_elem = document.create_element_typed::<HtmlImageElement>()?;
+            let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
             img_elem.set_src(url);
             game_div.append_child(&img_elem).to_jserr()?;
         }
 
-        let button_elem = document.create_element_typed::<HtmlButtonElement>()?;
+        let button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
         let onclick_body = format!("add_screen_add_result({});", game.igdb_id().expect("IGDB results should have an igdb_id"));
         let onclick = Function::new_no_args(onclick_body.as_str());
         button_elem.set_onclick(Some(&onclick));
@@ -256,19 +262,19 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
 }
 
 fn populate_inner_text(id: &str, value: &str) -> Result<(), JsError> {
-    let elem = document().get_typed_element_by_id::<HtmlElement>(id)?;
+    let elem = document().get_typed_element_by_id::<HtmlElement>(id).to_jserr()?;
     elem.set_inner_text(value);
     Ok(())
 }
 
 fn populate_text_input(id: &str, value: &str) -> Result<(), JsError> {
-    let elem = document().get_typed_element_by_id::<HtmlInputElement>(id)?;
+    let elem = document().get_typed_element_by_id::<HtmlInputElement>(id).to_jserr()?;
     elem.set_value(value);
     Ok(())
 }
 
 fn populate_date_input(id: &str, value: Option<chrono::naive::NaiveDate>) -> Result<(), JsError> {
-    let date_elem = document().get_typed_element_by_id::<HtmlInputElement>(id)?;
+    let date_elem = document().get_typed_element_by_id::<HtmlInputElement>(id).to_jserr()?;
     let date = match value {
         Some(d) => d,
         None => chrono::offset::Local::now().naive_local().date(),
@@ -279,19 +285,19 @@ fn populate_date_input(id: &str, value: Option<chrono::naive::NaiveDate>) -> Res
 }
 
 fn populate_checkox_input(id: &str, value: bool) -> Result<(), JsError> {
-    let elem = document().get_typed_element_by_id::<HtmlInputElement>(id)?;
+    let elem = document().get_typed_element_by_id::<HtmlInputElement>(id).to_jserr()?;
     elem.set_checked(value);
     Ok(())
 }
 
 fn populate_number_input(id: &str, value: f64) -> Result<(), JsError> {
-    let elem = document().get_typed_element_by_id::<HtmlInputElement>(id)?;
+    let elem = document().get_typed_element_by_id::<HtmlInputElement>(id).to_jserr()?;
     elem.set_value_as_number(value);
     Ok(())
 }
 
 fn populate_img(id: &str, src: Option<&str>) -> Result<(), JsError> {
-    let elem = document().get_typed_element_by_id::<HtmlImageElement>(id)?;
+    let elem = document().get_typed_element_by_id::<HtmlImageElement>(id).to_jserr()?;
     if let Some(url) = src {
         elem.set_src(url);
         elem.style().set_property("display", "block").to_jserr()?;
@@ -342,9 +348,9 @@ fn edit_screen_update_text() -> Result<(), JsError> {
 
     let app = APP.try_read().expect("Should never actually have contention");
 
-    let header_elem = document().get_typed_element_by_id::<HtmlElement>("game_edit_header")?;
+    let header_elem = document().get_typed_element_by_id::<HtmlElement>("game_edit_header").to_jserr()?;
     header_elem.set_inner_text(app.game_edit.header());
-    let submit_elem = document().get_typed_element_by_id::<HtmlElement>("game_edit_submit")?;
+    let submit_elem = document().get_typed_element_by_id::<HtmlElement>("game_edit_submit").to_jserr()?;
     submit_elem.set_inner_text(app.game_edit.submit_button_text());
 
     Ok(())
@@ -355,7 +361,7 @@ fn edit_game(game: core::SCollectionGame) -> Result<(), JsError> {
     edit_screen_populate_custom_info(&game.custom_info)?;
     edit_screen_populate_choose_state(&game.choose_state)?;
 
-    document().get_typed_element_by_id::<HtmlDivElement>("game_edit_choose_state")?
+    document().get_typed_element_by_id::<HtmlDivElement>("game_edit_choose_state").to_jserr()?
         .style().set_property("display", "block").to_jserr()?;
 
     {
@@ -374,7 +380,7 @@ fn add_game(game: core::SAddCollectionGame) -> Result<(), JsError> {
     edit_screen_populate_game_info(&game.game_info)?;
     edit_screen_populate_custom_info(&game.custom_info)?;
 
-    document().get_typed_element_by_id::<HtmlDivElement>("game_edit_choose_state")?
+    document().get_typed_element_by_id::<HtmlDivElement>("game_edit_choose_state").to_jserr()?
         .style().set_property("display", "none").to_jserr()?;
 
     {
@@ -419,9 +425,9 @@ pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
 }
 
 fn update_game_info_from_edit_screen(game_info: &mut core::SGameInfo) -> Result<(), JsError> {
-    game_info.set_title(document().get_typed_element_by_id::<HtmlInputElement>("game_edit_title")?.value().as_str());
+    game_info.set_title(document().get_typed_element_by_id::<HtmlInputElement>("game_edit_title").to_jserr()?.value().as_str());
 
-    let date_str = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_release_date")?.value();
+    let date_str = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_release_date").to_jserr()?.value();
     if let Err(_) = game_info.set_release_date_str(date_str.as_str()) {
         return Err(JsError::new("Could not parse date from game_edit_release_date element."));
     }
@@ -430,11 +436,11 @@ fn update_game_info_from_edit_screen(game_info: &mut core::SGameInfo) -> Result<
 }
 
 fn checkbox_value(id: &str) -> Result<bool, JsError> {
-    Ok(document().get_typed_element_by_id::<HtmlInputElement>(id)?.checked())
+    Ok(document().get_typed_element_by_id::<HtmlInputElement>(id).to_jserr()?.checked())
 }
 
 fn update_custom_info_from_edit_screen(custom_info: &mut core::SGameCustomInfo) -> Result<(), JsError> {
-    custom_info.via = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_via")?.value();
+    custom_info.via = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_via").to_jserr()?.value();
 
     custom_info.tags = core::SGameTags {
         couch_playable: checkbox_value("game_edit_tag_couch")?,
@@ -459,10 +465,10 @@ fn update_custom_info_from_edit_screen(custom_info: &mut core::SGameCustomInfo) 
 }
 
 fn update_choose_state_from_edit_screen(choose_state: &mut core::SGameChooseState) -> Result<(), JsError> {
-    let choose_date_str = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_next_valid_proposal_date")?.value();
+    let choose_date_str = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_next_valid_proposal_date").to_jserr()?.value();
     choose_state.next_valid_proposal_date = chrono::naive::NaiveDate::parse_from_str(choose_date_str.as_str(), "%Y-%m-%d")?;
     choose_state.retired = checkbox_value("game_edit_retired")?;
-    choose_state.passes = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_passes")?.value_as_number() as u16;
+    choose_state.passes = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_passes").to_jserr()?.value_as_number() as u16;
     choose_state.ignore_passes = checkbox_value("game_edit_ignore_passes")?;
 
     Ok(())
@@ -473,7 +479,9 @@ async fn edit_screen_submit_edit_helper(mut game: core::SCollectionGame) -> Resu
     update_custom_info_from_edit_screen(&mut game.custom_info)?;
     update_choose_state_from_edit_screen(&mut game.choose_state)?;
 
-    server_api::edit_game(game.clone()).await?;
+    if let Err(e) = server_api::edit_game(game.clone()).await {
+        show_error(e)?;
+    }
     Ok(())
 }
 
@@ -481,13 +489,15 @@ async fn edit_screen_submit_add_helper(mut game: core::SAddCollectionGame) -> Re
     update_game_info_from_edit_screen(&mut game.game_info)?;
     update_custom_info_from_edit_screen(&mut game.custom_info)?;
 
-    server_api::add_game(game.clone()).await?;
+    if let Err(e) = server_api::add_game(game.clone()).await {
+        show_error(e)?;
+    }
     Ok(())
 }
 
 #[wasm_bindgen]
 pub async fn edit_screen_submit() -> Result<(), JsError> {
-    let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message")?;
+    let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message").to_jserr()?;
 
     let edit = {
         let mut app = APP.try_write().expect("Should never actually have contention");
@@ -525,11 +535,11 @@ pub async fn edit_screen_submit() -> Result<(), JsError> {
 fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Result<(), JsError> {
     let document = document();
 
-    let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("session_screen_session_list")?;
+    let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("session_screen_session_list").to_jserr()?;
     output_elem.set_inner_html("");
 
     for session in &sessions {
-        let session_div = document.create_element_typed::<HtmlDivElement>()?;
+        let session_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
         output_elem.append_child(&session_div).to_jserr()?;
 
         let title_elem = document.create_element("h3").to_jserr()?;
@@ -537,23 +547,23 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
         session_div.append_child(&title_elem).to_jserr()?;
 
         if let Some(url) = session.game_info.cover_url() {
-            let img_elem = document.create_element_typed::<HtmlImageElement>()?;
+            let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
             img_elem.set_src(url);
             session_div.append_child(&img_elem).to_jserr()?;
         }
 
-        let memorable_elem = document.create_element_typed::<HtmlInputElement>()?;
+        let memorable_elem = document.create_element_typed::<HtmlInputElement>().to_jserr()?;
         memorable_elem.set_type("checkbox");
         let memorable_elem_id = format!("session_screen_memorable_{}", session.session.internal_id);
         memorable_elem.set_id(memorable_elem_id.as_str());
         session_div.append_child(&memorable_elem).to_jserr()?;
 
-        let memorable_elem_label = document.create_element_typed::<HtmlLabelElement>()?;
+        let memorable_elem_label = document.create_element_typed::<HtmlLabelElement>().to_jserr()?;
         memorable_elem_label.set_html_for(memorable_elem_id.as_str());
         memorable_elem_label.set_inner_text("Memorable");
         session_div.append_child(&memorable_elem_label).to_jserr()?;
 
-        let button_elem = document.create_element_typed::<HtmlButtonElement>()?;
+        let button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
         let onclick_body = format!("session_screen_finish_session({});", session.session.internal_id);
         let onclick = Function::new_no_args(onclick_body.as_str());
         button_elem.set_onclick(Some(&onclick));
@@ -573,11 +583,11 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
 fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Result<(), JsError> {
     let document = document();
 
-    let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("collection_screen_game_list")?;
+    let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("collection_screen_game_list").to_jserr()?;
     output_elem.set_inner_html("");
 
     for game in &games {
-        let game_div = document.create_element_typed::<HtmlDivElement>()?;
+        let game_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
         output_elem.append_child(&game_div).to_jserr()?;
 
         let title_elem = document.create_element("h3").to_jserr()?;
@@ -585,19 +595,19 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
         game_div.append_child(&title_elem).to_jserr()?;
 
         if let Some(url) = game.game_info.cover_url() {
-            let img_elem = document.create_element_typed::<HtmlImageElement>()?;
+            let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
             img_elem.set_src(url);
             game_div.append_child(&img_elem).to_jserr()?;
         }
 
-        let edit_button_elem = document.create_element_typed::<HtmlButtonElement>()?;
+        let edit_button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
         let onclick_body = format!("collection_screen_edit_game({});", game.internal_id);
         let onclick = Function::new_no_args(onclick_body.as_str());
         edit_button_elem.set_onclick(Some(&onclick));
         edit_button_elem.set_inner_text("Edit");
         game_div.append_child(&edit_button_elem).to_jserr()?;
 
-        let start_sesion_button_elem = document.create_element_typed::<HtmlButtonElement>()?;
+        let start_sesion_button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
         let onclick_body = format!("collection_screen_start_session({});", game.internal_id);
         let onclick = Function::new_no_args(onclick_body.as_str());
         start_sesion_button_elem.set_onclick(Some(&onclick));
@@ -614,8 +624,21 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
     Ok(())
 }
 
+fn show_error(e: String) -> Result<(), JsError> {
+    let err_div = div("error_div")?;
+    err_div.set_inner_text(e.as_str());
+    err_div.style().set_property("display", "block").to_jserr()?;
+    Ok(())
+}
+
 async fn enter_sessions_screen() -> Result<(), JsError> {
-    let sessions = server_api::get_active_sessions().await?;
+    let sessions = match server_api::get_active_sessions().await {
+        Ok(s) => s,
+        Err(e) => {
+            show_error(e)?;
+            return Ok(());
+        }
+    };
 
     populate_sessions_screen_list(sessions)?;
 
@@ -625,7 +648,13 @@ async fn enter_sessions_screen() -> Result<(), JsError> {
 }
 
 async fn enter_collection_screen() -> Result<(), JsError> {
-    let games = server_api::get_recent_collection_games().await?;
+    let games = match server_api::get_recent_collection_games().await {
+        Ok(g) => g,
+        Err(e) => {
+            show_error(e)?;
+            return Ok(());
+        }
+    };
 
     populate_collection_screen_game_list(games)?;
 
@@ -639,8 +668,14 @@ pub async fn collection_screen_search() -> Result<(), JsError> {
     let document = document();
 
     // -- do the request
-    let collection_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("collection_search_input")?;
-    let games : Vec<core::SCollectionGame> = server_api::search_collection(collection_search_input.value().as_str()).await?;
+    let collection_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("collection_search_input").to_jserr()?;
+    let games : Vec<core::SCollectionGame> = match server_api::search_collection(collection_search_input.value().as_str()).await {
+        Ok(g) => g,
+        Err(e) => {
+            show_error(e)?;
+            return Ok(());
+        }
+    };
 
     populate_collection_screen_game_list(games)?;
 
@@ -688,7 +723,7 @@ pub async fn collection_screen_start_session(internal_id: u32) -> Result<(), JsE
     };
     let game = game_opt.ok_or(JsError::new("Somehow starting session for game not in the list."))?;
 
-    let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message")?;
+    let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message").to_jserr()?;
 
     match server_api::start_session(game.internal_id).await {
         Ok(_) => p.set_inner_text("Successfully started session."),
@@ -725,7 +760,7 @@ pub async fn session_screen_finish_session(internal_id: u32) -> Result<(), JsErr
     let checkbox_id = format!("session_screen_memorable_{}", internal_id);
     let memorable = checkbox_value(checkbox_id.as_str())?;
 
-    let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message")?;
+    let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message").to_jserr()?;
     match server_api::finish_session(internal_id, memorable).await {
         Ok(_) => p.set_inner_text("Successfully finished session."),
         Err(_) => p.set_inner_text("Failed to finish session."),
@@ -780,7 +815,13 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
         max_passes,
     };
 
-    let randomizer_list = server_api::get_randomizer_games(filter).await?;
+    let randomizer_list = match server_api::get_randomizer_games(filter).await {
+        Ok(l) => l,
+        Err(e) => {
+            show_error(e)?;
+            return Ok(());
+        }
+    };
 
     {
         let mut app = APP.try_write().expect("Should never actually have contention.");
@@ -807,12 +848,18 @@ pub async fn randomizer_pick_current_game() -> Result<(), JsError> {
         {
             let cur_game_idx = session.randomizer_list.shuffled_indices[session.cur_idx];
             let game_internal_id = session.randomizer_list.games[cur_game_idx].internal_id;
-            server_api::start_session(game_internal_id).await?;
+            if let Err(e) = server_api::start_session(game_internal_id).await {
+                show_error(e)?;
+                return Ok(());
+            }
         }
 
         // -- update all the choose date on games
         {
-            server_api::update_choose_state(session.randomizer_list.games).await?;
+            if let Err(e) = server_api::update_choose_state(session.randomizer_list.games).await {
+                show_error(e)?;
+                return Ok(());
+            }
         }
     }
     else {
