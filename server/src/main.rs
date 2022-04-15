@@ -173,6 +173,7 @@ async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectio
 async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollectionGame>>, String> {
     let db = load_db()?;
 
+    #[derive(Debug)]
     struct SScore {
         idx: usize,
         score: isize,
@@ -188,8 +189,7 @@ async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollecti
         }
     }
 
-    scores.sort_by(|a, b| a.score.cmp(&b.score));
-    assert!(scores.len() < 2 || scores[0].score > scores[1].score);
+    scores.sort_by(|a, b| b.score.cmp(&a.score));
 
     let mut result = Vec::with_capacity(10);
     for i in 0..std::cmp::min(10, scores.len()) {
