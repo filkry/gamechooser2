@@ -552,23 +552,41 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
             session_div.append_child(&img_elem).to_jserr()?;
         }
 
-        let memorable_elem = document.create_element_typed::<HtmlInputElement>().to_jserr()?;
-        memorable_elem.set_type("checkbox");
-        let memorable_elem_id = format!("session_screen_memorable_{}", session.session.internal_id);
-        memorable_elem.set_id(memorable_elem_id.as_str());
-        session_div.append_child(&memorable_elem).to_jserr()?;
+        let start_date_elem = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
+        start_date_elem.set_inner_text(format!("Start date: {}", session.session.start_date).as_str());
+        session_div.append_child(&start_date_elem).to_jserr()?;
 
-        let memorable_elem_label = document.create_element_typed::<HtmlLabelElement>().to_jserr()?;
-        memorable_elem_label.set_html_for(memorable_elem_id.as_str());
-        memorable_elem_label.set_inner_text("Memorable");
-        session_div.append_child(&memorable_elem_label).to_jserr()?;
+        match session.session.state {
+            core::ESessionState::Ongoing => {
+                let memorable_elem = document.create_element_typed::<HtmlInputElement>().to_jserr()?;
+                memorable_elem.set_type("checkbox");
+                let memorable_elem_id = format!("session_screen_memorable_{}", session.session.internal_id);
+                memorable_elem.set_id(memorable_elem_id.as_str());
+                session_div.append_child(&memorable_elem).to_jserr()?;
 
-        let button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
-        let onclick_body = format!("session_screen_finish_session({});", session.session.internal_id);
-        let onclick = Function::new_no_args(onclick_body.as_str());
-        button_elem.set_onclick(Some(&onclick));
-        button_elem.set_inner_text("Finish session");
-        session_div.append_child(&button_elem).to_jserr()?;
+                let memorable_elem_label = document.create_element_typed::<HtmlLabelElement>().to_jserr()?;
+                memorable_elem_label.set_html_for(memorable_elem_id.as_str());
+                memorable_elem_label.set_inner_text("Memorable");
+                session_div.append_child(&memorable_elem_label).to_jserr()?;
+
+                let button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+                let onclick_body = format!("session_screen_finish_session({});", session.session.internal_id);
+                let onclick = Function::new_no_args(onclick_body.as_str());
+                button_elem.set_onclick(Some(&onclick));
+                button_elem.set_inner_text("Finish session");
+                session_div.append_child(&button_elem).to_jserr()?;
+            },
+            core::ESessionState::Finished{end_date, memorable} => {
+                let end_date_elem = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
+                end_date_elem.set_inner_text(format!("End date: {}", end_date).as_str());
+                session_div.append_child(&end_date_elem).to_jserr()?;
+
+                let memorable_elem = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
+                memorable_elem.set_inner_text(format!("Memorable: {}", memorable).as_str());
+                session_div.append_child(&memorable_elem).to_jserr()?;
+            }
+        }
+
     }
 
     // -- cache results for later use
