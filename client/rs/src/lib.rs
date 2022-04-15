@@ -616,43 +616,32 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
             game_div.append_child(&portable_span).to_jserr()?;
         }
 
-        let add_own_tag = |test: bool, name: &str| -> Result<(), JsError> {
-            if test {
+        let mut stored_err = None;
+
+        let add_own_tag = |owned: bool, name: &str| -> Result<(), JsError> {
+            if owned {
                 let own_span = document().create_element_typed::<HtmlSpanElement>().to_jserr()?;
                 own_span.set_inner_text(format!("✓ {}", name).as_str());
                 game_div.append_child(&own_span).to_jserr()?;
             }
             Ok(())
         };
-        add_own_tag(game.custom_info.own.free, "free")?;
-        add_own_tag(game.custom_info.own.steam, "steam")?;
-        add_own_tag(game.custom_info.own.gmg, "gmg")?;
-        add_own_tag(game.custom_info.own.gog, "gog")?;
-        add_own_tag(game.custom_info.own.humble, "humble")?;
-        add_own_tag(game.custom_info.own.origin, "origin")?;
-        add_own_tag(game.custom_info.own.egs, "egs")?;
-        add_own_tag(game.custom_info.own.battlenet, "battle.net")?;
-        add_own_tag(game.custom_info.own.itch, "itch.io")?;
-        add_own_tag(game.custom_info.own.standalone_launcher, "standalone launcher")?;
-        add_own_tag(game.custom_info.own.emulator, "emulator")?;
-        add_own_tag(game.custom_info.own.gba, "gba")?;
-        add_own_tag(game.custom_info.own.ds, "ds")?;
-        add_own_tag(game.custom_info.own.n3ds, "3ds")?;
-        add_own_tag(game.custom_info.own.gamecube, "gamecube")?;
-        add_own_tag(game.custom_info.own.wii, "wii")?;
-        add_own_tag(game.custom_info.own.wiiu, "wiiu")?;
-        add_own_tag(game.custom_info.own.switch, "switch")?;
-        add_own_tag(game.custom_info.own.ps1, "ps1")?;
-        add_own_tag(game.custom_info.own.ps2, "ps2")?;
-        add_own_tag(game.custom_info.own.ps3, "ps3")?;
-        add_own_tag(game.custom_info.own.ps4, "ps4")?;
-        add_own_tag(game.custom_info.own.ps5, "ps5")?;
-        add_own_tag(game.custom_info.own.psp, "psp")?;
-        add_own_tag(game.custom_info.own.vita, "vita")?;
-        add_own_tag(game.custom_info.own.xbox, "xbox")?;
-        add_own_tag(game.custom_info.own.ios, "ios")?;
-        add_own_tag(game.custom_info.own.oculus_quest, "oculus quest")?;
-        add_own_tag(game.custom_info.own.ban_owned, "ban owned")?;
+        let capture_err = |owned: bool, name: &str| {
+            if stored_err.is_some() {
+                return;
+            }
+
+            if let Err(e) = add_own_tag(owned, name) {
+                stored_err = Some(e);
+            }
+        };
+
+        game.custom_info.own.each(capture_err);
+
+        // -- verify no js errors during the tag adding stage
+        if let Some(e) = stored_err {
+            return Err(e);
+        }
 
         let edit_button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
         let onclick_body = format!("collection_screen_edit_game({});", game.internal_id);

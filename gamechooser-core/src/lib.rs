@@ -173,7 +173,47 @@ impl std::ops::DerefMut for EDatabase {
 
 impl SOwn {
     fn owned(&self) -> bool {
-        self.steam || self.egs || self.emulator || self.ds || self.n3ds || self.wii || self.wiiu || self.switch || self.ps4 || self.ps5
+        let mut owned = false;
+        let check = |o: bool, _: &str| {
+            owned = owned || o;
+        };
+        self.each(check);
+
+        owned
+    }
+
+    pub fn each<F>(&self, mut f: F) where
+        F: std::ops::FnMut(bool, &str)
+    {
+        f(self.free, "free");
+        f(self.steam, "steam");
+        f(self.gmg, "gmg");
+        f(self.gog, "gog");
+        f(self.humble, "gog");
+        f(self.origin, "origin");
+        f(self.egs, "egs");
+        f(self.battlenet, "battle.net");
+        f(self.itch, "itch.io");
+        f(self.standalone_launcher, "standalone launcher");
+        f(self.emulator, "emulator");
+        f(self.gba, "gba");
+        f(self.ds, "ds");
+        f(self.n3ds, "3ds");
+        f(self.gamecube, "gamecube");
+        f(self.wii, "wii");
+        f(self.wiiu, "wiiu");
+        f(self.switch, "switch");
+        f(self.ps1, "ps1");
+        f(self.ps2, "ps2");
+        f(self.ps3, "ps3");
+        f(self.ps4, "ps4");
+        f(self.ps5, "ps5");
+        f(self.psp, "psp");
+        f(self.vita, "vita");
+        f(self.xbox, "xbox");
+        f(self.ios, "ios");
+        f(self.oculus_quest, "oculus quest");
+        f(self.ban_owned, "ban owns");
     }
 }
 
