@@ -1,4 +1,5 @@
 use chrono;
+use chrono::{Datelike};
 use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -114,6 +115,13 @@ pub struct SSession {
 pub struct SSessionAndGameInfo {
     pub session: SSession,
     pub game_info: SGameInfo,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SSessionFilter {
+    pub active_only: bool,
+    pub memorable_only: bool,
+    pub year: Option<u32>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -283,6 +291,47 @@ impl SSession {
             end_date: chrono::offset::Local::now().naive_local().date(),
             memorable,
         }
+    }
+}
+
+impl SSessionFilter {
+    pub fn session_passes(&self, session: &SSession) -> bool {
+        if self.active_only && !matches!(session.state, ESessionState::Ongoing) {
+            return false;
+        }
+
+        if self.memorable_only {
+            match session.state {
+                ESessionState::Ongoing => {
+                    return false;
+                },
+                ESessionState::Finished{end_date: _, memorable} => {
+                    if !memorable {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        if let Some(y) = self.year {
+            let mut either = false;
+
+            if session.start_date.year() as u32 == y {
+                either = true;
+            }
+
+            if let ESessionState::Finished{end_date, memorable: _} = session.state {
+                if end_date.year() as u32 == y {
+                    either = true;
+                }
+            }
+
+            if !either {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
 

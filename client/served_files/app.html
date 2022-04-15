@@ -15,6 +15,16 @@
     <body>
         <div id="sessions_div">
             <h1 id="sessions_header">Sessions</h1>
+            <dir id="sessions_filter_div">
+                <input type="checkbox" id="sessions_screen_filter_active" checked>
+                <label for="sessions_screen_filter_active">Active only</label>
+                <input type="checkbox" id="sessions_screen_filter_memorable">
+                <label for="sessions_screen_filter_memorable">Memorable only</label>
+                <input type="checkbox" id="sessions_screen_filter_year_enable">
+                <label for="sessions_screen_filter_year">Limit to year:</label>
+                <input type="number" id="sessions_screen_filter_year">
+                <button onclick="session_screen_apply_filter()">Apply filters</button>
+            </dir>
             <div id="session_screen_session_list"></div>
         </div>
         <div id="collection_div" style="display:none">
@@ -127,6 +137,7 @@
             collection_screen_edit_game,
             collection_screen_start_session,
             session_screen_finish_session,
+            session_screen_apply_filter,
             randomizer_screen_start,
             randomizer_pick_current_game,
         } from './rs-wasm-bindgen-output/gamechooser2_client.js';
@@ -148,6 +159,7 @@
             window.collection_screen_edit_game = collection_screen_edit_game;
             window.collection_screen_start_session = collection_screen_start_session;
             window.session_screen_finish_session = session_screen_finish_session;
+            window.session_screen_apply_filter = session_screen_apply_filter;
             window.randomizer_screen_start = randomizer_screen_start;
             window.randomizer_pick_current_game = randomizer_pick_current_game;
             console.log("bindings set");

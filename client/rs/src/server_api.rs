@@ -154,8 +154,19 @@ pub(super) async fn search_collection(query: &str) -> Result<Vec<core::SCollecti
     post_return_data("search_collection", Some(query)).await
 }
 
-pub(super) async fn get_active_sessions() -> Result<Vec<core::SSessionAndGameInfo>, String> {
-    post_return_data("get_active_sessions", None).await
+pub(super) async fn get_sessions(
+    active_only: bool,
+    memorable_only: bool,
+    year: Option<u32>,
+) -> Result<Vec<core::SSessionAndGameInfo>, String> {
+
+    let filter = core::SSessionFilter {
+        active_only,
+        memorable_only,
+        year,
+    };
+
+    post_data_return_data("get_sessions", filter).await
 }
 
 pub(super) async fn start_session(internal_id: u32) -> Result<(), String> {

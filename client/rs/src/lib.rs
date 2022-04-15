@@ -632,7 +632,27 @@ fn show_error(e: String) -> Result<(), JsError> {
 }
 
 async fn enter_sessions_screen() -> Result<(), JsError> {
-    let sessions = match server_api::get_active_sessions().await {
+    session_screen_apply_filter().await?;
+    swap_section_div("sessions_div")?;
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn session_screen_apply_filter() -> Result<(), JsError> {
+    let year = if checkbox_value("sessions_screen_filter_year_enable")? {
+        let year_input = document().get_typed_element_by_id::<HtmlInputElement>("sessions_screen_filter_year").to_jserr()?;
+        Some(year_input.value_as_number() as u32)
+    }
+    else {
+        None
+    };
+
+    let sessions = match server_api::get_sessions(
+        checkbox_value("sessions_screen_filter_active")?,
+        checkbox_value("sessions_screen_filter_memorable")?,
+        year,
+    ).await {
         Ok(s) => s,
         Err(e) => {
             show_error(e)?;
@@ -641,8 +661,6 @@ async fn enter_sessions_screen() -> Result<(), JsError> {
     };
 
     populate_sessions_screen_list(sessions)?;
-
-    swap_section_div("sessions_div")?;
 
     Ok(())
 }

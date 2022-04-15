@@ -249,14 +249,14 @@ async fn finish_session(session_internal_id: u32, memorable: bool) -> Result<(),
     Ok(())
 }
 
-#[post("/get_active_sessions")]
-async fn get_active_sessions() -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, String> {
+#[post("/get_sessions", data = "<filter>")]
+async fn get_sessions(filter: RocketJson<core::SSessionFilter>) -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, String> {
     let db = load_db()?;
 
     let mut result = Vec::with_capacity(10);
 
     for session in &db.sessions {
-        if let core::ESessionState::Ongoing = session.state {
+        if filter.session_passes(&session) {
 
             // -- find the game
             let mut game_opt = None;
@@ -359,7 +359,7 @@ fn rocket() -> _ {
             search_collection,
             start_session,
             finish_session,
-            get_active_sessions,
+            get_sessions,
             get_randomizer_games,
             update_choose_state,
         ])

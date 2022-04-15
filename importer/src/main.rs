@@ -358,6 +358,18 @@ fn create_gc2_db_from_gc1_data() {
             continue; // no way to provide reasonable data for these entries, drop them
         }
 
+        let mut found_game = false;
+        for game in &db_inner.games {
+            if game.internal_id == session.game_id {
+                found_game = true;
+                break;
+            }
+        }
+
+        if !found_game {
+            continue; // some games were deleted from the DB but sessions remain, drop these sessions
+        }
+
         let start_date_str = session.started.as_ref().expect("checked above").as_str();
         let date_result = chrono::NaiveDate::parse_from_str(start_date_str, "%Y-%m-%d");
         let date = match date_result {
