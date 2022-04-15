@@ -1,5 +1,30 @@
 # Notes
 
+## Post-import TODO
+
+Gamechooser1 data is successfully imported, and now I keep thinking of things to do. I'd like to
+dump a list here so I hopefully don't forget all of them!
+
++ discover how all sessions got deleted one time
++ floating error/refresh message
++ better error handling in the client
+    + check what happens when the server returns a Result::Err
++ styling
++ collection screen enter for search
++ when starting session, prevent starting session for game that already has session going
++ when adding, try to catch duplicate entries
++ add screen filter out DLC
++ add screen allow creating manual entry (non-IGDB)
++ add screen display some metadata
++ add screen go to edit
++ add screen reset choose state
++ details screen pull additional stuff from IGDB
++ edit screen new own add/remove UI
++ randomizer implement algorithm
++ stats screen basic stats
++ stats screen burndown chart
++ some kind of lite authentication
+
 ## Next step
 Next step is probably to proof of concept using google docs or sheets as a storage backend...
 Actually, do I need to do this? If I'm running this on my NAS, I can store the DB in plaintext
