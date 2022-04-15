@@ -171,6 +171,15 @@ impl std::ops::DerefMut for EDatabase {
     }
 }
 
+impl SGameTags {
+    pub fn each<F>(&self, mut f: F) where
+        F: std::ops::FnMut(bool, &str)
+    {
+        f(self.couch_playable, "couch playable");
+        f(self.portable_playable, "portable playable");
+    }
+}
+
 impl SOwn {
     fn owned(&self) -> bool {
         let mut owned = false;

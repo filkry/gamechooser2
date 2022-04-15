@@ -52,6 +52,8 @@ struct SAppState {
 
     last_search_igdb_results: Option<Vec<core::SGameInfo>>,
 
+    details_screen_game: Option<core::SCollectionGame>,
+
     game_edit: EGameEdit,
 
     game_randomizer: EGameRandomizer,
@@ -96,6 +98,7 @@ impl SAppState {
             session_screen_sessions: None,
             last_search_igdb_results: None,
             collection_screen_games: None,
+            details_screen_game: None,
             game_edit: EGameEdit::None,
             game_randomizer: EGameRandomizer::Uninit,
         }
@@ -162,6 +165,7 @@ fn swap_section_div(tgt_id: &str) -> Result<(), JsError> {
     div("add_div")?.style().set_property("display", "none").to_jserr()?;
     div("randomizer_div")?.style().set_property("display", "none").to_jserr()?;
     div("stats_div")?.style().set_property("display", "none").to_jserr()?;
+    div("game_details_div")?.style().set_property("display", "none").to_jserr()?;
     div("game_edit_div")?.style().set_property("display", "none").to_jserr()?;
     div("result_div")?.style().set_property("display", "none").to_jserr()?;
 
@@ -290,6 +294,45 @@ fn populate_img(id: &str, src: Option<&str>) -> Result<(), JsError> {
     Ok(())
 }
 
+fn details_screen_populate_game_info(game_info: &core::SGameInfo) -> Result<(), JsError> {
+    populate_inner_text("game_details_title", game_info.title())?;
+    if let Some(d) = game_info.release_date() {
+        let release_date_str = format!("Release date: {:?}", d);
+        populate_inner_text("game_details_release_date", release_date_str.as_str())?;
+    }
+    populate_img("game_details_cover_art", game_info.cover_url())?;
+
+    Ok(())
+}
+
+fn details_screen_populate_custom_info(custom_info: &core::SGameCustomInfo) -> Result<(), JsError> {
+    if custom_info.via.len() > 0 {
+        let via_str = format!("Via: {}", custom_info.via);
+        populate_inner_text("game_details_via", via_str.as_str())?;
+    }
+
+    let tags_and_own = div("game_details_tags_and_own")?;
+    tags_and_own.set_inner_html("");
+    create_tag_checks(&custom_info.tags, &tags_and_own)?;
+    create_own_checks(&custom_info.own, &tags_and_own)?;
+
+    Ok(())
+}
+
+fn view_details(game: core::SCollectionGame) -> Result<(), JsError> {
+    details_screen_populate_game_info(&game.game_info)?;
+    details_screen_populate_custom_info(&game.custom_info)?;
+
+    {
+        let mut app = APP.try_write().expect("Should never actually have contention.");
+        app.details_screen_game = Some(game);
+    }
+
+    swap_section_div("game_details_div")?;
+
+    Ok(())
+}
+
 fn edit_screen_populate_game_info(game_info: &core::SGameInfo) -> Result<(), JsError> {
     populate_text_input("game_edit_title", game_info.title())?;
     populate_date_input("game_edit_release_date", game_info.release_date())?;
@@ -336,7 +379,6 @@ fn edit_screen_update_text() -> Result<(), JsError> {
 
     Ok(())
 }
-
 fn edit_game(game: core::SCollectionGame) -> Result<(), JsError> {
     edit_screen_populate_game_info(&game.game_info)?;
     edit_screen_populate_custom_info(&game.custom_info)?;
@@ -579,6 +621,62 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
     Ok(())
 }
 
+fn create_check_span(val: bool, name: &str, output_div: &HtmlDivElement) -> Result<(), JsError> {
+    if val {
+        let span = document().create_element_typed::<HtmlSpanElement>().to_jserr()?;
+        span.set_inner_text(format!("✓ {}", name).as_str());
+        output_div.append_child(&span).to_jserr()?;
+    }
+
+    Ok(())
+}
+
+fn create_tag_checks(tags: &core::SGameTags, output_div: &HtmlDivElement) -> Result<(), JsError> {
+    let mut stored_err = None;
+
+    let capture_err = |owned: bool, name: &str| {
+        if stored_err.is_some() {
+            return;
+        }
+
+        if let Err(e) = create_check_span(owned, name, &output_div) {
+            stored_err = Some(e);
+        }
+    };
+
+    tags.each(capture_err);
+
+    // -- verify no js errors during the tag adding stage
+    if let Some(e) = stored_err {
+        return Err(e);
+    }
+
+    Ok(())
+}
+
+fn create_own_checks(own: &core::SOwn, output_div: &HtmlDivElement) -> Result<(), JsError> {
+    let mut stored_err = None;
+
+    let capture_err = |owned: bool, name: &str| {
+        if stored_err.is_some() {
+            return;
+        }
+
+        if let Err(e) = create_check_span(owned, name, &output_div) {
+            stored_err = Some(e);
+        }
+    };
+
+    own.each(capture_err);
+
+    // -- verify no js errors during the tag adding stage
+    if let Some(e) = stored_err {
+        return Err(e);
+    }
+
+    Ok(())
+}
+
 fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Result<(), JsError> {
     let doc = document();
 
@@ -616,38 +714,13 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
             game_div.append_child(&portable_span).to_jserr()?;
         }
 
-        let mut stored_err = None;
-
-        let add_own_tag = |owned: bool, name: &str| -> Result<(), JsError> {
-            if owned {
-                let own_span = document().create_element_typed::<HtmlSpanElement>().to_jserr()?;
-                own_span.set_inner_text(format!("✓ {}", name).as_str());
-                game_div.append_child(&own_span).to_jserr()?;
-            }
-            Ok(())
-        };
-        let capture_err = |owned: bool, name: &str| {
-            if stored_err.is_some() {
-                return;
-            }
-
-            if let Err(e) = add_own_tag(owned, name) {
-                stored_err = Some(e);
-            }
-        };
-
-        game.custom_info.own.each(capture_err);
-
-        // -- verify no js errors during the tag adding stage
-        if let Some(e) = stored_err {
-            return Err(e);
-        }
+        create_own_checks(&game.custom_info.own, &game_div)?;
 
         let edit_button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
-        let onclick_body = format!("collection_screen_edit_game({});", game.internal_id);
+        let onclick_body = format!("collection_screen_view_details({});", game.internal_id);
         let onclick = Function::new_no_args(onclick_body.as_str());
         edit_button_elem.set_onclick(Some(&onclick));
-        edit_button_elem.set_inner_text("Edit");
+        edit_button_elem.set_inner_text("View details");
         game_div.append_child(&edit_button_elem).to_jserr()?;
 
         let start_sesion_button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
@@ -743,46 +816,42 @@ pub async fn collection_screen_search() -> Result<(), JsError> {
     Ok(())
 }
 
-#[wasm_bindgen]
-pub async fn collection_screen_edit_game(internal_id: u32) -> Result<(), JsError> {
-    let game_opt = {
-        let mut result = None;
+fn collection_screen_game_by_id(internal_id: u32) -> Option<core::SCollectionGame> {
+    let mut result = None;
 
-        let app = APP.try_read().expect("Should never actually have contention");
-        if let Some(games) = &app.collection_screen_games {
-            for g in games {
-                if internal_id == g.internal_id {
-                    result = Some(g.clone());
-                    break;
-                }
+    let app = APP.try_read().expect("Should never actually have contention");
+    if let Some(games) = &app.collection_screen_games {
+        for g in games {
+            if internal_id == g.internal_id {
+                result = Some(g.clone());
+                break;
             }
         }
+    }
 
-        result
-    };
-    let game = game_opt.ok_or(JsError::new("Somehow adding an IGDB game that was not in search results."))?;
+    result
+}
+
+#[wasm_bindgen]
+pub async fn collection_screen_edit_game(internal_id: u32) -> Result<(), JsError> {
+    let game = collection_screen_game_by_id(internal_id)
+        .ok_or(JsError::new("Somehow editing a game that was not in collection screen."))?;
 
     edit_game(game)
 }
 
 #[wasm_bindgen]
+pub async fn collection_screen_view_details(internal_id: u32) -> Result<(), JsError> {
+    let game = collection_screen_game_by_id(internal_id)
+        .ok_or(JsError::new("Somehow viewing a game that was not in collection screen."))?;
+
+    view_details(game)
+}
+
+#[wasm_bindgen]
 pub async fn collection_screen_start_session(internal_id: u32) -> Result<(), JsError> {
-    let game_opt = {
-        let mut result = None;
-
-        let app = APP.try_read().expect("Should never actually have contention");
-        if let Some(games) = &app.collection_screen_games {
-            for g in games {
-                if internal_id == g.internal_id {
-                    result = Some(g.clone());
-                    break;
-                }
-            }
-        }
-
-        result
-    };
-    let game = game_opt.ok_or(JsError::new("Somehow starting session for game not in the list."))?;
+    let game = collection_screen_game_by_id(internal_id)
+        .ok_or(JsError::new("Somehow starting session for a game that was not in collection screen."))?;
 
     let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message").to_jserr()?;
 

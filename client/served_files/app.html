@@ -61,6 +61,15 @@
         <div id="stats_div" style="display:none">
             stats
         </div>
+        <div id="game_details_div" style="display:none">
+            <h1 id="game_details_title"></h1>
+            <p id="game_details_release_date"></p>
+            <img id="game_details_cover_art"></img>
+            <p id="game_details_via"></p>
+            <div id="game_details_tags_and_own"></div>
+            <button id="game_details_edit" onclick="game_details_edit()()">Edit</button>
+            <button id="game_details_reset" onclick="game_details_reset()()">Reset choose state</button>
+        </div>
         <div id="game_edit_div" style="display:none">
             <h1 id="game_edit_header">Add Game</h1>
 
@@ -133,6 +142,7 @@
             add_screen_add_result,
             edit_screen_submit,
             collection_screen_search,
+            collection_screen_view_details,
             collection_screen_edit_game,
             collection_screen_start_session,
             session_screen_finish_session,
@@ -154,6 +164,7 @@
             window.add_screen_add_result = add_screen_add_result;
             window.edit_screen_submit = edit_screen_submit;
             window.collection_screen_search = collection_screen_search;
+            window.collection_screen_view_details = collection_screen_view_details;
             window.collection_screen_edit_game = collection_screen_edit_game;
             window.collection_screen_start_session = collection_screen_start_session;
             window.session_screen_finish_session = session_screen_finish_session;
