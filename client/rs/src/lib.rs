@@ -9,7 +9,16 @@ use once_cell::sync::Lazy;
 use js_sys::{Function};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast};
-use web_sys::{HtmlButtonElement, HtmlDivElement, HtmlElement, HtmlImageElement, HtmlInputElement, HtmlLabelElement, HtmlParagraphElement};
+use web_sys::{
+    HtmlButtonElement,
+    HtmlDivElement,
+    HtmlElement,
+    HtmlImageElement,
+    HtmlInputElement,
+    HtmlLabelElement,
+    HtmlParagraphElement,
+    HtmlSpanElement,
+};
 
 use gamechooser_core as core;
 use web::{document, TToJsError, TErgonomicDocument};
@@ -141,34 +150,6 @@ pub fn cycle_tag_tri_box(element: &web_sys::HtmlSpanElement) {
         },
         None => element.set_text_content(Some("☐")),
     }
-}
-
-#[wasm_bindgen]
-pub async fn search_igdb() -> Result<(), JsError> {
-    let document = document();
-
-    // -- do the request
-    let name_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("name_search_string").to_jserr()?;
-    let games : Vec<core::SGameInfo> = server_api::search_igdb(name_search_input.value().as_str()).await.to_jserr()?;
-
-    let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("search_igdb_output").to_jserr()?;
-    output_elem.set_inner_html("");
-    for game in &games {
-        let game_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
-        output_elem.append_child(&game_div).to_jserr()?;
-
-        let title_elem = document.create_element("h3").to_jserr()?;
-        title_elem.set_text_content(Some(game.title()));
-        game_div.append_child(&title_elem).to_jserr()?;
-
-        if let Some(url) = game.cover_url() {
-            let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
-            img_elem.set_src(url);
-            game_div.append_child(&img_elem).to_jserr()?;
-        }
-    }
-
-    Ok(())
 }
 
 fn div(id: &str) -> Result<HtmlDivElement, JsError> {
@@ -599,33 +580,88 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
 }
 
 fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Result<(), JsError> {
-    let document = document();
+    let doc = document();
 
-    let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("collection_screen_game_list").to_jserr()?;
+    let output_elem = doc.get_typed_element_by_id::<HtmlDivElement>("collection_screen_game_list").to_jserr()?;
     output_elem.set_inner_html("");
 
     for game in &games {
-        let game_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+        let game_div = doc.create_element_typed::<HtmlDivElement>().to_jserr()?;
         output_elem.append_child(&game_div).to_jserr()?;
 
-        let title_elem = document.create_element("h3").to_jserr()?;
+        let title_elem = doc.create_element("h3").to_jserr()?;
         title_elem.set_text_content(Some(game.game_info.title()));
         game_div.append_child(&title_elem).to_jserr()?;
 
         if let Some(url) = game.game_info.cover_url() {
-            let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
+            let img_elem = doc.create_element_typed::<HtmlImageElement>().to_jserr()?;
             img_elem.set_src(url);
             game_div.append_child(&img_elem).to_jserr()?;
         }
 
-        let edit_button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+        if let Some(d) = game.game_info.release_date() {
+            let release_date_p = doc.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
+            release_date_p.set_inner_text(format!("Release date: {:?}", d).as_str());
+            game_div.append_child(&release_date_p).to_jserr()?;
+        }
+
+        if game.custom_info.tags.couch_playable {
+            let couch_span = doc.create_element_typed::<HtmlSpanElement>().to_jserr()?;
+            couch_span.set_inner_text("✓ couch");
+            game_div.append_child(&couch_span).to_jserr()?;
+        }
+        if game.custom_info.tags.portable_playable {
+            let portable_span = doc.create_element_typed::<HtmlSpanElement>().to_jserr()?;
+            portable_span.set_inner_text("✓ portable");
+            game_div.append_child(&portable_span).to_jserr()?;
+        }
+
+        let add_own_tag = |test: bool, name: &str| -> Result<(), JsError> {
+            if test {
+                let own_span = document().create_element_typed::<HtmlSpanElement>().to_jserr()?;
+                own_span.set_inner_text(format!("✓ {}", name).as_str());
+                game_div.append_child(&own_span).to_jserr()?;
+            }
+            Ok(())
+        };
+        add_own_tag(game.custom_info.own.free, "free")?;
+        add_own_tag(game.custom_info.own.steam, "steam")?;
+        add_own_tag(game.custom_info.own.gmg, "gmg")?;
+        add_own_tag(game.custom_info.own.gog, "gog")?;
+        add_own_tag(game.custom_info.own.humble, "humble")?;
+        add_own_tag(game.custom_info.own.origin, "origin")?;
+        add_own_tag(game.custom_info.own.egs, "egs")?;
+        add_own_tag(game.custom_info.own.battlenet, "battle.net")?;
+        add_own_tag(game.custom_info.own.itch, "itch.io")?;
+        add_own_tag(game.custom_info.own.standalone_launcher, "standalone launcher")?;
+        add_own_tag(game.custom_info.own.emulator, "emulator")?;
+        add_own_tag(game.custom_info.own.gba, "gba")?;
+        add_own_tag(game.custom_info.own.ds, "ds")?;
+        add_own_tag(game.custom_info.own.n3ds, "3ds")?;
+        add_own_tag(game.custom_info.own.gamecube, "gamecube")?;
+        add_own_tag(game.custom_info.own.wii, "wii")?;
+        add_own_tag(game.custom_info.own.wiiu, "wiiu")?;
+        add_own_tag(game.custom_info.own.switch, "switch")?;
+        add_own_tag(game.custom_info.own.ps1, "ps1")?;
+        add_own_tag(game.custom_info.own.ps2, "ps2")?;
+        add_own_tag(game.custom_info.own.ps3, "ps3")?;
+        add_own_tag(game.custom_info.own.ps4, "ps4")?;
+        add_own_tag(game.custom_info.own.ps5, "ps5")?;
+        add_own_tag(game.custom_info.own.psp, "psp")?;
+        add_own_tag(game.custom_info.own.vita, "vita")?;
+        add_own_tag(game.custom_info.own.xbox, "xbox")?;
+        add_own_tag(game.custom_info.own.ios, "ios")?;
+        add_own_tag(game.custom_info.own.oculus_quest, "oculus quest")?;
+        add_own_tag(game.custom_info.own.ban_owned, "ban owned")?;
+
+        let edit_button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
         let onclick_body = format!("collection_screen_edit_game({});", game.internal_id);
         let onclick = Function::new_no_args(onclick_body.as_str());
         edit_button_elem.set_onclick(Some(&onclick));
         edit_button_elem.set_inner_text("Edit");
         game_div.append_child(&edit_button_elem).to_jserr()?;
 
-        let start_sesion_button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+        let start_sesion_button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
         let onclick_body = format!("collection_screen_start_session({});", game.internal_id);
         let onclick = Function::new_no_args(onclick_body.as_str());
         start_sesion_button_elem.set_onclick(Some(&onclick));
