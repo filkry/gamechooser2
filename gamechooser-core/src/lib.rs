@@ -15,6 +15,7 @@ pub struct SGameTagsFilter {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SOwn {
+    #[serde(default)]
     pub free: bool,
     pub steam: bool,
     pub gmg: bool,

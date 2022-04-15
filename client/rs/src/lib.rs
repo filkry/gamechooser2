@@ -452,6 +452,7 @@ fn update_custom_info_from_edit_screen(custom_info: &mut core::SGameCustomInfo) 
         switch: checkbox_value("game_edit_own_switch")?,
         ps4: checkbox_value("game_edit_own_ps4")?,
         ps5: checkbox_value("game_edit_own_ps5")?,
+        ..Default::default()
     };
 
     Ok(())

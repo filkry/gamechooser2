@@ -350,6 +350,83 @@ fn create_gc2_db_from_gc1_data() {
         storefront: String,
         */
     }
+
+    let mut next_session_id = 0;
+    for session in gc1_sessions {
+
+        if session.start_date.is_none() {
+            continue; // no way to provide reasonable data for these entries, drop them
+        }
+
+        let start_date_str = session.start_date.as_ref().expect("checked above").as_str();
+        let date_result = chrono::NaiveDate::parse_from_str(start_date_str, "%Y-%m-%d");
+        let date = match date_result {
+            Ok(d) => d,
+            Err(_) => {
+                eprintln!("Could not parse date \"{}\" for session of game with ID {}", start_date_str, session.game_id);
+                return;
+            },
+        };
+
+        let session_state = match session.outcome.as_str() {
+            "stuck" => core::ESessionState::Finished {
+                end_date: date.succ(), // we don't have this info, so it's day + 1 for now
+                memorable: true,
+            },
+            "transient" => core::ESessionState::Finished {
+                end_date: date.succ(), // we don't have this info, so it's day + 1 for now
+                memorable: false,
+            },
+            "" => core::ESessionState::Ongoing,
+            _ => {
+                eprintln!("Unknown session outcome \"{}\" encountered", session.outcome);
+                return;
+            }
+        };
+
+        let gc2_session = core::SSession {
+            internal_id: next_session_id,
+            game_internal_id: session.game_id,
+            start_date: date,
+            state: session_state,
+        };
+
+        db_inner.sessions.push(gc2_session);
+        next_session_id = next_session_id + 1;
+    }
+
+    let db = core::EDatabase::V0(db_inner);
+
+    let mut out_path = path.clone();
+    out_path.push("database.json");
+
+    if out_path.exists() {
+        eprintln!("database.json already exists at {:?}, not exporting.", out_path);
+        return;
+    }
+
+    let open_options = std::fs::OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .append(true)
+        .open(out_path);
+
+    let file = match open_options {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("Failed to open database.json with: {:?}", e);
+            return;
+        }
+    };
+    let writer = std::io::BufWriter::new(file);
+
+    match serde_json::to_writer_pretty(writer, &db) {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("Failed to serialize database.json with: {:?}", e);
+            return;
+        }
+    };
 }
 
 async fn gc1_data_populate_igdb_info(state: SArghsGC1DataPopulateIGDBInfo) -> Result<(), String> {
