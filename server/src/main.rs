@@ -35,7 +35,7 @@ fn load_db() -> Result<core::EDatabase, String> {
             let file = match std::fs::File::open(path.clone()) {
                 Ok(f) => f,
                 Err(e) => {
-                    println!("Failed to open database.json with: {:?}", e);
+                    println!("Failed to open {:?} with: {:?}", path, e);
                     return Err(String::from("Server had local file issues."));
                 }
             };
@@ -45,7 +45,7 @@ fn load_db() -> Result<core::EDatabase, String> {
             match serde_json::from_reader(reader) {
                 Ok(g) => g,
                 Err(e) => {
-                    println!("Failed to deserialize database.json with: {:?}", e);
+                    println!("Failed to deserialize {:?} with: {:?}", path, e);
                     return Err(String::from("Server had local file issues."));
                 }
             }
