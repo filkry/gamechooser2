@@ -142,7 +142,7 @@ impl SReqwestTwitchAPIClient {
         session.token_info.as_ref().unwrap().access_token.as_str()
     }
 
-    pub async fn search(session: &SReqwestTwitchAPISession, name: &str) -> Result<Vec<core::SGameInfo>, String> {
+    pub async fn search(session: &SReqwestTwitchAPISession, name: &str, games_only: bool) -> Result<Vec<core::SGameInfo>, String> {
 
         #[derive(Deserialize)]
         #[allow(dead_code)]
@@ -159,7 +159,13 @@ impl SReqwestTwitchAPIClient {
         }
 
         let search_results : Vec<SIGDBSearchResult> = {
-            let body = format!("search \"{}\"; fields name,first_release_date,cover.image_id;", name);
+            let where_clause = if games_only {
+                "where category = 0 & version_parent = null;"
+            }
+            else {
+                "where version_parent = null;"
+            };
+            let body = format!("search \"{}\"; {}fields name,first_release_date,cover.image_id;", name, where_clause);
 
             /*
             Should be equivalent to:

@@ -205,7 +205,11 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
 
     // -- do the request
     let name_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("add_screen_name_search_input").to_jserr()?;
-    let games : Vec<core::SGameInfo> = match server_api::search_igdb(name_search_input.value().as_str()).await {
+    let games : Vec<core::SGameInfo> = match server_api::search_igdb(
+        name_search_input.value().as_str(),
+        checkbox_value("add_screen_games_only")?,
+    ).await {
+
         Ok(g) => g,
         Err(e) => {
             show_error(e)?;

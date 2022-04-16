@@ -36,6 +36,8 @@
         <div id="add_div" style="display:none">
             <h1>Add to collection</h1>
             <input type="text" id="add_screen_name_search_input", onkeypress="add_screen_search_igdb_keypress(event)">
+            <input type="checkbox" id="add_screen_games_only" checked>
+            <label for="add_screen_games_only">Games only (no DLC, etc)</label>
             <button onclick="add_screen_search_igdb()">Search IGDB</button>
             <div id="add_screen_search_igdb_output"></div>
         </div>

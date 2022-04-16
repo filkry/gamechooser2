@@ -24,6 +24,17 @@ struct SOwnRecord {
     storefront: String,
 }
 
+/*
+#[derive(Reponder)
+enum MyEnum {
+   #[response(status = 500]
+   InternalServerError
+   #[response(status = 400, content_type = "json")]
+   BadRequest(&'static str)
+   ...
+}
+*/
+
 enum EErrorResponse {
     DBError,
     BadRequest(String),
@@ -141,10 +152,10 @@ fn save_db(db: core::EDatabase) -> Result<(), ()> {
     Ok(())
 }
 
-#[post("/search_igdb/<name>")]
-async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGameInfo>>, String> {
+#[post("/search_igdb/<name>/<games_only>")]
+async fn search_igdb(name: &str, games_only: bool) -> Result<RocketJson<Vec<core::SGameInfo>>, String> {
     let session = SReqwestTwitchAPIClient::new_session().await?;
-    let results = SReqwestTwitchAPIClient::search(&session, name).await?;
+    let results = SReqwestTwitchAPIClient::search(&session, name, games_only).await?;
     Ok(RocketJson(results))
 }
 

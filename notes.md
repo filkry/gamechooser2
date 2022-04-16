@@ -5,8 +5,6 @@
 Gamechooser1 data is successfully imported, and now I keep thinking of things to do. I'd like to
 dump a list here so I hopefully don't forget all of them!
 
-+ when adding, try to catch duplicate entries
-+ add screen filter out DLC
 + add screen allow creating manual entry (non-IGDB)
 + add screen display some metadata
 + add screen go to edit
@@ -22,6 +20,7 @@ dump a list here so I hopefully don't forget all of them!
 + better error handling in the client
 + styling
 + go through TODOs in code
++ when adding, try to catch duplicate entries
 ? discover how all sessions got deleted one time
 
 ## Next step

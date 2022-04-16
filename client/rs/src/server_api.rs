@@ -29,7 +29,7 @@ async fn check_err(resp: &Response) -> Result<(), String> {
     Ok(())
 }
 
-pub(super) async fn search_igdb(title: &str) -> Result<Vec<core::SGameInfo>, String> {
+pub(super) async fn search_igdb(title: &str, games_only: bool) -> Result<Vec<core::SGameInfo>, String> {
     let window = window();
 
     let mut opts = RequestInit::new();
@@ -37,7 +37,7 @@ pub(super) async fn search_igdb(title: &str) -> Result<Vec<core::SGameInfo>, Str
     opts.mode(RequestMode::Cors);
 
     let origin = window.location().origin().to_str_err()?;
-    let url = format!("{}/search_igdb/{}", origin.as_str(), title);
+    let url = format!("{}/search_igdb/{}/{}", origin.as_str(), title, games_only);
     let request = Request::new_with_str_and_init(&url, &opts).to_str_err()?;
 
     let resp_value = JsFuture::from(window.fetch_with_request(&request)).await.to_str_err()?;
