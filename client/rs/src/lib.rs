@@ -219,6 +219,12 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
 
     let output_elem = div("add_screen_search_igdb_output")?;
     output_elem.set_inner_html("");
+
+    if games.len() == 0 {
+        output_elem.set_inner_text("No results.");
+        return Ok(())
+    }
+
     for game in &games {
         let game_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
         output_elem.append_child(&game_div).to_jserr()?;
@@ -231,6 +237,12 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
             let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
             img_elem.set_src(url);
             game_div.append_child(&img_elem).to_jserr()?;
+        }
+
+        if let Some(d) = game.release_date() {
+            let release_date_p = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
+            release_date_p.set_inner_text(format!("Release date: {:?}", d).as_str());
+            game_div.append_child(&release_date_p).to_jserr()?;
         }
 
         let button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;

@@ -5,11 +5,8 @@
 Gamechooser1 data is successfully imported, and now I keep thinking of things to do. I'd like to
 dump a list here so I hopefully don't forget all of them!
 
-+ add screen allow creating manual entry (non-IGDB)
-+ add screen display some metadata
-+ add screen go to edit
-+ add screen reset choose state
-+ details screen pull additional stuff from IGDB
++ collection screen go to edit
++ collection screen reset choose state
 + edit screen new own add/remove UI
 + randomizer implement algorithm
 + stats screen basic stats
@@ -19,6 +16,8 @@ dump a list here so I hopefully don't forget all of them!
 + floating error/refresh message
 + better error handling in the client
 + styling
++ add screen allow creating manual entry (non-IGDB)
++ details screen pull additional stuff from IGDB
 + go through TODOs in code
 + when adding, try to catch duplicate entries
 ? discover how all sessions got deleted one time
