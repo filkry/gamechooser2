@@ -56,9 +56,11 @@
             <div id="randomizer_game_div">
                 <h3 id="randomizer_game_title"></h3>
                 <img id="randomizer_game_cover">
+                <p id="randomizer_game_via"></p>
                 <button onclick="randomizer_pick_current_game()">Start this game!</button>
                 <button onclick="randomizer_pass_current_game()">Pass this game :(</button>
                 <button onclick="randomizer_push_current_game()">Push to later</button>
+                <button onclick="randomizer_retire_current_game()">Retire</button>
             </div>
         </div>
         <div id="stats_div" style="display:none">
@@ -144,6 +146,7 @@
             randomizer_pick_current_game,
             randomizer_pass_current_game,
             randomizer_push_current_game,
+            randomizer_retire_current_game,
             game_details_edit,
             game_details_reset,
         } from './rs-wasm-bindgen-output/gamechooser2_client.js';
@@ -170,6 +173,7 @@
             window.randomizer_pick_current_game = randomizer_pick_current_game;
             window.randomizer_pass_current_game = randomizer_pass_current_game;
             window.randomizer_push_current_game = randomizer_push_current_game;
+            window.randomizer_retire_current_game = randomizer_retire_current_game;
             window.game_details_edit = game_details_edit;
             window.game_details_reset = game_details_reset;
             console.log("bindings set");

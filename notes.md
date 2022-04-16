@@ -2,14 +2,12 @@
 
 ## Post-import TODO
 
-Gamechooser1 data is successfully imported, and now I keep thinking of things to do. I'd like to
-dump a list here so I hopefully don't forget all of them!
-
 Must:
-+ randomizer implement algorithm
++ randomizer some more data about game (at least via + igdb link)
 + stats screen basic stats
 + some kind of lite authentication
 + styling
++ end session -> pick next valid date, or retire
 
 Basically must:
 + add screen allow creating manual entry (non-IGDB)

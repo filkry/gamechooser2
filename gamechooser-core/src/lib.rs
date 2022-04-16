@@ -379,6 +379,10 @@ impl SGameChooseState {
         let today = chrono::offset::Local::now().naive_local().date();
         self.next_valid_proposal_date = today.checked_add_signed(chrono::Duration::days((self.passes * 45) as i64)).unwrap();
     }
+
+    pub fn retire(&mut self) {
+        self.retired = true;
+    }
 }
 
 impl SSession {

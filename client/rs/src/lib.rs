@@ -155,6 +155,10 @@ pub fn cycle_tag_tri_box(element: &web_sys::HtmlSpanElement) {
     }
 }
 
+fn element(id: &str) -> Result<HtmlElement, JsError> {
+    document().get_typed_element_by_id::<HtmlElement>(id).or(Err(JsError::new(format!("could not find {}", id).as_str())))
+}
+
 fn div(id: &str) -> Result<HtmlDivElement, JsError> {
     document().get_typed_element_by_id::<HtmlDivElement>(id).or(Err(JsError::new(format!("could not find {}", id).as_str())))
 }
@@ -1016,6 +1020,15 @@ async fn populate_randomizer_choose_screen() -> Result<(), JsError> {
             populate_inner_text("randomizer_game_title", game.game_info.title())?;
             populate_img("randomizer_game_cover", game.game_info.cover_url())?;
 
+            if game.custom_info.via.len() > 0 {
+                let via_text = format!("Via: {}", game.custom_info.via);
+                populate_inner_text("randomizer_game_via", via_text.as_str())?;
+                element("randomizer_game_via")?.style().set_property("display", "block").to_jserr()?;
+            }
+            else {
+                element("randomizer_game_via")?.style().set_property("display", "none").to_jserr()?;
+            }
+
             div("randomizer_game_div")?.style().set_property("display", "block").to_jserr()?;
         }
     }
@@ -1147,6 +1160,28 @@ pub async fn randomizer_push_current_game() -> Result<(), JsError> {
     }
     else {
         show_error(String::from("randomizer_push_current_game was called without any data."))?;
+    }
+
+    drop(app);
+
+    populate_randomizer_choose_screen().await?;
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn randomizer_retire_current_game() -> Result<(), JsError> {
+    let mut app = APP.try_write().expect("Should never actually have contention.");
+
+    if let EGameRandomizer::Choosing(session) = &mut app.game_randomizer {
+        let cur_game_idx = session.randomizer_list.shuffled_indices[session.cur_idx];
+        let game = &mut session.randomizer_list.games[cur_game_idx];
+        game.choose_state.retire();
+
+        session.cur_idx = session.cur_idx + 1;
+    }
+    else {
+        show_error(String::from("randomizer_retire_current_game was called without any data."))?;
     }
 
     drop(app);
