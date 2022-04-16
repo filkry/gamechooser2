@@ -1014,3 +1014,18 @@ pub async fn randomizer_pick_current_game() -> Result<(), JsError> {
 
     Ok(())
 }
+
+#[wasm_bindgen]
+pub async fn game_details_edit() -> Result<(), JsError> {
+    let game = {
+        let mut app = APP.try_write().expect("Should never actually have contention.");
+        if app.details_screen_game.is_none() {
+            show_error(String::from("No game on details screen to edit."))?;
+            return Ok(());
+        }
+        std::mem::take(&mut app.details_screen_game)
+    };
+
+    edit_game(game.expect("checked above"))?;
+    Ok(())
+}

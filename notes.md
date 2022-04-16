@@ -5,7 +5,6 @@
 Gamechooser1 data is successfully imported, and now I keep thinking of things to do. I'd like to
 dump a list here so I hopefully don't forget all of them!
 
-+ collection screen go to edit
 + collection screen reset choose state
 + edit screen new own add/remove UI
 + randomizer implement algorithm

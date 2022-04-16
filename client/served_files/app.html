@@ -69,8 +69,8 @@
             <img id="game_details_cover_art"></img>
             <p id="game_details_via"></p>
             <div id="game_details_tags_and_own"></div>
-            <button id="game_details_edit" onclick="game_details_edit()()">Edit</button>
-            <button id="game_details_reset" onclick="game_details_reset()()">Reset choose state</button>
+            <button id="game_details_edit" onclick="game_details_edit()">Edit</button>
+            <button id="game_details_reset" onclick="game_details_reset()">Reset choose state</button>
         </div>
         <div id="game_edit_div" style="display:none">
             <h1 id="game_edit_header">Add Game</h1>
@@ -165,6 +165,7 @@
             session_screen_apply_filter,
             randomizer_screen_start,
             randomizer_pick_current_game,
+            game_details_edit,
         } from './rs-wasm-bindgen-output/gamechooser2_client.js';
 
         async function run() {
@@ -187,6 +188,7 @@
             window.session_screen_apply_filter = session_screen_apply_filter;
             window.randomizer_screen_start = randomizer_screen_start;
             window.randomizer_pick_current_game = randomizer_pick_current_game;
+            window.game_details_edit = game_details_edit;
             console.log("bindings set");
 
             show_sessions();
