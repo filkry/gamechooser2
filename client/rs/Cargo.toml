@@ -24,6 +24,7 @@ features = [
   'CssStyleDeclaration',
   'Document',
   'Headers',
+  'HtmlAnchorElement',
   'HtmlButtonElement',
   'HtmlDivElement',
   'HtmlElement',

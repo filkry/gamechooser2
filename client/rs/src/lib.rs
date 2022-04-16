@@ -10,6 +10,7 @@ use js_sys::{Function};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast};
 use web_sys::{
+    HtmlAnchorElement,
     HtmlButtonElement,
     HtmlDivElement,
     HtmlElement,
@@ -1033,6 +1034,16 @@ async fn populate_randomizer_choose_screen() -> Result<(), JsError> {
             }
             else {
                 element("randomizer_game_via")?.style().set_property("display", "none").to_jserr()?;
+            }
+
+            if let core::EGameInfo::IGDB(igdb) = &game.game_info {
+                let a = document().get_typed_element_by_id::<HtmlAnchorElement>("randomizer_game_igdb_link").to_jserr()?;
+                let page_url = format!("https://www.igdb.com/games/{}", igdb.slug);
+                a.set_href(page_url.as_str());
+                a.style().set_property("display", "block").to_jserr()?;
+            }
+            else {
+                element("randomizer_game_igdb_link")?.style().set_property("display", "none").to_jserr()?;
             }
 
             div("randomizer_game_div")?.style().set_property("display", "block").to_jserr()?;

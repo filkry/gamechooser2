@@ -70,11 +70,11 @@ pub struct SGameInfoCustom {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SGameInfoIGDB {
-    id: u32,
-    slug: String,
-    cached_title: String,
-    cached_release_date: Option<chrono::naive::NaiveDate>,
-    cached_cover_id: Option<String>,
+    pub id: u32,
+    pub slug: String,
+    pub cached_title: String,
+    pub cached_release_date: Option<chrono::naive::NaiveDate>,
+    pub cached_cover_id: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
