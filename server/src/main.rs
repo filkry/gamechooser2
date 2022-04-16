@@ -392,6 +392,21 @@ async fn update_choose_state(games: RocketJson<Vec<core::SCollectionGame>>) -> R
     Ok(())
 }
 
+#[post("/reset_choose_state/<game_internal_id>")]
+async fn reset_choose_state(game_internal_id: u32) -> Result<(), EErrorResponse> {
+    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
+
+    for game in &mut db.games {
+        if game.internal_id == game_internal_id {
+            game.choose_state.reset();
+            save_db(db).map_err(|_| EErrorResponse::DBError)?;
+            return Ok(());
+        }
+    }
+
+    Err(EErrorResponse::BadRequest(format!("Did not find game with internal_id {} to reset choose_state on", game_internal_id)))
+}
+
 #[launch]
 fn rocket() -> _ {
     // -- $$$FRK(TODO): verify we have valid config file, all values present
@@ -409,5 +424,6 @@ fn rocket() -> _ {
             get_sessions,
             get_randomizer_games,
             update_choose_state,
+            reset_choose_state,
         ])
 }

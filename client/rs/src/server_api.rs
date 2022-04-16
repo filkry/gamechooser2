@@ -215,3 +215,8 @@ pub(super) async fn update_choose_state(games: Vec<core::SCollectionGame>) -> Re
     post_data("update_choose_state", games).await?;
     Ok(())
 }
+
+pub(super) async fn reset_choose_state(game: &core::SCollectionGame) -> Result<(), String> {
+    let data_str = format!("{}", game.internal_id);
+    post("reset_choose_state", Some(data_str.as_str())).await
+}

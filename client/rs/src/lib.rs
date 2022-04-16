@@ -756,6 +756,13 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
     Ok(())
 }
 
+fn show_result(msg: &str) -> Result<(), JsError> {
+    let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message").to_jserr()?;
+    p.set_inner_text(msg);
+    swap_section_div("result_div")?;
+    Ok(())
+}
+
 fn show_error(e: String) -> Result<(), JsError> {
     let err_div = div("error_div")?;
     err_div.set_inner_text(e.as_str());
@@ -1027,5 +1034,27 @@ pub async fn game_details_edit() -> Result<(), JsError> {
     };
 
     edit_game(game.expect("checked above"))?;
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn game_details_reset() -> Result<(), JsError> {
+    let game = {
+        let mut app = APP.try_write().expect("Should never actually have contention.");
+        if app.details_screen_game.is_none() {
+            show_error(String::from("No game on details screen to edit."))?;
+            return Ok(());
+        }
+        std::mem::take(&mut app.details_screen_game)
+    };
+
+    match server_api::reset_choose_state(&game.expect("checked above")).await {
+        Ok(_) => show_result("Successfully reset game.")?,
+        Err(e) => {
+            let msg = format!("Failed to reset message, got error: {}", e);
+            show_result(msg.as_str())?
+        }
+    }
+
     Ok(())
 }

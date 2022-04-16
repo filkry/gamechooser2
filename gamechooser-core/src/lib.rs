@@ -324,6 +324,12 @@ impl Default for SGameChooseState {
     }
 }
 
+impl SGameChooseState {
+    pub fn reset(&mut self) {
+        *self = Self::default();
+    }
+}
+
 impl SSession {
     pub fn new(id: u32, game_internal_id: u32) -> Self {
         Self {
