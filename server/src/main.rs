@@ -344,6 +344,7 @@ async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Re
 
     for game in &db.games {
         if !active_session_game_ids.contains(&game.internal_id) && filter_inner.game_passes(&game) {
+            //println!("Passed game with: {:?}", game.choose_state);
             result.push(game.clone());
         }
     }

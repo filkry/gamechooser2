@@ -452,7 +452,10 @@ impl SRandomizerFilter {
         }
 
         result = result && (self.allow_unowned || game.custom_info.own.owned());
-        result = result && (game.choose_state.passes <= self.max_passes);
+
+        result = result && (game.choose_state.ignore_passes || game.choose_state.passes <= self.max_passes);
+        result = result && !game.choose_state.retired;
+        result = result && game.choose_state.next_valid_proposal_date <= chrono::offset::Local::now().naive_local().date();
 
         result
     }

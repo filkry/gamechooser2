@@ -211,7 +211,7 @@ pub(super) async fn get_randomizer_games(filter: core::SRandomizerFilter) -> Res
     post_data_return_data("get_randomizer_games", filter).await
 }
 
-pub(super) async fn update_choose_state(games: Vec<core::SCollectionGame>) -> Result<(), String> {
+pub(super) async fn update_choose_state(games: &Vec<core::SCollectionGame>) -> Result<(), String> {
     post_data("update_choose_state", games).await?;
     Ok(())
 }
