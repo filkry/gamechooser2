@@ -5,12 +5,6 @@
 Gamechooser1 data is successfully imported, and now I keep thinking of things to do. I'd like to
 dump a list here so I hopefully don't forget all of them!
 
-+ discover how all sessions got deleted one time
-+ floating error/refresh message
-+ better error handling in the client
-    + check what happens when the server returns a Result::Err
-+ styling
-+ collection screen enter for search
 + when starting session, prevent starting session for game that already has session going
 + when adding, try to catch duplicate entries
 + add screen filter out DLC
@@ -24,6 +18,12 @@ dump a list here so I hopefully don't forget all of them!
 + stats screen basic stats
 + stats screen burndown chart
 + some kind of lite authentication
++ zip/otherwise compress old version of the database.json (since it gets quite large)
++ floating error/refresh message
++ better error handling in the client
+    + check what happens when the server returns a Result::Err
++ styling
+? discover how all sessions got deleted one time
 
 ## Next step
 Next step is probably to proof of concept using google docs or sheets as a storage backend...

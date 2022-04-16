@@ -29,13 +29,13 @@
         </div>
         <div id="collection_div" style="display:none">
             <h1 id="collection_header">Collection</h1>
-            <input type="text" id="collection_search_input">
+            <input type="text" id="collection_search_input" onkeypress="collection_search_box_keypress(event)">
             <button onclick="collection_screen_search()">Search collection</button>
             <div id="collection_screen_game_list"></div>
         </div>
         <div id="add_div" style="display:none">
             <h1>Add to collection</h1>
-            <input type="text" id="add_screen_name_search_input">
+            <input type="text" id="add_screen_name_search_input", onkeypress="add_screen_search_igdb_keypress(event)">
             <button onclick="add_screen_search_igdb()">Search IGDB</button>
             <div id="add_screen_search_igdb_output"></div>
         </div>
@@ -130,6 +130,20 @@
             <p id="result_message"></p>
         </div>
     </body>
+    <script>
+        function collection_search_box_keypress(e) {
+            var key = e.keyCode || e.which;
+            if(key == 13) {
+                collection_screen_search();
+            }
+        }
+        function add_screen_search_igdb_keypress(e) {
+            var key = e.keyCode || e.which;
+            if(key == 13) {
+                add_screen_search_igdb();
+            }
+        }
+    </script>
     <script type="module">
         import init, {
             cycle_tag_tri_box,
