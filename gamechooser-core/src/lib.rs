@@ -369,6 +369,16 @@ impl SGameChooseState {
     pub fn reset(&mut self) {
         *self = Self::default();
     }
+
+    pub fn pass(&mut self) {
+        self.passes = self.passes + 1;
+        self.push();
+    }
+
+    pub fn push(&mut self) {
+        let today = chrono::offset::Local::now().naive_local().date();
+        self.next_valid_proposal_date = today.checked_add_signed(chrono::Duration::days((self.passes * 45) as i64)).unwrap();
+    }
 }
 
 impl SSession {

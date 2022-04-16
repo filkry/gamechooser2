@@ -1092,6 +1092,72 @@ pub async fn randomizer_pick_current_game() -> Result<(), JsError> {
 }
 
 #[wasm_bindgen]
+pub async fn randomizer_pass_current_game() -> Result<(), JsError> {
+    let mut app = APP.try_write().expect("Should never actually have contention.");
+
+    let mut out_of_games = false;
+
+    if let EGameRandomizer::Choosing(session) = &mut app.game_randomizer {
+        let cur_game_idx = session.randomizer_list.shuffled_indices[session.cur_idx];
+        let game = &mut session.randomizer_list.games[cur_game_idx];
+        game.choose_state.pass();
+
+        session.cur_idx = session.cur_idx + 1;
+
+        if session.cur_idx >= session.randomizer_list.games.len() {
+            out_of_games = true;
+        }
+    }
+    else {
+        show_error(String::from("randomizer_pass_current_game was called without any data."))?;
+    }
+
+    drop(app);
+
+    if !out_of_games {
+        populate_randomizer_choose_screen()?;
+    }
+    else {
+        show_error(String::from("out of games!"))?;
+    }
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn randomizer_push_current_game() -> Result<(), JsError> {
+    let mut app = APP.try_write().expect("Should never actually have contention.");
+
+    let mut out_of_games = false;
+
+    if let EGameRandomizer::Choosing(session) = &mut app.game_randomizer {
+        let cur_game_idx = session.randomizer_list.shuffled_indices[session.cur_idx];
+        let game = &mut session.randomizer_list.games[cur_game_idx];
+        game.choose_state.push();
+
+        session.cur_idx = session.cur_idx + 1;
+
+        if session.cur_idx >= session.randomizer_list.games.len() {
+            out_of_games = true;
+        }
+    }
+    else {
+        show_error(String::from("randomizer_push_current_game was called without any data."))?;
+    }
+
+    drop(app);
+
+    if !out_of_games {
+        populate_randomizer_choose_screen()?;
+    }
+    else {
+        show_error(String::from("out of games!"))?;
+    }
+
+    Ok(())
+}
+
+#[wasm_bindgen]
 pub async fn game_details_edit() -> Result<(), JsError> {
     let game = {
         let mut app = APP.try_write().expect("Should never actually have contention.");
