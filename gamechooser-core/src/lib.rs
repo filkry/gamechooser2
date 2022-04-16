@@ -178,6 +178,13 @@ impl SGameTags {
         f(self.couch_playable, "couch playable");
         f(self.portable_playable, "portable playable");
     }
+
+    pub fn each_mut<F>(&mut self, mut f: F) where
+        F: std::ops::FnMut(&mut bool, &str)
+    {
+        f(&mut self.couch_playable, "couch playable");
+        f(&mut self.portable_playable, "portable playable");
+    }
 }
 
 impl SOwn {
@@ -223,6 +230,40 @@ impl SOwn {
         f(self.ios, "ios");
         f(self.oculus_quest, "oculus quest");
         f(self.ban_owned, "ban owns");
+    }
+
+    pub fn each_mut<F>(&mut self, mut f: F) where
+        F: std::ops::FnMut(&mut bool, &str)
+    {
+        f(&mut self.free, "free");
+        f(&mut self.steam, "steam");
+        f(&mut self.gmg, "gmg");
+        f(&mut self.gog, "gog");
+        f(&mut self.humble, "gog");
+        f(&mut self.origin, "origin");
+        f(&mut self.egs, "egs");
+        f(&mut self.battlenet, "battle.net");
+        f(&mut self.itch, "itch.io");
+        f(&mut self.standalone_launcher, "standalone launcher");
+        f(&mut self.emulator, "emulator");
+        f(&mut self.gba, "gba");
+        f(&mut self.ds, "ds");
+        f(&mut self.n3ds, "3ds");
+        f(&mut self.gamecube, "gamecube");
+        f(&mut self.wii, "wii");
+        f(&mut self.wiiu, "wiiu");
+        f(&mut self.switch, "switch");
+        f(&mut self.ps1, "ps1");
+        f(&mut self.ps2, "ps2");
+        f(&mut self.ps3, "ps3");
+        f(&mut self.ps4, "ps4");
+        f(&mut self.ps5, "ps5");
+        f(&mut self.psp, "psp");
+        f(&mut self.vita, "vita");
+        f(&mut self.xbox, "xbox");
+        f(&mut self.ios, "ios");
+        f(&mut self.oculus_quest, "oculus quest");
+        f(&mut self.ban_owned, "ban owns");
     }
 }
 

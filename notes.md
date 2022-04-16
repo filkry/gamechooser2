@@ -5,7 +5,6 @@
 Gamechooser1 data is successfully imported, and now I keep thinking of things to do. I'd like to
 dump a list here so I hopefully don't forget all of them!
 
-+ edit screen new own add/remove UI
 + randomizer implement algorithm
 + stats screen basic stats
 + stats screen burndown chart
@@ -19,6 +18,7 @@ dump a list here so I hopefully don't forget all of them!
 + go through TODOs in code
 + when adding, try to catch duplicate entries
 ? discover how all sessions got deleted one time
++ edit screen new own add/remove UI
 
 ## Next step
 Next step is probably to proof of concept using google docs or sheets as a storage backend...

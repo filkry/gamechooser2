@@ -358,19 +358,48 @@ fn edit_screen_populate_game_info(game_info: &core::SGameInfo) -> Result<(), JsE
 }
 
 fn edit_screen_populate_custom_info(custom_info: &core::SGameCustomInfo) -> Result<(), JsError> {
-    populate_checkox_input("game_edit_tag_couch", custom_info.tags.couch_playable)?;
-    populate_checkox_input("game_edit_tag_portable", custom_info.tags.portable_playable)?;
 
-    populate_checkox_input("game_edit_own_steam", custom_info.own.steam)?;
-    populate_checkox_input("game_edit_own_egs", custom_info.own.egs)?;
-    populate_checkox_input("game_edit_own_emulator", custom_info.own.emulator)?;
-    populate_checkox_input("game_edit_own_ds", custom_info.own.ds)?;
-    populate_checkox_input("game_edit_own_n3ds", custom_info.own.n3ds)?;
-    populate_checkox_input("game_edit_own_wii", custom_info.own.wii)?;
-    populate_checkox_input("game_edit_own_wiiu", custom_info.own.wiiu)?;
-    populate_checkox_input("game_edit_own_switch", custom_info.own.switch)?;
-    populate_checkox_input("game_edit_own_ps4", custom_info.own.ps4)?;
-    populate_checkox_input("game_edit_own_ps5", custom_info.own.ps5)?;
+    let output_tag = div("game_edit_tags")?;
+    let output_own = div("game_edit_own")?;
+
+    output_tag.set_inner_html("");
+    output_own.set_inner_html("");
+
+    let mut stored_err = None;
+
+    {
+        let capture_err_tag = |val: bool, name: &str| {
+            if stored_err.is_some() {
+                return;
+            }
+
+            if let Err(e) = create_checkbox(val, name, "game_edit_tag_", &output_tag) {
+                stored_err = Some(e);
+            }
+        };
+
+        custom_info.tags.each(capture_err_tag);
+        if let Some(e) = stored_err {
+            return Err(e);
+        }
+    }
+
+    {
+        let capture_err_own = |owned: bool, name: &str| {
+            if stored_err.is_some() {
+                return;
+            }
+
+            if let Err(e) = create_checkbox(owned, name, "game_edit_own_", &output_own) {
+                stored_err = Some(e);
+            }
+        };
+
+        custom_info.own.each(capture_err_own);
+        if let Some(e) = stored_err {
+            return Err(e);
+        }
+    }
 
     Ok(())
 }
@@ -478,27 +507,51 @@ fn checkbox_value(id: &str) -> Result<bool, JsError> {
     Ok(document().get_typed_element_by_id::<HtmlInputElement>(id).to_jserr()?.checked())
 }
 
+fn update_bool_from_checkbox(val: &mut bool, name: &str, id_prefix: &str) -> Result<(), JsError> {
+    let id = format!("{}_{}", id_prefix, name);
+    *val = checkbox_value(id.as_str())?;
+    Ok(())
+}
+
 fn update_custom_info_from_edit_screen(custom_info: &mut core::SGameCustomInfo) -> Result<(), JsError> {
     custom_info.via = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_via").to_jserr()?.value();
 
-    custom_info.tags = core::SGameTags {
-        couch_playable: checkbox_value("game_edit_tag_couch")?,
-        portable_playable: checkbox_value("game_edit_tag_portable")?,
-    };
+    let mut stored_err = None;
+    {
+        let capture_err = |tag: &mut bool, name: &str| {
+            if stored_err.is_some() {
+                return;
+            }
 
-    custom_info.own = core::SOwn {
-        steam: checkbox_value("game_edit_own_steam")?,
-        egs: checkbox_value("game_edit_own_egs")?,
-        emulator: checkbox_value("game_edit_own_emulator")?,
-        ds: checkbox_value("game_edit_own_ds")?,
-        n3ds: checkbox_value("game_edit_own_n3ds")?,
-        wii: checkbox_value("game_edit_own_wii")?,
-        wiiu: checkbox_value("game_edit_own_wiiu")?,
-        switch: checkbox_value("game_edit_own_switch")?,
-        ps4: checkbox_value("game_edit_own_ps4")?,
-        ps5: checkbox_value("game_edit_own_ps5")?,
-        ..Default::default()
-    };
+            if let Err(e) = update_bool_from_checkbox(tag, name, "game_edit_tag_") {
+                stored_err = Some(e);
+            }
+        };
+
+        custom_info.tags.each_mut(capture_err);
+
+        if let Some(e) = stored_err {
+            return Err(e);
+        }
+    }
+
+    {
+        let capture_err = |owned: &mut bool, name: &str| {
+            if stored_err.is_some() {
+                return;
+            }
+
+            if let Err(e) = update_bool_from_checkbox(owned, name, "game_edit_own_") {
+                stored_err = Some(e);
+            }
+        };
+
+        custom_info.own.each_mut(capture_err);
+
+        if let Some(e) = stored_err {
+            return Err(e);
+        }
+    }
 
     Ok(())
 }
@@ -633,6 +686,22 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
         let mut app = APP.try_write().expect("Should never actually have contention.");
         app.session_screen_sessions = Some(sessions);
     }
+
+    Ok(())
+}
+
+fn create_checkbox(initial_val: bool, name: &str, id_prefix: &str, output_div: &HtmlDivElement) -> Result<(), JsError> {
+    let checkbox = document().create_element_typed::<HtmlInputElement>().to_jserr()?;
+    checkbox.set_type("checkbox");
+    checkbox.set_default_checked(initial_val);
+    let id = format!("{}_{}", id_prefix, name);
+    checkbox.set_id(id.as_str());
+    output_div.append_child(&checkbox).to_jserr()?;
+
+    let label = document().create_element_typed::<HtmlLabelElement>().to_jserr()?;
+    label.set_html_for(id.as_str());
+    label.set_inner_text(name);
+    output_div.append_child(&label).to_jserr()?;
 
     Ok(())
 }
