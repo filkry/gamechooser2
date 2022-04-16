@@ -6,7 +6,7 @@ use std::result::{Result};
 use serde::{Serialize, Deserialize};
 use serde_json;
 use sublime_fuzzy;
-use rocket::response::status;
+use rocket::response::{Responder, Response};
 use rocket::serde::json::Json as RocketJson;
 
 use gamechooser_core as core;
@@ -24,7 +24,34 @@ struct SOwnRecord {
     storefront: String,
 }
 
-fn load_db() -> Result<core::EDatabase, String> {
+enum EErrorResponse {
+    DBError,
+    BadRequest(String),
+}
+
+impl<'r> Responder<'r, 'static> for EErrorResponse {
+    fn respond_to(self, _: &'r rocket::Request<'_>) -> rocket::response::Result<'static> {
+        match self {
+            Self::DBError => {
+                let body = "Server was unable to access database file.";
+                Response::build()
+                    .status(rocket::http::Status::InternalServerError)
+                    .header(rocket::http::ContentType::Plain)
+                    .sized_body(body.len(), std::io::Cursor::new(body))
+                    .ok()
+            },
+            Self::BadRequest(msg) => {
+                Response::build()
+                    .status(rocket::http::Status::BadRequest)
+                    .header(rocket::http::ContentType::Plain)
+                    .sized_body(msg.len(), std::io::Cursor::new(msg))
+                    .ok()
+            }
+        }
+    }
+}
+
+fn load_db() -> Result<core::EDatabase, ()> {
     let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
     let mut path = std::path::PathBuf::new();
     path.push(cfg.db_path);
@@ -36,8 +63,8 @@ fn load_db() -> Result<core::EDatabase, String> {
             let file = match std::fs::File::open(path.clone()) {
                 Ok(f) => f,
                 Err(e) => {
-                    println!("Failed to open {:?} with: {:?}", path, e);
-                    return Err(String::from("Server had local file issues."));
+                    eprintln!("Failed to open {:?} with: {:?}", path, e);
+                    return Err(());
                 }
             };
             let reader = std::io::BufReader::new(file);
@@ -46,8 +73,8 @@ fn load_db() -> Result<core::EDatabase, String> {
             match serde_json::from_reader(reader) {
                 Ok(g) => g,
                 Err(e) => {
-                    println!("Failed to deserialize {:?} with: {:?}", path, e);
-                    return Err(String::from("Server had local file issues."));
+                    eprintln!("Failed to deserialize {:?} with: {:?}", path, e);
+                    return Err(());
                 }
             }
         }
@@ -61,7 +88,7 @@ fn load_db() -> Result<core::EDatabase, String> {
     Ok(updated_db)
 }
 
-fn save_db(db: core::EDatabase) -> Result<(), String> {
+fn save_db(db: core::EDatabase) -> Result<(), ()> {
     let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
     let mut path = std::path::PathBuf::new();
     path.push(cfg.db_path.clone());
@@ -74,7 +101,8 @@ fn save_db(db: core::EDatabase) -> Result<(), String> {
 
         if !backup_path.exists() {
             if let Err(_) = std::fs::create_dir(backup_path.clone()) {
-                return Err(String::from("Server failed to back up DB before overwriting, aborted."));
+                eprintln!("Failed to back up DB before overwriting, aborted.");
+                return Err(());
             }
         }
 
@@ -82,8 +110,8 @@ fn save_db(db: core::EDatabase) -> Result<(), String> {
         backup_path.push(bak_file_name);
 
         if let Err(e) = std::fs::rename(path.clone(), backup_path) {
-            println!("Failed to delete database.json with: {:?}", e);
-            return Err(String::from("Server had local file issues."));
+            eprintln!("Failed to delete database.json with: {:?}", e);
+            return Err(());
         }
     }
 
@@ -96,8 +124,8 @@ fn save_db(db: core::EDatabase) -> Result<(), String> {
     let file = match open_options {
         Ok(f) => f,
         Err(e) => {
-            println!("Failed to open database.json with: {:?}", e);
-            return Err(String::from("Server had local file issues."));
+            eprintln!("Failed to open database.json with: {:?}", e);
+            return Err(());
         }
     };
     let writer = std::io::BufWriter::new(file);
@@ -105,8 +133,8 @@ fn save_db(db: core::EDatabase) -> Result<(), String> {
     match serde_json::to_writer_pretty(writer, &db) {
         Ok(_) => {},
         Err(e) => {
-            println!("Failed to serialize database.json with: {:?}", e);
-            return Err(String::from("Server had local file issues."));
+            eprintln!("Failed to serialize database.json with: {:?}", e);
+            return Err(());
         }
     };
 
@@ -121,8 +149,8 @@ async fn search_igdb(name: &str) -> Result<RocketJson<Vec<core::SGameInfo>>, Str
 }
 
 #[post("/add_game", data = "<game>")]
-async fn add_game(game: RocketJson<core::SAddCollectionGame>) -> Result<(), String> {
-    let mut db = load_db()?;
+async fn add_game(game: RocketJson<core::SAddCollectionGame>) -> Result<(), EErrorResponse> {
+    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     let mut max_id = 0;
     for collection_game in &db.games {
@@ -131,14 +159,14 @@ async fn add_game(game: RocketJson<core::SAddCollectionGame>) -> Result<(), Stri
 
     db.games.push(core::SCollectionGame::new(game.into_inner(), max_id + 1));
 
-    save_db(db)?;
+    save_db(db).map_err(|_| EErrorResponse::DBError)?;
 
     Ok(())
 }
 
 #[post("/edit_game", data = "<game>")]
-async fn edit_game(game: RocketJson<core::SCollectionGame>) -> Result<(), String> {
-    let mut db = load_db()?;
+async fn edit_game(game: RocketJson<core::SCollectionGame>) -> Result<(), EErrorResponse> {
+    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     let edit_internal_id = game.internal_id;
 
@@ -150,14 +178,14 @@ async fn edit_game(game: RocketJson<core::SCollectionGame>) -> Result<(), String
         }
     }
 
-    save_db(db)?;
+    save_db(db).map_err(|_| EErrorResponse::DBError)?;
 
     Ok(())
 }
 
 #[post("/get_recent_collection_games")]
-async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectionGame>>, String> {
-    let mut db = load_db()?;
+async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectionGame>>, EErrorResponse> {
+    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     let mut result = Vec::with_capacity(10);
 
@@ -171,8 +199,8 @@ async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectio
 }
 
 #[post("/search_collection/<query>")]
-async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollectionGame>>, String> {
-    let db = load_db()?;
+async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollectionGame>>, EErrorResponse> {
+    let db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     #[derive(Debug)]
     struct SScore {
@@ -201,13 +229,13 @@ async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollecti
 }
 
 #[post("/start_session/<game_internal_id>")]
-async fn start_session(game_internal_id: u32) -> Result<(), status::BadRequest<String>> {
+async fn start_session(game_internal_id: u32) -> Result<(), EErrorResponse> {
     // -- $$$FRK(TODO): Need a custom responder I think to handle different error codes from the same routine?
-    let mut db = load_db().map_err(|e| status::BadRequest(Some(e)))?;
+    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     for session in &db.sessions {
         if session.game_internal_id == game_internal_id {
-            return Err(status::BadRequest(Some(format!("There is already a session started for the game with ID {}", game_internal_id))));
+            return Err(EErrorResponse::BadRequest(format!("There is already a session started for the game with ID {}", game_internal_id)));
         }
     }
 
@@ -220,7 +248,7 @@ async fn start_session(game_internal_id: u32) -> Result<(), status::BadRequest<S
     }
 
     if !found_game {
-        return Err(status::BadRequest(Some(format!("Could not find a game with internal_id {} to start session for.", game_internal_id))));
+        return Err(EErrorResponse::BadRequest(format!("Could not find a game with internal_id {} to start session for.", game_internal_id)));
     }
 
     let mut max_id = 0;
@@ -230,14 +258,14 @@ async fn start_session(game_internal_id: u32) -> Result<(), status::BadRequest<S
 
     db.sessions.push(core::SSession::new(max_id + 1, game_internal_id));
 
-    save_db(db).map_err(|e| status::BadRequest(Some(e)))?;
+    save_db(db).map_err(|_| EErrorResponse::DBError)?;
 
     Ok(())
 }
 
 #[post("/finish_session/<session_internal_id>/<memorable>")]
-async fn finish_session(session_internal_id: u32, memorable: bool) -> Result<(), String> {
-    let mut db = load_db()?;
+async fn finish_session(session_internal_id: u32, memorable: bool) -> Result<(), EErrorResponse> {
+    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     let mut found_session = false;
     for s in &mut db.sessions {
@@ -249,17 +277,17 @@ async fn finish_session(session_internal_id: u32, memorable: bool) -> Result<(),
     }
 
     if !found_session {
-        return Err(String::from("Could not find session with matching internal_id to finish."))
+        return Err(EErrorResponse::BadRequest(String::from("Could not find session with matching internal_id to finish.")));
     }
 
-    save_db(db)?;
+    save_db(db).map_err(|_| EErrorResponse::DBError)?;
 
     Ok(())
 }
 
 #[post("/get_sessions", data = "<filter>")]
-async fn get_sessions(filter: RocketJson<core::SSessionFilter>) -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, String> {
-    let db = load_db()?;
+async fn get_sessions(filter: RocketJson<core::SSessionFilter>) -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, EErrorResponse> {
+    let db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     let mut result = Vec::with_capacity(10);
 
@@ -276,7 +304,7 @@ async fn get_sessions(filter: RocketJson<core::SSessionFilter>) -> Result<Rocket
             }
 
             //println!("Session {:?} had no valid game in collection!", session);
-            let game = game_opt.ok_or(String::from("Server has bad data, won't be able to continue until it's fixed."))?;
+            let game = game_opt.ok_or(EErrorResponse::BadRequest(String::from("Server has bad data, won't be able to continue until it's fixed.")))?;
 
             result.push(core::SSessionAndGameInfo{
                 session: session.clone(),
@@ -289,10 +317,10 @@ async fn get_sessions(filter: RocketJson<core::SSessionFilter>) -> Result<Rocket
 }
 
 #[post("/get_randomizer_games", data = "<filter>")]
-async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Result<RocketJson<core::SRandomizerList>, String> {
+async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Result<RocketJson<core::SRandomizerList>, EErrorResponse> {
     let filter_inner = filter.into_inner();
 
-    let db = load_db()?;
+    let db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     let mut active_session_game_ids = std::collections::HashSet::new();
     for session in &db.sessions {
@@ -324,9 +352,9 @@ async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Re
 }
 
 #[post("/update_choose_state", data = "<games>")]
-async fn update_choose_state(games: RocketJson<Vec<core::SCollectionGame>>) -> Result<(), String> {
+async fn update_choose_state(games: RocketJson<Vec<core::SCollectionGame>>) -> Result<(), EErrorResponse> {
     let games_inner = games.into_inner();
-    let mut db = load_db()?;
+    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     let mut input_idx = 0;
     let mut output_idx = 0;
@@ -343,12 +371,12 @@ async fn update_choose_state(games: RocketJson<Vec<core::SCollectionGame>>) -> R
             // -- EVERY game in games should be present in collection_games, and both vecs
             // -- should be strictly in order.
             if db.games[output_idx].internal_id > games_inner[input_idx].internal_id {
-                return Err(String::from("During update_choose_state, either games or collection_games as out of order!"));
+                return Err(EErrorResponse::BadRequest(String::from("During update_choose_state, either games or collection_games as out of order!")));
             }
         }
     }
 
-    save_db(db)?;
+    save_db(db).map_err(|_| EErrorResponse::DBError)?;
 
     Ok(())
 }
