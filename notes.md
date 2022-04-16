@@ -5,7 +5,6 @@
 Gamechooser1 data is successfully imported, and now I keep thinking of things to do. I'd like to
 dump a list here so I hopefully don't forget all of them!
 
-+ when starting session, prevent starting session for game that already has session going
 + when adding, try to catch duplicate entries
 + add screen filter out DLC
 + add screen allow creating manual entry (non-IGDB)
@@ -21,8 +20,8 @@ dump a list here so I hopefully don't forget all of them!
 + zip/otherwise compress old version of the database.json (since it gets quite large)
 + floating error/refresh message
 + better error handling in the client
-    + check what happens when the server returns a Result::Err
 + styling
++ go through TODOs in code
 ? discover how all sessions got deleted one time
 
 ## Next step

@@ -6,6 +6,29 @@ use web_sys::{Request, RequestInit, RequestMode, Response};
 use gamechooser_core as core;
 use super::web::{window, TToJsError};
 
+#[allow(unused_macros)]
+macro_rules! weblog {
+    ( $( $t:tt )* ) => {
+        web_sys::console::log_1(&format!( $( $t )* ).into());
+    }
+}
+
+async fn check_err(resp: &Response) -> Result<(), String> {
+    if !resp.ok() {
+        let text_promise = resp.text().to_str_err()?;
+        let text = JsFuture::from(text_promise).await.to_str_err()?;
+
+        let msg = format!(
+            "Server responded with status {} and message \"{}\"",
+            resp.status(),
+            text.as_string().unwrap_or(String::from("<NO MESSAGE>")),
+        );
+        return Err(msg);
+    }
+
+    Ok(())
+}
+
 pub(super) async fn search_igdb(title: &str) -> Result<Vec<core::SGameInfo>, String> {
     let window = window();
 
@@ -46,6 +69,8 @@ async fn post_data_return_data<S: serde::Serialize, T: serde::de::DeserializeOwn
     assert!(resp_value.is_instance_of::<Response>());
     let resp: Response = resp_value.dyn_into().to_str_err()?;
 
+    check_err(&resp).await?;
+
     let json_promise = resp.json().to_str_err()?;
     let json = JsFuture::from(json_promise).await.to_str_err()?;
 
@@ -77,10 +102,7 @@ async fn post_return_data<T: serde::de::DeserializeOwned>(route: &str, url_data:
     assert!(resp_value.is_instance_of::<Response>());
     let resp: Response = resp_value.dyn_into().to_str_err()?;
 
-    if !resp.ok() {
-        let msg = format!("Server responded with code {}", resp.status());
-        return Err(msg);
-    }
+    check_err(&resp).await?;
 
     let json_promise = resp.json().to_str_err()?;
     let json = JsFuture::from(json_promise).await.to_str_err()?;
@@ -106,10 +128,13 @@ async fn post_data<T: serde::Serialize>(route: &str, data: T) -> Result<(), Stri
     let url = format!("{}/{}/", origin.as_str(), route);
     let request = Request::new_with_str_and_init(&url, &opts).to_str_err()?;
 
-    match JsFuture::from(window.fetch_with_request(&request)).await.to_str_err() {
-        Ok(_) => Ok(()),
-        Err(e) => Err(e),
-    }
+    let resp_value = JsFuture::from(window.fetch_with_request(&request)).await.to_str_err()?;
+    assert!(resp_value.is_instance_of::<Response>());
+    let resp: Response = resp_value.dyn_into().to_str_err()?;
+
+    check_err(&resp).await?;
+
+    Ok(())
 }
 
 async fn post(route: &str, url_data: Option<&str>) -> Result<(), String> {
@@ -130,10 +155,13 @@ async fn post(route: &str, url_data: Option<&str>) -> Result<(), String> {
     };
     let request = Request::new_with_str_and_init(&url, &opts).to_str_err()?;
 
-    match JsFuture::from(window.fetch_with_request(&request)).await.to_str_err() {
-        Ok(_) => Ok(()),
-        Err(e) => Err(e),
-    }
+    let resp_value = JsFuture::from(window.fetch_with_request(&request)).await.to_str_err()?;
+    assert!(resp_value.is_instance_of::<Response>());
+    let resp: Response = resp_value.dyn_into().to_str_err()?;
+
+    check_err(&resp).await?;
+
+    Ok(())
 }
 
 pub(super) async fn add_game(game: core::SAddCollectionGame) -> Result<(), String> {

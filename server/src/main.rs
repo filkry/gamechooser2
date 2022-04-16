@@ -6,6 +6,7 @@ use std::result::{Result};
 use serde::{Serialize, Deserialize};
 use serde_json;
 use sublime_fuzzy;
+use rocket::response::status;
 use rocket::serde::json::Json as RocketJson;
 
 use gamechooser_core as core;
@@ -200,8 +201,15 @@ async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollecti
 }
 
 #[post("/start_session/<game_internal_id>")]
-async fn start_session(game_internal_id: u32) -> Result<(), String> {
-    let mut db = load_db()?;
+async fn start_session(game_internal_id: u32) -> Result<(), status::BadRequest<String>> {
+    // -- $$$FRK(TODO): Need a custom responder I think to handle different error codes from the same routine?
+    let mut db = load_db().map_err(|e| status::BadRequest(Some(e)))?;
+
+    for session in &db.sessions {
+        if session.game_internal_id == game_internal_id {
+            return Err(status::BadRequest(Some(format!("There is already a session started for the game with ID {}", game_internal_id))));
+        }
+    }
 
     let mut found_game = false;
     for game in &db.games {
@@ -212,7 +220,7 @@ async fn start_session(game_internal_id: u32) -> Result<(), String> {
     }
 
     if !found_game {
-        return Err(String::from("Could not find a game with matching internal_id to start session for."))
+        return Err(status::BadRequest(Some(format!("Could not find a game with internal_id {} to start session for.", game_internal_id))));
     }
 
     let mut max_id = 0;
@@ -222,7 +230,7 @@ async fn start_session(game_internal_id: u32) -> Result<(), String> {
 
     db.sessions.push(core::SSession::new(max_id + 1, game_internal_id));
 
-    save_db(db)?;
+    save_db(db).map_err(|e| status::BadRequest(Some(e)))?;
 
     Ok(())
 }

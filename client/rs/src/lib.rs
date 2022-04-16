@@ -857,7 +857,7 @@ pub async fn collection_screen_start_session(internal_id: u32) -> Result<(), JsE
 
     match server_api::start_session(game.internal_id).await {
         Ok(_) => p.set_inner_text("Successfully started session."),
-        Err(_) => p.set_inner_text("Failed to start session."),
+        Err(e) => p.set_inner_text(e.as_str()),
     }
 
     swap_section_div("result_div")?;
