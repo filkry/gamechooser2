@@ -191,6 +191,7 @@ pub fn show_add() -> Result<(), JsError> {
 
 #[wasm_bindgen]
 pub fn show_randomizer() -> Result<(), JsError> {
+    div("randomizer_game_div")?.style().set_property("display", "none").to_jserr()?;
     swap_section_div("randomizer_div")
 }
 
@@ -1014,6 +1015,8 @@ async fn populate_randomizer_choose_screen() -> Result<(), JsError> {
 
             populate_inner_text("randomizer_game_title", game.game_info.title())?;
             populate_img("randomizer_game_cover", game.game_info.cover_url())?;
+
+            div("randomizer_game_div")?.style().set_property("display", "block").to_jserr()?;
         }
     }
     else {
