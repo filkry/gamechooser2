@@ -153,7 +153,7 @@ fn save_db(db: core::EDatabase) -> Result<(), ()> {
 }
 
 #[post("/search_igdb/<name>/<games_only>")]
-async fn search_igdb(name: &str, games_only: bool) -> Result<RocketJson<Vec<core::SGameInfo>>, String> {
+async fn search_igdb(name: &str, games_only: bool) -> Result<RocketJson<Vec<core::EGameInfo>>, String> {
     let session = SReqwestTwitchAPIClient::new_session().await?;
     let results = SReqwestTwitchAPIClient::search(&session, name, games_only).await?;
     Ok(RocketJson(results))

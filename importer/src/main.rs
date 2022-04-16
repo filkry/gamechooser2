@@ -22,6 +22,7 @@ struct SConfigFile {
     gc1_dir: String,
     gc1_data_populate_igdb_info_state: EGC1PopulateIGDBInfoState,
     gc1_data_populate_igdb_next_idx: u32,
+    gc2_dir: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -62,7 +63,7 @@ struct SGC1Session {
 #[derive(Debug, Serialize, Deserialize)]
 struct SGC1GameToGameInfoMap {
     gc1_id: u32,
-    game_info: core::SGameInfo,
+    game_info: core::EGameInfo,
 }
 
 impl Default for EGC1PopulateIGDBInfoState {
@@ -95,11 +96,18 @@ struct SArghsCreateGC2DBFromGC1Data {
 }
 
 #[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "db0_to_db1")]
+#[argh(description = "Convert GC2 DB V0 to V1")]
+struct SArghsConvertV0DBToV1 {
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand)]
 enum EArghsSubcommands {
     SetGC1Dir(SArghsSetGC1Dir),
     GC1DataPopulateIGDBInfo(SArghsGC1DataPopulateIGDBInfo),
     CreateGC2DBFromGC1Data(SArghsCreateGC2DBFromGC1Data),
+    ConvertV0DBToV1(SArghsConvertV0DBToV1),
 }
 
 #[derive(FromArgs)]
@@ -417,7 +425,7 @@ fn create_gc2_db_from_gc1_data() {
         next_session_id = next_session_id + 1;
     }
 
-    let db = core::EDatabase::V0(db_inner);
+    let db = core::EDatabase::V1(db_inner);
 
     let mut out_path = path.clone();
     out_path.push("database.json");
@@ -546,9 +554,9 @@ async fn gc1_data_populate_igdb_info(state: SArghsGC1DataPopulateIGDBInfo) -> Re
         while cur_idx < games.len() && count < 15 {
             println!("\nCreating map for GC1 game \"{}\"", games[cur_idx].title);
 
-            let game_infos = SReqwestTwitchAPIClient::search(&session, games[cur_idx].title.as_str()).await?;
+            let game_infos = SReqwestTwitchAPIClient::search(&session, games[cur_idx].title.as_str(), false).await?;
 
-            let mut chosen_game_info : Option<core::SGameInfo> = None;
+            let mut chosen_game_info : Option<core::EGameInfo> = None;
 
             if game_infos.len() > 0 {
                 println!("Found games on IGDB:");
@@ -597,7 +605,7 @@ async fn gc1_data_populate_igdb_info(state: SArghsGC1DataPopulateIGDBInfo) -> Re
                     release_date = Some(chrono::naive::NaiveDate::from_ymd(year as i32, 1, 1));
                 }
 
-                chosen_game_info = Some(core::SGameInfo::new_custom(title, release_date));
+                chosen_game_info = Some(core::EGameInfo::new_custom(title, release_date));
             }
 
             assert!(chosen_game_info.is_some());
@@ -673,6 +681,108 @@ async fn gc1_data_populate_igdb_info(state: SArghsGC1DataPopulateIGDBInfo) -> Re
     Ok(())
 }
 
+async fn convert_v0_db_to_v1() -> Result<(), String> {
+    let cfg : SConfigFile = confy::load(CONFIG_NAME).unwrap();
+
+    let mut db_path = std::path::PathBuf::new();
+    db_path.push(cfg.gc2_dir.clone());
+    db_path.push("database.json");
+
+    let db : core::EDatabase = {
+        if db_path.exists() {
+            let file = match std::fs::File::open(db_path.clone()) {
+                Ok(f) => f,
+                Err(e) => {
+                    eprintln!("Failed to open {:?} with: {:?}", db_path, e);
+                    return Ok(());
+                }
+            };
+            let reader = std::io::BufReader::new(file);
+
+            // Read the JSON contents of the file as an instance of `User`.
+            match serde_json::from_reader(reader) {
+                Ok(g) => g,
+                Err(e) => {
+                    eprintln!("Failed to deserialize {:?} with: {:?}", db_path, e);
+                    return Ok(());
+                }
+            }
+        }
+        else {
+            core::EDatabase::new()
+        }
+    };
+
+    let mut v1db_inner = core::SDatabase::new();
+
+    let session = SReqwestTwitchAPIClient::new_session().await?;
+
+    if let core::EDatabase::V0(v0db) = db {
+        for game in v0db.games {
+            println!("Updating: {}", game.game_info.title);
+
+            let new_game_info = {
+                match game.game_info.igdb_id {
+                    Some(igdb_id) => {
+                        let igdb_game_info = SReqwestTwitchAPIClient::get_game_info(&session, igdb_id).await?;
+                        // -- just hard sleep here to avoid using up our API request budget
+                        tokio::time::sleep(std::time::Duration::from_secs_f32(0.5)).await;
+                        igdb_game_info
+                    },
+                    None => {
+                        core::EGameInfo::new_custom(game.game_info.title, game.game_info.release_date)
+                    }
+                }
+            };
+
+            let new_game = core::SCollectionGame {
+                internal_id: game.internal_id,
+                game_info: new_game_info,
+                custom_info: game.custom_info,
+                choose_state: game.choose_state,
+            };
+
+            v1db_inner.games.push(new_game);
+        }
+
+        v1db_inner.sessions = v0db.sessions;
+
+        let mut new_db_path = std::path::PathBuf::new();
+        new_db_path.push(cfg.gc2_dir.clone());
+        new_db_path.push("database_v1.json");
+
+        let open_options = std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .append(true)
+            .open(new_db_path);
+
+        let file = match open_options {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("Failed to open database_v1.json with: {:?}", e);
+                return Ok(());
+            }
+        };
+        let writer = std::io::BufWriter::new(file);
+
+        let new_db = core::EDatabase::V1(v1db_inner);
+
+        match serde_json::to_writer_pretty(writer, &new_db) {
+            Ok(_) => {},
+            Err(e) => {
+                eprintln!("Failed to serialize database.json with: {:?}", e);
+                return Ok(());
+            }
+        };
+    }
+    else {
+        eprintln!("Not a V0 database");
+    }
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() {
     let arghs: SArghs = argh::from_env();
@@ -687,6 +797,9 @@ async fn main() {
         }
         EArghsSubcommands::CreateGC2DBFromGC1Data(_) => {
             create_gc2_db_from_gc1_data();
+        }
+        EArghsSubcommands::ConvertV0DBToV1(_) => {
+            convert_v0_db_to_v1().await.unwrap();
         }
     }
 }

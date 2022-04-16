@@ -142,7 +142,59 @@ impl SReqwestTwitchAPIClient {
         session.token_info.as_ref().unwrap().access_token.as_str()
     }
 
-    pub async fn search(session: &SReqwestTwitchAPISession, name: &str, games_only: bool) -> Result<Vec<core::SGameInfo>, String> {
+    pub async fn get_game_info(session: &SReqwestTwitchAPISession, igdb_id: u32) -> Result<core::EGameInfo, String> {
+
+        #[derive(Deserialize)]
+        #[allow(dead_code)]
+        struct SIGDBInfoResultCover {
+            id: u32,
+            image_id: String,
+        }
+        #[derive(Deserialize)]
+        struct SIGDBInfoResult {
+            id: u32,
+            name: String,
+            slug: String,
+            first_release_date: Option<i64>,
+            cover: Option<SIGDBInfoResultCover>,
+        }
+
+        let mut query_results : Vec<SIGDBInfoResult> = {
+            let where_clause = format!("where id = {};", igdb_id);
+            let body = format!("{}fields name,slug,first_release_date,cover.image_id;", where_clause);
+
+            let request = STwitchAPIRequestBuilder::new()
+                .url("https://api.igdb.com/v4/games/")
+                .header("Client-ID", session.twitch_client_id.as_str())
+                .header("Authorization", format!("Bearer {}", SReqwestTwitchAPIClient::access_token(&session)).as_str())
+                .header("Accept", "application/json")
+                .body(body.as_str());
+
+            match SReqwestTwitchAPIClient::post_interp_json::<Vec<SIGDBInfoResult>>(session.clone(), request).await {
+                Ok(res) => Ok(res),
+                Err(e) => Err(format!("Failed with error {:?}", e)),
+            }
+        }?;
+
+        assert!(query_results.len() == 1);
+        let query_result = query_results.pop().expect("assert");
+
+        fn timestamp_to_chrono(ts: i64) -> chrono::naive::NaiveDate {
+            chrono::naive::NaiveDateTime::from_timestamp(ts, 0).date()
+        }
+
+        let result = core::EGameInfo::new_igdb(
+            query_result.id,
+            query_result.slug.as_str(),
+            query_result.cover.map(|c| c.image_id),
+            query_result.name.as_str(),
+            query_result.first_release_date.map(timestamp_to_chrono),
+        );
+
+        Ok(result)
+    }
+
+    pub async fn search(session: &SReqwestTwitchAPISession, name: &str, games_only: bool) -> Result<Vec<core::EGameInfo>, String> {
 
         #[derive(Deserialize)]
         #[allow(dead_code)]
@@ -154,6 +206,7 @@ impl SReqwestTwitchAPIClient {
         struct SIGDBSearchResult {
             id: u32,
             name: String,
+            slug: String,
             first_release_date: Option<i64>,
             cover: Option<SIGDBSearchResultCover>,
         }
@@ -165,7 +218,7 @@ impl SReqwestTwitchAPIClient {
             else {
                 "where version_parent = null;"
             };
-            let body = format!("search \"{}\"; {}fields name,first_release_date,cover.image_id;", name, where_clause);
+            let body = format!("search \"{}\"; {}fields name,slug,first_release_date,cover.image_id;", name, where_clause);
 
             /*
             Should be equivalent to:
@@ -188,17 +241,15 @@ impl SReqwestTwitchAPIClient {
         fn timestamp_to_chrono(ts: i64) -> chrono::naive::NaiveDate {
             chrono::naive::NaiveDateTime::from_timestamp(ts, 0).date()
         }
-        fn extract_cover_url(cover: SIGDBSearchResultCover) -> String {
-            format!("https://images.igdb.com/igdb/image/upload/t_cover_small/{}.jpg", cover.image_id)
-        }
 
         let mut results = Vec::with_capacity(search_results.len());
         for search_res in search_results {
-            results.push(core::SGameInfo::new_igdb(
-                search_res.name,
-                search_res.first_release_date.map(timestamp_to_chrono),
+            results.push(core::EGameInfo::new_igdb(
                 search_res.id,
-                search_res.cover.map(extract_cover_url),
+                search_res.slug.as_str(),
+                search_res.cover.map(|c| c.image_id),
+                search_res.name.as_str(),
+                search_res.first_release_date.map(timestamp_to_chrono),
             ));
         }
 
@@ -207,7 +258,7 @@ impl SReqwestTwitchAPIClient {
 
     // -- not pub because the API doesn't seem to work when you have 'search' in the queries
     #[allow(dead_code)]
-    async fn multi_search(session: &SReqwestTwitchAPISession, names: &[&str]) -> Result<Vec<Vec<core::SGameInfo>>, String> {
+    async fn multi_search(session: &SReqwestTwitchAPISession, names: &[&str]) -> Result<Vec<Vec<core::EGameInfo>>, String> {
 
         if names.len() > 10 {
             return Err(String::from("Cannot multi-search for more than 10 games"));
@@ -222,6 +273,7 @@ impl SReqwestTwitchAPIClient {
         #[derive(Deserialize)]
         struct SIGDBSearchResult {
             id: u32,
+            slug: String,
             name: String,
             first_release_date: Option<i64>,
             cover: Option<SIGDBSearchResultCover>,
@@ -287,7 +339,7 @@ impl SReqwestTwitchAPIClient {
                 let name_query = format!("
 query games \"r{}\" {{
     search \"{}\";
-    fields name,first_release_date,cover.image_id;
+    fields name,slug,first_release_date,cover.image_id;
 }};\n",
                 idx, name);
 
@@ -326,7 +378,7 @@ query games \"r{}\" {{
             chrono::naive::NaiveDateTime::from_timestamp(ts, 0).date()
         }
         fn extract_cover_url(cover: SIGDBSearchResultCover) -> String {
-            format!("https://images.igdb.com/igdb/image/upload/t_cover_small/{}.jpg", cover.image_id)
+            cover.image_id
         }
 
         let mq_results_vec = mq_results.to_vec();
@@ -335,11 +387,12 @@ query games \"r{}\" {{
         for query_result in mq_results_vec {
             let mut name_result = Vec::with_capacity(query_result.len());
             for igdb_game in query_result {
-                name_result.push(core::SGameInfo::new_igdb(
-                    igdb_game.name,
-                    igdb_game.first_release_date.map(timestamp_to_chrono),
+                name_result.push(core::EGameInfo::new_igdb(
                     igdb_game.id,
+                    igdb_game.slug.as_str(),
                     igdb_game.cover.map(extract_cover_url),
+                    igdb_game.name.as_str(),
+                    igdb_game.first_release_date.map(timestamp_to_chrono),
                 ));
             }
             results.push(name_result);

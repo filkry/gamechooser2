@@ -55,11 +55,32 @@ pub struct SOwn {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SGameInfo {
+pub struct SGameInfo0 {
+    pub title: String,
+    pub release_date: Option<chrono::naive::NaiveDate>,
+    pub igdb_id: Option<u32>,
+    pub cover_url: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SGameInfoCustom {
     title: String,
     release_date: Option<chrono::naive::NaiveDate>,
-    igdb_id: Option<u32>,
-    cover_url: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SGameInfoIGDB {
+    id: u32,
+    slug: String,
+    cached_title: String,
+    cached_release_date: Option<chrono::naive::NaiveDate>,
+    cached_cover_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum EGameInfo {
+    Custom(SGameInfoCustom),
+    IGDB(SGameInfoIGDB),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,14 +102,22 @@ pub struct SGameChooseState {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SAddCollectionGame {
-    pub game_info: SGameInfo,
+    pub game_info: EGameInfo,
     pub custom_info: SGameCustomInfo,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SCollectionGame0 {
+    pub internal_id: u32, // $$$FRK(TODO): These internal IDs should have a type for type validation, but I'm lazy right now
+    pub game_info: SGameInfo0,
+    pub custom_info: SGameCustomInfo,
+    pub choose_state: SGameChooseState,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SCollectionGame {
     pub internal_id: u32, // $$$FRK(TODO): These internal IDs should have a type for type validation, but I'm lazy right now
-    pub game_info: SGameInfo,
+    pub game_info: EGameInfo,
     pub custom_info: SGameCustomInfo,
     pub choose_state: SGameChooseState,
 }
@@ -113,7 +142,7 @@ pub struct SSession {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SSessionAndGameInfo {
     pub session: SSession,
-    pub game_info: SGameInfo,
+    pub game_info: EGameInfo,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -139,6 +168,12 @@ pub struct SRandomizerList {
 
 // -- newest version always omits a version number to keep updating code simple
 #[derive(Debug, Serialize, Deserialize)]
+pub struct SDatabase0 {
+    pub games: Vec<SCollectionGame0>,
+    pub sessions: Vec<SSession>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SDatabase {
     pub games: Vec<SCollectionGame>,
     pub sessions: Vec<SSession>,
@@ -146,7 +181,8 @@ pub struct SDatabase {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum EDatabase {
-    V0(SDatabase),
+    V0(SDatabase0),
+    V1(SDatabase),
 }
 
 impl std::ops::Deref for EDatabase {
@@ -154,7 +190,7 @@ impl std::ops::Deref for EDatabase {
 
     fn deref(&self) -> &Self::Target {
         #[allow(irrefutable_let_patterns)]
-        if let Self::V0(inner) = self {
+        if let Self::V1(inner) = self {
             return inner;
         }
         panic!("Trying to deref on database that is not of current version.");
@@ -164,7 +200,7 @@ impl std::ops::Deref for EDatabase {
 impl std::ops::DerefMut for EDatabase {
     fn deref_mut(&mut self) -> &mut Self::Target {
         #[allow(irrefutable_let_patterns)]
-        if let Self::V0(inner) = self {
+        if let Self::V1(inner) = self {
             return inner;
         }
         panic!("Trying to deref on database that is not of current version.");
@@ -267,55 +303,85 @@ impl SOwn {
     }
 }
 
-impl SGameInfo {
-    pub fn new_igdb(title: String, release_date: Option<chrono::naive::NaiveDate>, igdb_id: u32, cover_url: Option<String>) -> Self {
-        Self {
-            title,
-            release_date,
-            igdb_id: Some(igdb_id),
-            cover_url,
+impl SGameInfoIGDB {
+    pub fn cover_url(&self) -> Option<String> {
+        if let Some(cover_id) = &self.cached_cover_id {
+            return Some(format!("https://images.igdb.com/igdb/image/upload/t_cover_small/{}.jpg", cover_id));
         }
+
+        None
+    }
+}
+
+impl EGameInfo {
+    pub fn new_igdb(igdb_id: u32, slug: &str, cover_id: Option<String>, title: &str, release_date: Option<chrono::naive::NaiveDate>) -> Self {
+        Self::IGDB(
+            SGameInfoIGDB{
+                id: igdb_id,
+                slug: String::from(slug),
+                cached_title: String::from(title),
+                cached_cover_id: cover_id,
+                cached_release_date: release_date,
+            }
+        )
     }
 
     pub fn new_custom(title: String, release_date: Option<chrono::naive::NaiveDate>) -> Self {
-        Self {
-            title,
-            release_date,
-            igdb_id: None,
-            cover_url: None,
-        }
+        Self::Custom(
+            SGameInfoCustom {
+                title,
+                release_date,
+            }
+        )
     }
 
     pub fn title(&self) -> &str {
-        self.title.as_str()
-    }
-
-    pub fn release_date(&self) -> Option<chrono::naive::NaiveDate> {
-        self.release_date.clone()
-    }
-
-    pub fn igdb_id(&self) -> &Option<u32> {
-        &self.igdb_id
-    }
-
-    pub fn cover_url(&self) -> Option<&str> {
-        match &self.cover_url {
-            Some(s) => Some(s.as_str()),
-            None => None,
+        match self {
+            Self::IGDB(inner) => inner.cached_title.as_str(),
+            Self::Custom(inner) => inner.title.as_str(),
         }
     }
 
+    pub fn release_date(&self) -> Option<chrono::naive::NaiveDate> {
+        match self {
+            Self::IGDB(inner) => inner.cached_release_date,
+            Self::Custom(inner) => inner.release_date,
+        }
+    }
+
+    pub fn igdb_id(&self) -> Option<u32> {
+        if let Self::IGDB(inner) = self {
+            return Some(inner.id);
+        }
+
+        None
+    }
+
+    pub fn cover_url(&self) -> Option<String> {
+        if let Self::IGDB(inner) = self {
+            return inner.cover_url();
+        }
+
+        None
+    }
+
     pub fn set_title(&mut self, title: &str) {
-        self.title = title.to_string();
+        match self {
+            Self::Custom(inner) => inner.title = title.to_string(),
+            Self::IGDB(inner) => inner.cached_title = title.to_string(),
+        }
     }
 
     pub fn set_release_date(&mut self, date: chrono::naive::NaiveDate) {
-        self.release_date = Some(date);
+        match self {
+            Self::Custom(inner) => inner.release_date = Some(date),
+            Self::IGDB(inner) => inner.cached_release_date = Some(date),
+        }
     }
 
     pub fn set_release_date_str(&mut self, date_str: &str) -> Result<(), ()> {
         if let Ok(date) = chrono::naive::NaiveDate::parse_from_str(date_str, "%Y-%m-%d") {
-            self.release_date = Some(date);
+            self.set_release_date(date);
             Ok(())
         }
         else {
@@ -335,7 +401,7 @@ impl SGameCustomInfo {
 }
 
 impl SAddCollectionGame {
-    pub fn new(game_info: SGameInfo) -> Self {
+    pub fn new(game_info: EGameInfo) -> Self {
         Self {
             game_info,
             custom_info: SGameCustomInfo::new(),
@@ -476,12 +542,13 @@ impl SDatabase {
 
 impl EDatabase {
     pub fn new() -> Self {
-        Self::V0(SDatabase::new())
+        Self::V1(SDatabase::new())
     }
 
     pub fn to_latest_version(self) -> Self {
         match self {
-            EDatabase::V0(_) => self
+            EDatabase::V0(_) => panic!("V0 cannot be automatically converted to V1, requires using importer application to query IGDB for missing info."),
+            EDatabase::V1(_) => self
         }
     }
 }

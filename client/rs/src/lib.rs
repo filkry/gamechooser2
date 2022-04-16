@@ -50,7 +50,7 @@ struct SAppState {
 
     collection_screen_games: Option<Vec<core::SCollectionGame>>,
 
-    last_search_igdb_results: Option<Vec<core::SGameInfo>>,
+    last_search_igdb_results: Option<Vec<core::EGameInfo>>,
 
     details_screen_game: Option<core::SCollectionGame>,
 
@@ -210,7 +210,7 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
 
     // -- do the request
     let name_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("add_screen_name_search_input").to_jserr()?;
-    let games : Vec<core::SGameInfo> = match server_api::search_igdb(
+    let games : Vec<core::EGameInfo> = match server_api::search_igdb(
         name_search_input.value().as_str(),
         checkbox_value("add_screen_games_only")?,
     ).await {
@@ -240,7 +240,7 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
 
         if let Some(url) = game.cover_url() {
             let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
-            img_elem.set_src(url);
+            img_elem.set_src(url.as_str());
             game_div.append_child(&img_elem).to_jserr()?;
         }
 
@@ -315,13 +315,14 @@ fn populate_img(id: &str, src: Option<&str>) -> Result<(), JsError> {
     Ok(())
 }
 
-fn details_screen_populate_game_info(game_info: &core::SGameInfo) -> Result<(), JsError> {
+fn details_screen_populate_game_info(game_info: &core::EGameInfo) -> Result<(), JsError> {
     populate_inner_text("game_details_title", game_info.title())?;
     if let Some(d) = game_info.release_date() {
         let release_date_str = format!("Release date: {:?}", d);
         populate_inner_text("game_details_release_date", release_date_str.as_str())?;
     }
-    populate_img("game_details_cover_art", game_info.cover_url())?;
+    let cover_url = game_info.cover_url();
+    populate_img("game_details_cover_art", cover_url.as_ref().map(|u| u.as_str()))?;
 
     Ok(())
 }
@@ -354,10 +355,11 @@ fn view_details(game: core::SCollectionGame) -> Result<(), JsError> {
     Ok(())
 }
 
-fn edit_screen_populate_game_info(game_info: &core::SGameInfo) -> Result<(), JsError> {
+fn edit_screen_populate_game_info(game_info: &core::EGameInfo) -> Result<(), JsError> {
     populate_text_input("game_edit_title", game_info.title())?;
     populate_date_input("game_edit_release_date", game_info.release_date())?;
-    populate_img("game_edit_cover_art", game_info.cover_url())?;
+    let cover_url = game_info.cover_url();
+    populate_img("game_edit_cover_art", cover_url.as_ref().map(|u| u.as_str()))?;
 
     Ok(())
 }
@@ -477,7 +479,7 @@ pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
         if let Some(games) = &app.last_search_igdb_results {
             for g in games {
                 if let Some(inner_id) = g.igdb_id() {
-                    if *inner_id == igdb_id {
+                    if inner_id == igdb_id {
                         result = Some(g.clone());
                         break;
                     }
@@ -497,7 +499,7 @@ pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
     Ok(())
 }
 
-fn update_game_info_from_edit_screen(game_info: &mut core::SGameInfo) -> Result<(), JsError> {
+fn update_game_info_from_edit_screen(game_info: &mut core::EGameInfo) -> Result<(), JsError> {
     game_info.set_title(document().get_typed_element_by_id::<HtmlInputElement>("game_edit_title").to_jserr()?.value().as_str());
 
     let date_str = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_release_date").to_jserr()?.value();
@@ -645,7 +647,7 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
 
         if let Some(url) = session.game_info.cover_url() {
             let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
-            img_elem.set_src(url);
+            img_elem.set_src(url.as_str());
             session_div.append_child(&img_elem).to_jserr()?;
         }
 
@@ -783,7 +785,7 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
 
         if let Some(url) = game.game_info.cover_url() {
             let img_elem = doc.create_element_typed::<HtmlImageElement>().to_jserr()?;
-            img_elem.set_src(url);
+            img_elem.set_src(url.as_str());
             game_div.append_child(&img_elem).to_jserr()?;
         }
 
@@ -1018,7 +1020,11 @@ async fn populate_randomizer_choose_screen() -> Result<(), JsError> {
             let game = &session.randomizer_list.games[game_idx];
 
             populate_inner_text("randomizer_game_title", game.game_info.title())?;
-            populate_img("randomizer_game_cover", game.game_info.cover_url())?;
+            let cover_url = game.game_info.cover_url();
+            match cover_url {
+                Some(u) => populate_img("randomizer_game_cover", Some(u.as_str()))?,
+                None => populate_img("randomizer_game_cover", None)?,
+            }
 
             if game.custom_info.via.len() > 0 {
                 let via_text = format!("Via: {}", game.custom_info.via);
