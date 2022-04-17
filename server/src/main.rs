@@ -200,7 +200,7 @@ async fn search_igdb(name: &str, games_only: bool) -> Result<RocketJson<Vec<core
 }
 
 #[post("/add_game", data = "<game>")]
-async fn add_game(game: RocketJson<core::SAddCollectionGame>) -> Result<(), EErrorResponse> {
+async fn add_game(game: RocketJson<core::SAddCollectionGame>, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     let mut max_id = 0;
@@ -215,8 +215,14 @@ async fn add_game(game: RocketJson<core::SAddCollectionGame>) -> Result<(), EErr
     Ok(())
 }
 
+#[post("/add_game", data = "<game>", rank = 2)]
+#[allow(unused_variables)]
+async fn add_game_no_auth(game: RocketJson<core::SAddCollectionGame>) -> Result<(), EErrorResponse> {
+    return Err(EErrorResponse::NotAuthenticated);
+}
+
 #[post("/edit_game", data = "<game>")]
-async fn edit_game(game: RocketJson<core::SCollectionGame>) -> Result<(), EErrorResponse> {
+async fn edit_game(game: RocketJson<core::SCollectionGame>, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     let edit_internal_id = game.internal_id;
@@ -232,6 +238,12 @@ async fn edit_game(game: RocketJson<core::SCollectionGame>) -> Result<(), EError
     save_db(db).map_err(|_| EErrorResponse::DBError)?;
 
     Ok(())
+}
+
+#[post("/edit_game", data = "<game>", rank = 2)]
+#[allow(unused_variables)]
+async fn edit_game_no_auth(game: RocketJson<core::SAddCollectionGame>, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
+    return Err(EErrorResponse::NotAuthenticated);
 }
 
 #[post("/get_recent_collection_games")]
@@ -280,7 +292,7 @@ async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollecti
 }
 
 #[post("/start_session/<game_internal_id>")]
-async fn start_session(game_internal_id: u32) -> Result<(), EErrorResponse> {
+async fn start_session(game_internal_id: u32, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     // -- $$$FRK(TODO): Need a custom responder I think to handle different error codes from the same routine?
     let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
@@ -314,8 +326,14 @@ async fn start_session(game_internal_id: u32) -> Result<(), EErrorResponse> {
     Ok(())
 }
 
+#[post("/start_session/<game_internal_id>", rank = 2)]
+#[allow(unused_variables)]
+async fn start_session_no_auth(game_internal_id: u32) -> Result<(), EErrorResponse> {
+    return Err(EErrorResponse::NotAuthenticated);
+}
+
 #[post("/finish_session/<session_internal_id>/<memorable>")]
-async fn finish_session(session_internal_id: u32, memorable: bool) -> Result<(), EErrorResponse> {
+async fn finish_session(session_internal_id: u32, memorable: bool, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     let mut found_session = false;
@@ -334,6 +352,12 @@ async fn finish_session(session_internal_id: u32, memorable: bool) -> Result<(),
     save_db(db).map_err(|_| EErrorResponse::DBError)?;
 
     Ok(())
+}
+
+#[post("/finish_session/<session_internal_id>/<memorable>", rank = 2)]
+#[allow(unused_variables)]
+async fn finish_session_no_auth(session_internal_id: u32, memorable: bool) -> Result<(), EErrorResponse> {
+    return Err(EErrorResponse::NotAuthenticated);
 }
 
 #[post("/get_sessions", data = "<filter>")]
@@ -410,7 +434,7 @@ async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Re
 }
 
 #[post("/update_choose_state", data = "<games>")]
-async fn update_choose_state(games: RocketJson<Vec<core::SCollectionGame>>) -> Result<(), EErrorResponse> {
+async fn update_choose_state(games: RocketJson<Vec<core::SCollectionGame>>, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     let games_inner = games.into_inner();
     let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
@@ -439,8 +463,14 @@ async fn update_choose_state(games: RocketJson<Vec<core::SCollectionGame>>) -> R
     Ok(())
 }
 
+#[post("/update_choose_state", data = "<games>", rank = 2)]
+#[allow(unused_variables)]
+async fn update_choose_state_no_auth(games: RocketJson<Vec<core::SCollectionGame>>) -> Result<(), EErrorResponse> {
+    return Err(EErrorResponse::NotAuthenticated);
+}
+
 #[post("/reset_choose_state/<game_internal_id>")]
-async fn reset_choose_state(game_internal_id: u32) -> Result<(), EErrorResponse> {
+async fn reset_choose_state(game_internal_id: u32, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     for game in &mut db.games {
@@ -452,6 +482,12 @@ async fn reset_choose_state(game_internal_id: u32) -> Result<(), EErrorResponse>
     }
 
     Err(EErrorResponse::BadRequest(format!("Did not find game with internal_id {} to reset choose_state on", game_internal_id)))
+}
+
+#[post("/reset_choose_state/<game_internal_id>", rank = 2)]
+#[allow(unused_variables)]
+async fn reset_choose_state_no_auth(game_internal_id: u32) -> Result<(), EErrorResponse> {
+    return Err(EErrorResponse::NotAuthenticated);
 }
 
 #[post("/check_logged_in")]
@@ -494,15 +530,21 @@ fn rocket() -> _ {
             login,
             search_igdb,
             add_game,
+            add_game_no_auth,
             edit_game,
+            edit_game_no_auth,
             get_recent_collection_games,
             search_collection,
             start_session,
+            start_session_no_auth,
             finish_session,
+            finish_session_no_auth,
             get_sessions,
             get_sessions_no_auth,
             get_randomizer_games,
             update_choose_state,
+            update_choose_state_no_auth,
             reset_choose_state,
+            reset_choose_state_no_auth,
         ])
 }
