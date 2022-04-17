@@ -220,3 +220,12 @@ pub(super) async fn reset_choose_state(game: &core::SCollectionGame) -> Result<(
     let data_str = format!("{}", game.internal_id);
     post("reset_choose_state", Some(data_str.as_str())).await
 }
+
+pub(super) async fn check_logged_in() -> bool {
+    post("check_logged_in", None).await.is_ok()
+}
+
+pub(super) async fn login(secret: &str) -> Result<(), String> {
+    let secret_str = format!("{}", secret);
+    post_return_data("login", Some(secret_str.as_str())).await
+}

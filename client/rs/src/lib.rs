@@ -173,10 +173,35 @@ fn swap_section_div(tgt_id: &str) -> Result<(), JsError> {
     div("game_details_div")?.style().set_property("display", "none").to_jserr()?;
     div("game_edit_div")?.style().set_property("display", "none").to_jserr()?;
     div("result_div")?.style().set_property("display", "none").to_jserr()?;
+    div("login_div")?.style().set_property("display", "none").to_jserr()?;
 
     div(tgt_id)?.style().set_property("display", "block").to_jserr()?;
 
+    if tgt_id.eq("login_div") {
+        div("main_nav_div")?.style().set_property("display", "none").to_jserr()?;
+    }
+    else {
+        div("main_nav_div")?.style().set_property("display", "block").to_jserr()?;
+    }
+
     Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn initial_load() -> Result<(), JsError> {
+    if server_api::check_logged_in().await {
+        show_sessions().await?;
+    }
+    else {
+        show_login().await?;
+    }
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn show_login() -> Result<(), JsError> {
+    swap_section_div("login_div")
 }
 
 #[wasm_bindgen]
@@ -203,6 +228,16 @@ pub fn show_randomizer() -> Result<(), JsError> {
 #[wasm_bindgen]
 pub fn show_stats() -> Result<(), JsError> {
     swap_section_div("stats_div")
+}
+
+#[wasm_bindgen]
+pub async fn login_screen_submit() -> Result<(), JsError> {
+    let sec_input : HtmlInputElement = document().get_typed_element_by_id::<HtmlInputElement>("login_screen_secret").to_jserr()?;
+    if server_api::login(sec_input.value().as_str()).await.to_jserr().is_ok() {
+        show_sessions().await?;
+    }
+
+    Ok(())
 }
 
 #[wasm_bindgen]

@@ -15,6 +15,8 @@ use igdb_api_client::SReqwestTwitchAPIClient;
 #[derive(Default, Serialize, Deserialize)]
 pub struct SConfigFile {
     db_path: String,
+    auth_secret: String,
+    auth_pw: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -35,9 +37,14 @@ enum MyEnum {
 }
 */
 
+#[allow(dead_code)]
 enum EErrorResponse {
     DBError,
     BadRequest(String),
+    NotAuthenticated,
+}
+
+struct AuthenticatedUser {
 }
 
 impl<'r> Responder<'r, 'static> for EErrorResponse {
@@ -57,7 +64,40 @@ impl<'r> Responder<'r, 'static> for EErrorResponse {
                     .header(rocket::http::ContentType::Plain)
                     .sized_body(msg.len(), std::io::Cursor::new(msg))
                     .ok()
+            },
+            Self::NotAuthenticated => {
+                let body = "You have not authenticated, please log in.";
+                Response::build()
+                    .status(rocket::http::Status::Unauthorized)
+                    .header(rocket::http::ContentType::Plain)
+                    .sized_body(body.len(), std::io::Cursor::new(body))
+                    .ok()
             }
+        }
+    }
+}
+
+#[rocket::async_trait]
+impl<'r> rocket::request::FromRequest<'r> for AuthenticatedUser {
+    type Error = String;
+
+    async fn from_request(req: &'r rocket::request::Request<'_>) -> rocket::request::Outcome<Self, Self::Error> {
+        let cfg : SConfigFile = match confy::load("gamechooser2_server") {
+            Ok(c) => c,
+            Err(_) => {
+                //return Err(String::from("Could not load config file"));
+                return rocket::request::Outcome::Forward(());
+            }
+        };
+
+        match req.cookies().get("auth_secret") {
+            Some(secret) => if secret.value().eq(cfg.auth_secret.as_str()) {
+                rocket::request::Outcome::Success(Self{})
+            }
+            else {
+                rocket::request::Outcome::Forward(())
+            },
+            None => rocket::request::Outcome::Forward(()),
         }
     }
 }
@@ -297,7 +337,7 @@ async fn finish_session(session_internal_id: u32, memorable: bool) -> Result<(),
 }
 
 #[post("/get_sessions", data = "<filter>")]
-async fn get_sessions(filter: RocketJson<core::SSessionFilter>) -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, EErrorResponse> {
+async fn get_sessions(filter: RocketJson<core::SSessionFilter>, _user: AuthenticatedUser) -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, EErrorResponse> {
     let db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     let mut result = Vec::with_capacity(10);
@@ -325,6 +365,12 @@ async fn get_sessions(filter: RocketJson<core::SSessionFilter>) -> Result<Rocket
     }
 
     Ok(RocketJson(result))
+}
+
+#[post("/get_sessions", data = "<filter>", rank = 2)]
+#[allow(unused_variables)]
+async fn get_sessions_no_auth(filter: RocketJson<core::SSessionFilter>) -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, EErrorResponse> {
+    return Err(EErrorResponse::NotAuthenticated);
 }
 
 #[post("/get_randomizer_games", data = "<filter>")]
@@ -408,6 +454,34 @@ async fn reset_choose_state(game_internal_id: u32) -> Result<(), EErrorResponse>
     Err(EErrorResponse::BadRequest(format!("Did not find game with internal_id {} to reset choose_state on", game_internal_id)))
 }
 
+#[post("/check_logged_in")]
+async fn check_logged_in(_user: AuthenticatedUser) -> Result<(), EErrorResponse> {
+    Ok(())
+}
+
+#[post("/check_logged_in", rank = 2)]
+async fn check_logged_in_no_auth() -> Result<(), EErrorResponse> {
+    Err(EErrorResponse::NotAuthenticated)
+}
+
+#[post("/login/<secret>")]
+async fn login(secret: &str, cookies: &rocket::http::CookieJar<'_>) -> Result<(), EErrorResponse> {
+    let cfg : SConfigFile = match confy::load("gamechooser2_server") {
+        Ok(c) => c,
+        Err(_) => {
+            return Err(EErrorResponse::DBError);
+        }
+    };
+
+    if secret.eq(cfg.auth_pw.as_str()) {
+        cookies.add(rocket::http::Cookie::new("auth_secret", cfg.auth_secret));
+
+        return Ok(());
+    }
+
+    return Err(EErrorResponse::BadRequest(String::from("Incorrect secret")));
+}
+
 #[launch]
 fn rocket() -> _ {
     // -- $$$FRK(TODO): verify we have valid config file, all values present
@@ -415,6 +489,9 @@ fn rocket() -> _ {
     rocket::build()
         .mount("/static", rocket::fs::FileServer::from("../client/served_files"))
         .mount("/", routes![
+            check_logged_in,
+            check_logged_in_no_auth,
+            login,
             search_igdb,
             add_game,
             edit_game,
@@ -423,6 +500,7 @@ fn rocket() -> _ {
             start_session,
             finish_session,
             get_sessions,
+            get_sessions_no_auth,
             get_randomizer_games,
             update_choose_state,
             reset_choose_state,

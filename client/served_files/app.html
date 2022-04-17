@@ -6,14 +6,21 @@
       </head>
     <header>
         <div id="error_div" style="display:none"></div>
-        <button onclick="show_sessions()">Sessions</button>
-        <button onclick="show_collection()">Collection</button>
-        <button onclick="show_add()">Add</button>
-        <button onclick="show_randomizer()">Randomizer</button>
-        <button onclick="show_stats()">Stats</button>
+        <div id="main_nav_div">
+            <button onclick="show_sessions()">Sessions</button>
+            <button onclick="show_collection()">Collection</button>
+            <button onclick="show_add()">Add</button>
+            <button onclick="show_randomizer()">Randomizer</button>
+            <button onclick="show_stats()">Stats</button>
+        </div>
     </header>
     <body>
-        <div id="sessions_div">
+        <div id="login_div" style="display:none">
+            <label for="login_screen_secret">Password:</label>
+            <input type="password" id="login_screen_secret">
+            <button onclick="login_screen_submit()">Log in</button>
+        </div>
+        <div id="sessions_div" style="display:none">
             <h1 id="sessions_header">Sessions</h1>
             <dir id="sessions_filter_div">
                 <input type="checkbox" id="sessions_screen_filter_active" checked>
@@ -128,7 +135,8 @@
     </script>
     <script type="module">
         import init, {
-            cycle_tag_tri_box,
+            initial_load,
+            login_screen_submit,
             show_sessions,
             show_collection,
             show_add,
@@ -155,7 +163,8 @@
         async function run() {
             console.log("await init()");
             await init();
-            window.cycle_tag_tri_box = cycle_tag_tri_box;
+            window.initial_load = initial_load;
+            window.login_screen_submit = login_screen_submit;
             window.show_sessions = show_sessions;
             window.show_collection = show_collection;
             window.show_add = show_add;
@@ -179,7 +188,7 @@
             window.game_details_reset = game_details_reset;
             console.log("bindings set");
 
-            show_sessions();
+            initial_load();
         }
 
         run();

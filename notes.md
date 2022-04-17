@@ -3,8 +3,6 @@
 ## Post-import TODO
 
 Must:
-+ randomizer some more data about game (at least via + igdb link)
-+ stats screen basic stats
 + some kind of lite authentication
 + styling
 + end session -> pick next valid date, or retire
@@ -13,6 +11,7 @@ Basically must:
 + add screen allow creating manual entry (non-IGDB)
 + floating error/refresh message
 + better error handling in the client
++ stats screen basic stats
 
 Nice to have:
 + zip/otherwise compress old version of the database.json (since it gets quite large)
