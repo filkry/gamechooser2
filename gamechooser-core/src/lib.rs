@@ -306,7 +306,7 @@ impl SOwn {
 impl SGameInfoIGDB {
     pub fn cover_url(&self) -> Option<String> {
         if let Some(cover_id) = &self.cached_cover_id {
-            return Some(format!("https://images.igdb.com/igdb/image/upload/t_cover_small/{}.jpg", cover_id));
+            return Some(format!("https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg", cover_id));
         }
 
         None

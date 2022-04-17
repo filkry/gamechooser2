@@ -1,0 +1,90 @@
+html {
+  font-family: 'Open Sans', sans-serif;
+}
+
+body {
+    margin-left: auto;
+    margin-right: auto;
+    border-left: 1px solid lightgray;
+    border-right: 1px solid lightgray;
+    font-size: 4vmin;
+}
+
+h1 {
+    border-bottom: 1px solid black;
+    padding-left: 5vmin;
+    font-size: 8vmin;
+}
+
+h2 {
+    font-size: 5vmin;
+    color: darkgray;
+}
+
+h3 {
+}
+
+input[type=checkbox] {
+    transform: scale(3);
+    vertical-align: middle;
+}
+
+label {
+    vertical-align: middle;
+    padding-left: 2vmin;
+}
+
+.checkbox_list li {
+    padding-bottom: 2vmin;
+    list-style-type: none;
+}
+
+#main_nav_div {
+    background-color: lightgray;
+    padding: 10px;
+    overflow-x: scroll;
+    white-space: nowrap;
+    font-size: 4vmin;
+}
+
+.main_nav_button {
+  font-family: 'Open Sans', sans-serif;
+}
+
+#sessions_filter_div {
+    background-color: whitesmoke;
+    padding: 3vmin;
+}
+
+.session_div {
+    background-color: whitesmoke;
+    margin-top: 5vmin;
+    margin-left: 5vmin;
+    margin-right: 5vmin;
+    margin-bottom: 0vmin;
+    padding: 3vmin;
+    padding-left: 0vmin;
+}
+
+.session_div h3 {
+    padding-left: 3vmin;
+}
+
+.session_div_columns {
+    display: flex;
+    flex-direction: row;
+}
+
+.session_div_info {
+    padding-left: 5vmin;
+    padding-top: 0vmin;
+}
+
+.session_div_info p {
+    margin-top: 0vmin;
+    padding-top: 0vmin;
+}
+
+.session_div_columns img {
+    width: 30%;
+}

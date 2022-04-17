@@ -2,16 +2,22 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <title>Gamechooser 2></title>
+        <title>Gamechooser 2</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="normalize.css">
+        <link rel="stylesheet" href="main.css">
+        <link rel="stylesheet" href="styles.css">
+        <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;700&display=swap" rel="stylesheet">
       </head>
     <header>
         <div id="error_div" style="display:none"></div>
         <div id="main_nav_div">
-            <button onclick="show_sessions()">Sessions</button>
-            <button onclick="show_collection()">Collection</button>
-            <button onclick="show_add()">Add</button>
-            <button onclick="show_randomizer()">Randomizer</button>
-            <button onclick="show_stats()">Stats</button>
+            <button class="main_nav_button" onclick="show_sessions()">Sessions</button>
+            <button class="main_nav_button" onclick="show_collection()">Collection</button>
+            <button class="main_nav_button" onclick="show_add()">Add</button>
+            <button class="main_nav_button" onclick="show_randomizer()">Randomizer</button>
+            <button class="main_nav_button" onclick="show_stats()">Stats</button>
         </div>
     </header>
     <body>
@@ -21,27 +27,36 @@
             <button onclick="login_screen_submit()">Log in</button>
         </div>
         <div id="sessions_div" style="display:none">
-            <h1 id="sessions_header">Sessions</h1>
-            <dir id="sessions_filter_div">
-                <input type="checkbox" id="sessions_screen_filter_active" checked>
-                <label for="sessions_screen_filter_active">Active only</label>
-                <input type="checkbox" id="sessions_screen_filter_memorable">
-                <label for="sessions_screen_filter_memorable">Memorable only</label>
-                <input type="checkbox" id="sessions_screen_filter_year_enable">
-                <label for="sessions_screen_filter_year">Limit to year:</label>
-                <input type="number" id="sessions_screen_filter_year">
+            <h1 id="sessions_header" class="page_header">Sessions</h1>
+            <div id="sessions_filter_div">
+                <h2>Filter</h2>
+                <ul class="checkbox_list">
+                    <li>
+                        <input type="checkbox" id="sessions_screen_filter_active" checked>
+                        <label for="sessions_screen_filter_active">Active only</label>
+                    </li>
+                    <li>
+                        <input type="checkbox" id="sessions_screen_filter_memorable">
+                        <label for="sessions_screen_filter_memorable">Memorable only</label>
+                    </li>
+                    <li>
+                        <input type="checkbox" id="sessions_screen_filter_year_enable">
+                        <label for="sessions_screen_filter_year_enable">Limit to year:</label>
+                        <input type="number" id="sessions_screen_filter_year">
+                    </li>
+                </ul>
                 <button onclick="session_screen_apply_filter()">Apply filters</button>
-            </dir>
+            </div>
             <div id="session_screen_session_list"></div>
         </div>
         <div id="collection_div" style="display:none">
-            <h1 id="collection_header">Collection</h1>
+            <h1 id="collection_header" class="page_header">Collection</h1>
             <input type="text" id="collection_search_input" onkeypress="collection_search_box_keypress(event)">
             <button onclick="collection_screen_search()">Search collection</button>
             <div id="collection_screen_game_list"></div>
         </div>
         <div id="add_div" style="display:none">
-            <h1>Add to collection</h1>
+            <h1 class="page_header">Add to collection</h1>
             <input type="text" id="add_screen_name_search_input", onkeypress="add_screen_search_igdb_keypress(event)">
             <input type="checkbox" id="add_screen_games_only" checked>
             <label for="add_screen_games_only">Games only (no DLC, etc)</label>
@@ -49,7 +64,7 @@
             <div id="add_screen_search_igdb_output"></div>
         </div>
         <div id="randomizer_div" style="display:none">
-            <h1>Randomizer</h1>
+            <h1 class="page_header">Randomizer</h1>
             <div id="randomizer_options_div">
                 <h2>Options</h2>
                 <input type="checkbox" id="randomizer_screen_couch">
@@ -84,7 +99,7 @@
             <button id="game_details_reset" onclick="game_details_reset()">Reset choose state</button>
         </div>
         <div id="game_edit_div" style="display:none">
-            <h1 id="game_edit_header">Add Game</h1>
+            <h1 id="game_edit_header" class="page_header">Add Game</h1>
 
             <label for="game_edit_title">Title</label>
             <input type="text" id="game_edit_title">

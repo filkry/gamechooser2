@@ -1,5 +1,15 @@
 use wasm_bindgen::{JsCast, JsValue, JsError};
-use web_sys::{HtmlButtonElement, HtmlDivElement, HtmlImageElement, HtmlInputElement, HtmlLabelElement, HtmlParagraphElement, HtmlSpanElement};
+use web_sys::{
+    HtmlButtonElement,
+    HtmlDivElement,
+    HtmlImageElement,
+    HtmlInputElement,
+    HtmlLabelElement,
+    HtmlLiElement,
+    HtmlParagraphElement,
+    HtmlSpanElement,
+    HtmlUListElement,
+};
 
 pub trait TDOMElement {
     fn tag() -> &'static str;
@@ -45,6 +55,11 @@ impl TDOMElement for HtmlLabelElement {
         "label"
     }
 }
+impl TDOMElement for HtmlLiElement {
+    fn tag() -> &'static str {
+        "li"
+    }
+}
 impl TDOMElement for HtmlParagraphElement {
     fn tag() -> &'static str {
         "p"
@@ -53,6 +68,11 @@ impl TDOMElement for HtmlParagraphElement {
 impl TDOMElement for HtmlSpanElement {
     fn tag() -> &'static str {
         "span"
+    }
+}
+impl TDOMElement for HtmlUListElement {
+    fn tag() -> &'static str {
+        "ul"
     }
 }
 
