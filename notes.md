@@ -3,7 +3,6 @@
 ## Post-import TODO
 
 Must:
-+ some kind of lite authentication
 + styling
 + end session -> pick next valid date, or retire
 
@@ -21,6 +20,9 @@ Nice to have:
 ? discover how all sessions got deleted one time
 + edit screen new own add/remove UI
 + stats screen burndown chart
+
+Way later:
++ Strengthen auth to where I could expose this outside local network
 
 ## Next step
 Next step is probably to proof of concept using google docs or sheets as a storage backend...
