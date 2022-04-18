@@ -3,6 +3,8 @@
 ## Post-import TODO
 
 Must:
++ issue: starting a session from randomizer doesn't go to results page
++ check release date when filtering from randomizer
 + end session -> pick next valid date, or retire
 
 Basically must:
@@ -19,6 +21,7 @@ Nice to have:
 ? discover how all sessions got deleted one time
 + edit screen new own add/remove UI
 + stats screen burndown chart
++ periodically refresh data from IGDB
 
 Way later:
 + Strengthen auth to where I could expose this outside local network
