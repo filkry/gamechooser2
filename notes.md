@@ -2,9 +2,6 @@
 
 ## Post-import TODO
 
-Must:
-+ end session -> pick next valid date, or retire
-
 Basically must:
 + add JP tag, JP/JP-only filtering options
 + add screen allow creating manual entry (non-IGDB)

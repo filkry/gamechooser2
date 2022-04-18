@@ -703,6 +703,20 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
                 memorable_elem_label.set_inner_text("Memorable");
                 memorable_li.append_child(&memorable_elem_label).to_jserr()?;
 
+                let retire_li = document.create_element_typed::<HtmlLiElement>().to_jserr()?;
+                checkbox_list.append_child(&retire_li).to_jserr()?;
+
+                let retire_elem = document.create_element_typed::<HtmlInputElement>().to_jserr()?;
+                retire_elem.set_type("checkbox");
+                let retire_elem_id = format!("session_screen_retire_{}", session.session.internal_id);
+                retire_elem.set_id(retire_elem_id.as_str());
+                retire_li.append_child(&retire_elem).to_jserr()?;
+
+                let retire_elem_label = document.create_element_typed::<HtmlLabelElement>().to_jserr()?;
+                retire_elem_label.set_html_for(retire_elem_id.as_str());
+                retire_elem_label.set_inner_text("Retire");
+                retire_li.append_child(&retire_elem_label).to_jserr()?;
+
                 let button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
                 let onclick_body = format!("session_screen_finish_session({});", session.session.internal_id);
                 let onclick = Function::new_no_args(onclick_body.as_str());
@@ -1015,11 +1029,14 @@ pub async fn session_screen_finish_session(internal_id: u32) -> Result<(), JsErr
     };
     session_opt.ok_or(JsError::new("Somehow finishing session not in the list."))?;
 
-    let checkbox_id = format!("session_screen_memorable_{}", internal_id);
-    let memorable = checkbox_value(checkbox_id.as_str())?;
+    let memorable_checkbox_id = format!("session_screen_memorable_{}", internal_id);
+    let memorable = checkbox_value(memorable_checkbox_id.as_str())?;
+
+    let retire_checkbox_id = format!("session_screen_retire_{}", internal_id);
+    let retire = checkbox_value(retire_checkbox_id.as_str())?;
 
     let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message").to_jserr()?;
-    match server_api::finish_session(internal_id, memorable).await {
+    match server_api::finish_session(internal_id, memorable, retire).await {
         Ok(_) => p.set_inner_text("Successfully finished session."),
         Err(_) => p.set_inner_text("Failed to finish session."),
     }

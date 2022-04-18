@@ -332,21 +332,31 @@ async fn start_session_no_auth(game_internal_id: u32) -> Result<(), EErrorRespon
     return Err(EErrorResponse::NotAuthenticated);
 }
 
-#[post("/finish_session/<session_internal_id>/<memorable>")]
-async fn finish_session(session_internal_id: u32, memorable: bool, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
+#[post("/finish_session/<session_internal_id>/<memorable>/<retire>")]
+async fn finish_session(session_internal_id: u32, memorable: bool, retire: bool, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
-    let mut found_session = false;
+    let mut game_id_opt = None;
     for s in &mut db.sessions {
         if s.internal_id == session_internal_id {
             s.finish(memorable);
-            found_session = true;
+            game_id_opt = Some(s.game_internal_id);
             break;
         }
     }
 
-    if !found_session {
+    if game_id_opt.is_none() {
         return Err(EErrorResponse::BadRequest(String::from("Could not find session with matching internal_id to finish.")));
+    }
+
+    if retire {
+        let game_id = game_id_opt.expect("checked above");
+
+        for game in &mut db.games {
+            if game.internal_id == game_id {
+                game.choose_state.retire();
+            }
+        }
     }
 
     save_db(db).map_err(|_| EErrorResponse::DBError)?;
