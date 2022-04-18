@@ -73,25 +73,37 @@
         </div>
         <div id="randomizer_div" style="display:none">
             <h1 class="page_header">Randomizer</h1>
-            <div id="randomizer_options_div">
-                <h2>Options</h2>
-                <input type="checkbox" id="randomizer_screen_couch">
-                <label for="randomizer_screen_couch">Couch playable</label>
-                <input type="checkbox" id="randomizer_screen_portable">
-                <label for="randomizer_screen_portable">Portable playable</label>
-                <input type="checkbox" id="randomizer_screen_allow_unowned">
-                <label for="randomizer_screen_allow_unowned">Allow unowned games</label>
+            <div id="randomizer_options_div" class="filter_div">
+                <h2>Filter</h2>
+                <ul class="checkbox_list">
+                    <li>
+                        <input type="checkbox" id="randomizer_screen_couch">
+                        <label for="randomizer_screen_couch">Couch playable</label>
+                    </li>
+                    <li>
+                        <input type="checkbox" id="randomizer_screen_portable">
+                        <label for="randomizer_screen_portable">Portable playable</label>
+                    </li>
+                    <li>
+                        <input type="checkbox" id="randomizer_screen_allow_unowned">
+                        <label for="randomizer_screen_allow_unowned">Allow unowned games</label>
+                    </li>
+                </ul>
                 <button onclick="randomizer_screen_start()">Start choosin'</button>
             </div>
-            <div id="randomizer_game_div">
+            <div id="randomizer_game_div" class="game_in_list">
                 <h3 id="randomizer_game_title"></h3>
-                <img id="randomizer_game_cover">
-                <p id="randomizer_game_via"></p>
-                <a id="randomizer_game_igdb_link" target="_blank" rel="noopener noreferrer">IGDB page ⧉</a>
-                <button onclick="randomizer_pick_current_game()">Start this game!</button>
-                <button onclick="randomizer_pass_current_game()">Pass this game :(</button>
-                <button onclick="randomizer_push_current_game()">Push to later</button>
-                <button onclick="randomizer_retire_current_game()">Retire</button>
+                <div class="game_in_list_columns">
+                    <img id="randomizer_game_cover">
+                    <div class="game_in_list_info">
+                        <p id="randomizer_game_via"></p>
+                        <a id="randomizer_game_igdb_link" target="_blank" rel="noopener noreferrer">IGDB page ⧉</a>
+                        <button onclick="randomizer_pick_current_game()">Start this game!</button>
+                        <button onclick="randomizer_pass_current_game()">Pass this game :(</button>
+                        <button onclick="randomizer_push_current_game()">Push to later</button>
+                        <button onclick="randomizer_retire_current_game()">Retire</button>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="stats_div" style="display:none">
