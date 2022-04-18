@@ -76,7 +76,9 @@ label {
 }
 
 .game_in_list img {
+    min-width: 30%;
     width: 30%;
+    max-width: 30%;
 }
 .game_in_list_info {
     padding-left: 5vmin;
@@ -100,4 +102,5 @@ label {
     padding-right: 2vmin;
     border-radius: 3vmin;
     display: inline-block;
+    font-size: 3vmin;
 }
