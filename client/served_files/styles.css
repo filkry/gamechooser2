@@ -51,12 +51,12 @@ label {
   font-family: 'Open Sans', sans-serif;
 }
 
-#sessions_filter_div {
+.filter_div {
     background-color: whitesmoke;
     padding: 3vmin;
 }
 
-.session_div {
+.game_in_list {
     background-color: whitesmoke;
     margin-top: 5vmin;
     margin-left: 5vmin;
@@ -66,25 +66,38 @@ label {
     padding-left: 0vmin;
 }
 
-.session_div h3 {
+.game_in_list h3 {
     padding-left: 3vmin;
 }
 
-.session_div_columns {
+.game_in_list_columns {
     display: flex;
     flex-direction: row;
 }
 
-.session_div_info {
+.game_in_list img {
+    width: 30%;
+}
+.game_in_list_info {
     padding-left: 5vmin;
     padding-top: 0vmin;
 }
 
-.session_div_info p {
+.game_in_list_info * {
+    margin-bottom: 2vmin;
+}
+
+.game_in_list_info p {
     margin-top: 0vmin;
     padding-top: 0vmin;
 }
 
-.session_div_columns img {
-    width: 30%;
+.game_check {
+    margin-left: 1vmin;
+    margin-right: 1vmin;
+    background-color: lightgreen;
+    padding-left: 2vmin;
+    padding-right: 2vmin;
+    border-radius: 3vmin;
+    display: inline-block;
 }

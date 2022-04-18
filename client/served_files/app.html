@@ -28,7 +28,7 @@
         </div>
         <div id="sessions_div" style="display:none">
             <h1 id="sessions_header" class="page_header">Sessions</h1>
-            <div id="sessions_filter_div">
+            <div class="filter_div">
                 <h2>Filter</h2>
                 <ul class="checkbox_list">
                     <li>
@@ -51,8 +51,10 @@
         </div>
         <div id="collection_div" style="display:none">
             <h1 id="collection_header" class="page_header">Collection</h1>
-            <input type="text" id="collection_search_input" onkeypress="collection_search_box_keypress(event)">
-            <button onclick="collection_screen_search()">Search collection</button>
+            <div class="filter_div">
+                <input type="text" id="collection_search_input" onkeypress="collection_search_box_keypress(event)">
+                <button onclick="collection_screen_search()">Search collection</button>
+            </div>
             <div id="collection_screen_game_list"></div>
         </div>
         <div id="add_div" style="display:none">

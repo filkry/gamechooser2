@@ -69,31 +69,12 @@ enum ETagQuery {
     False,
 }
 
-static APP: Lazy<RwLock<SAppState>> = Lazy::new(|| RwLock::new(SAppState::new()));
-
-#[allow(dead_code)]
-impl ETagQuery {
-    pub fn new_from_str(strval: &str) -> Self {
-        match strval {
-            "☐" => Self::TrueOrFalse,
-            "☑" => Self::True,
-            "☒" => Self::False,
-            _ => Self::TrueOrFalse,
-        }
-    }
-
-    pub fn new_from_element(element_opt: &Option<web_sys::Element>) -> Self {
-        if let Some(element) = element_opt {
-            if let Ok(span) = element.clone().dyn_into::<web_sys::HtmlSpanElement>() {
-                if let Some(tc) = span.text_content() {
-                    return ETagQuery::new_from_str(&tc);
-                }
-            }
-        }
-
-        Self::TrueOrFalse
-    }
+struct SGameInListDiv {
+    pub main_div: HtmlDivElement,
+    pub info_div: HtmlDivElement,
 }
+
+static APP: Lazy<RwLock<SAppState>> = Lazy::new(|| RwLock::new(SAppState::new()));
 
 impl SAppState {
     pub fn new() -> Self {
@@ -143,18 +124,38 @@ impl Default for EGameRandomizer {
 extern {
 }
 
-#[wasm_bindgen]
-pub fn cycle_tag_tri_box(element: &web_sys::HtmlSpanElement) {
-    match element.text_content() {
-        Some(tc) => {
-            match tc.as_str() {
-                "☐" => element.set_text_content(Some("☑")),
-                "☑" => element.set_text_content(Some("☒")),
-                "☒" => element.set_text_content(Some("☐")),
-                _ => element.set_text_content(Some("☐")),
-            }
-        },
-        None => element.set_text_content(Some("☐")),
+impl SGameInListDiv {
+    fn new(game_info: &core::EGameInfo, add_class: Option<&str>) -> Result<Self, JsError> {
+        let document = document();
+
+        let game_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+        game_div.set_class_name("game_in_list");
+        if let Some(ac) = add_class {
+            game_div.set_class_name(format!("game_in_list {}", ac).as_str());
+        }
+
+        let title_elem = document.create_element("h3").to_jserr()?;
+        title_elem.set_text_content(Some(game_info.title()));
+        game_div.append_child(&title_elem).to_jserr()?;
+
+        let columns_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+        columns_div.set_class_name("game_in_list_columns");
+        game_div.append_child(&columns_div).to_jserr()?;
+
+        if let Some(url) = game_info.cover_url() {
+            let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
+            img_elem.set_src(url.as_str());
+            columns_div.append_child(&img_elem).to_jserr()?;
+        }
+
+        let info_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+        info_div.set_class_name("game_in_list_info");
+        columns_div.append_child(&info_div).to_jserr()?;
+
+        Ok(Self {
+            main_div: game_div,
+            info_div,
+        })
     }
 }
 
@@ -676,37 +677,18 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
     output_elem.set_inner_html("");
 
     for session in &sessions {
-        let session_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
-        session_div.set_class_name("session_div");
-        output_elem.append_child(&session_div).to_jserr()?;
-
-        let title_elem = document.create_element("h3").to_jserr()?;
-        title_elem.set_text_content(Some(session.game_info.title()));
-        session_div.append_child(&title_elem).to_jserr()?;
-
-        let columns_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
-        columns_div.set_class_name("session_div_columns");
-        session_div.append_child(&columns_div).to_jserr()?;
-
-        if let Some(url) = session.game_info.cover_url() {
-            let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
-            img_elem.set_src(url.as_str());
-            columns_div.append_child(&img_elem).to_jserr()?;
-        }
-
-        let info_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
-        info_div.set_class_name("session_div_info");
-        columns_div.append_child(&info_div).to_jserr()?;
+        let session_div = SGameInListDiv::new(&session.game_info, None)?;
+        output_elem.append_child(&session_div.main_div).to_jserr()?;
 
         let start_date_elem = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
         start_date_elem.set_inner_text(format!("Start date: {}", session.session.start_date).as_str());
-        info_div.append_child(&start_date_elem).to_jserr()?;
+        session_div.info_div.append_child(&start_date_elem).to_jserr()?;
 
         match session.session.state {
             core::ESessionState::Ongoing => {
                 let checkbox_list = document.create_element_typed::<HtmlUListElement>().to_jserr()?;
                 checkbox_list.set_class_name("checkbox_list");
-                info_div.append_child(&checkbox_list).to_jserr()?;
+                session_div.info_div.append_child(&checkbox_list).to_jserr()?;
 
                 let memorable_li = document.create_element_typed::<HtmlLiElement>().to_jserr()?;
                 checkbox_list.append_child(&memorable_li).to_jserr()?;
@@ -727,16 +709,16 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
                 let onclick = Function::new_no_args(onclick_body.as_str());
                 button_elem.set_onclick(Some(&onclick));
                 button_elem.set_inner_text("Finish session");
-                info_div.append_child(&button_elem).to_jserr()?;
+                session_div.info_div.append_child(&button_elem).to_jserr()?;
             },
             core::ESessionState::Finished{end_date, memorable} => {
                 let end_date_elem = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
                 end_date_elem.set_inner_text(format!("End date: {}", end_date).as_str());
-                info_div.append_child(&end_date_elem).to_jserr()?;
+                session_div.info_div.append_child(&end_date_elem).to_jserr()?;
 
                 let memorable_elem = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
                 memorable_elem.set_inner_text(format!("Memorable: {}", memorable).as_str());
-                info_div.append_child(&memorable_elem).to_jserr()?;
+                session_div.info_div.append_child(&memorable_elem).to_jserr()?;
             }
         }
 
@@ -771,6 +753,7 @@ fn create_check_span(val: bool, name: &str, output_div: &HtmlDivElement) -> Resu
     if val {
         let span = document().create_element_typed::<HtmlSpanElement>().to_jserr()?;
         span.set_inner_text(format!("✓ {}", name).as_str());
+        span.set_class_name("game_check");
         output_div.append_child(&span).to_jserr()?;
     }
 
@@ -830,51 +813,34 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
     output_elem.set_inner_html("");
 
     for game in &games {
-        let game_div = doc.create_element_typed::<HtmlDivElement>().to_jserr()?;
-        output_elem.append_child(&game_div).to_jserr()?;
-
-        let title_elem = doc.create_element("h3").to_jserr()?;
-        title_elem.set_text_content(Some(game.game_info.title()));
-        game_div.append_child(&title_elem).to_jserr()?;
-
-        if let Some(url) = game.game_info.cover_url() {
-            let img_elem = doc.create_element_typed::<HtmlImageElement>().to_jserr()?;
-            img_elem.set_src(url.as_str());
-            game_div.append_child(&img_elem).to_jserr()?;
-        }
+        let game_div = SGameInListDiv::new(&game.game_info, None)?;
+        output_elem.append_child(&game_div.main_div).to_jserr()?;
 
         if let Some(d) = game.game_info.release_date() {
             let release_date_p = doc.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
             release_date_p.set_inner_text(format!("Release date: {:?}", d).as_str());
-            game_div.append_child(&release_date_p).to_jserr()?;
+            game_div.info_div.append_child(&release_date_p).to_jserr()?;
         }
 
-        if game.custom_info.tags.couch_playable {
-            let couch_span = doc.create_element_typed::<HtmlSpanElement>().to_jserr()?;
-            couch_span.set_inner_text("✓ couch");
-            game_div.append_child(&couch_span).to_jserr()?;
-        }
-        if game.custom_info.tags.portable_playable {
-            let portable_span = doc.create_element_typed::<HtmlSpanElement>().to_jserr()?;
-            portable_span.set_inner_text("✓ portable");
-            game_div.append_child(&portable_span).to_jserr()?;
-        }
+        let checks_container = doc.create_element_typed::<HtmlDivElement>().to_jserr()?;
+        game_div.info_div.append_child(&checks_container).to_jserr()?;
 
-        create_own_checks(&game.custom_info.own, &game_div)?;
+        create_tag_checks(&game.custom_info.tags, &checks_container)?;
+        create_own_checks(&game.custom_info.own, &checks_container)?;
 
         let edit_button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
         let onclick_body = format!("collection_screen_view_details({});", game.internal_id);
         let onclick = Function::new_no_args(onclick_body.as_str());
         edit_button_elem.set_onclick(Some(&onclick));
         edit_button_elem.set_inner_text("View details");
-        game_div.append_child(&edit_button_elem).to_jserr()?;
+        game_div.info_div.append_child(&edit_button_elem).to_jserr()?;
 
         let start_sesion_button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
         let onclick_body = format!("collection_screen_start_session({});", game.internal_id);
         let onclick = Function::new_no_args(onclick_body.as_str());
         start_sesion_button_elem.set_onclick(Some(&onclick));
         start_sesion_button_elem.set_inner_text("Start session");
-        game_div.append_child(&start_sesion_button_elem).to_jserr()?;
+        game_div.info_div.append_child(&start_sesion_button_elem).to_jserr()?;
     }
 
     // -- cache results for later use
