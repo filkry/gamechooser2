@@ -241,7 +241,7 @@ impl SOwn {
         f(self.steam, "steam");
         f(self.gmg, "gmg");
         f(self.gog, "gog");
-        f(self.humble, "gog");
+        f(self.humble, "humble");
         f(self.origin, "origin");
         f(self.egs, "egs");
         f(self.battlenet, "battle.net");
@@ -275,7 +275,7 @@ impl SOwn {
         f(&mut self.steam, "steam");
         f(&mut self.gmg, "gmg");
         f(&mut self.gog, "gog");
-        f(&mut self.humble, "gog");
+        f(&mut self.humble, "humble");
         f(&mut self.origin, "origin");
         f(&mut self.egs, "egs");
         f(&mut self.battlenet, "battle.net");

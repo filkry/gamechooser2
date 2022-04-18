@@ -59,10 +59,16 @@
         </div>
         <div id="add_div" style="display:none">
             <h1 class="page_header">Add to collection</h1>
-            <input type="text" id="add_screen_name_search_input", onkeypress="add_screen_search_igdb_keypress(event)">
-            <input type="checkbox" id="add_screen_games_only" checked>
-            <label for="add_screen_games_only">Games only (no DLC, etc)</label>
-            <button onclick="add_screen_search_igdb()">Search IGDB</button>
+            <div class="filter_div">
+                <input type="text" id="add_screen_name_search_input", onkeypress="add_screen_search_igdb_keypress(event)">
+                <button onclick="add_screen_search_igdb()">Search IGDB</button>
+                <ul class="checkbox_list">
+                    <li>
+                        <input type="checkbox" id="add_screen_games_only" checked>
+                        <label for="add_screen_games_only">Games only (no DLC, etc)</label>
+                    </li>
+                </ul>
+            </div>
             <div id="add_screen_search_igdb_output"></div>
         </div>
         <div id="randomizer_div" style="display:none">
@@ -93,42 +99,58 @@
         </div>
         <div id="game_details_div" style="display:none">
             <h1 id="game_details_title"></h1>
-            <p id="game_details_release_date"></p>
             <img id="game_details_cover_art"></img>
-            <p id="game_details_via"></p>
-            <div id="game_details_tags_and_own"></div>
-            <button id="game_details_edit" onclick="game_details_edit()">Edit</button>
-            <button id="game_details_reset" onclick="game_details_reset()">Reset choose state</button>
+            <div id="game_details_info">
+                <p id="game_details_release_date"></p>
+                <p id="game_details_via"></p>
+                <div id="game_details_tags_and_own"></div>
+                <button id="game_details_edit" onclick="game_details_edit()">Edit</button>
+                <button id="game_details_reset" onclick="game_details_reset()">Reset choose state</button>
+            </div>
         </div>
         <div id="game_edit_div" style="display:none">
             <h1 id="game_edit_header" class="page_header">Add Game</h1>
 
-            <label for="game_edit_title">Title</label>
-            <input type="text" id="game_edit_title">
-
-            <label for="game_edit_release_date">Release date</label>
-            <input type="date" id="game_edit_release_date">
-
             <img id="game_edit_cover_art"></img>
 
-            <label for="game_edit_via">Via</label>
-            <input type="text" id="game_edit_via">
+            <div id="game_edit_info">
+                <label for="game_edit_title">Title: </label>
+                <input type="text" id="game_edit_title">
+                <br>
+                <label for="game_edit_release_date">Release date: </label>
+                <input type="date" id="game_edit_release_date">
 
-            <h3>Tags</h3>
-            <div id="game_edit_tags">
-            </div>
-            <h3>Owned on</h3>
-            <div id="game_edit_own">
-            </div>
-            <div id="game_edit_choose_state">
-                <label for="game_edit_next_valid_proposal_date">Next valid choose date</label>
-                <input type="date" id="game_edit_next_valid_proposal_date">
-                <input type="checkbox" id="game_edit_retired">
-                <label for="game_edit_retired">Retired</label>
-                <label for="game_edit_passes">Number of passes</label>
-                <input type="number" id="game_edit_passes">
-                <input type="checkbox" id="game_edit_ignore_passes">
-                <label for="game_edit_ignore_passes">Ignore passes during randomizer</label>
+                <h2>Custom info</h2>
+                <div id="game_edit_custom_info">
+                    <label for="game_edit_via">Via:</label>
+                    <input type="text" id="game_edit_via">
+
+                    <h3>Tags</h3>
+                    <div id="game_edit_tags">
+                    </div>
+                    <h3>Owned on</h3>
+                    <div id="game_edit_own">
+                    </div>
+                </div>
+
+                <h2>Choose state</h2>
+                <div id="game_edit_choose_state">
+                    <label for="game_edit_next_valid_proposal_date">Next valid choose date: </label>
+                    <input type="date" id="game_edit_next_valid_proposal_date">
+                    <br>
+                    <label for="game_edit_passes">Number of passes</label>
+                    <input type="number" id="game_edit_passes">
+                    <ul class="checkbox_list">
+                        <li>
+                            <input type="checkbox" id="game_edit_retired">
+                            <label for="game_edit_retired">Retired</label>
+                        </li>
+                        <li>
+                            <input type="checkbox" id="game_edit_ignore_passes">
+                            <label for="game_edit_ignore_passes">Ignore passes during randomizer</label>
+                        </li>
+                    </ul>
+                </div>
             </div>
             <button id="game_edit_submit" onclick="edit_screen_submit()">Add Game</button>
         </div>

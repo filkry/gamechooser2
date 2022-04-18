@@ -270,23 +270,13 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
     }
 
     for game in &games {
-        let game_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
-        output_elem.append_child(&game_div).to_jserr()?;
-
-        let title_elem = document.create_element("h3").to_jserr()?;
-        title_elem.set_text_content(Some(game.title()));
-        game_div.append_child(&title_elem).to_jserr()?;
-
-        if let Some(url) = game.cover_url() {
-            let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
-            img_elem.set_src(url.as_str());
-            game_div.append_child(&img_elem).to_jserr()?;
-        }
+        let game_div = SGameInListDiv::new(game, None)?;
+        output_elem.append_child(&game_div.main_div).to_jserr()?;
 
         if let Some(d) = game.release_date() {
             let release_date_p = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
             release_date_p.set_inner_text(format!("Release date: {:?}", d).as_str());
-            game_div.append_child(&release_date_p).to_jserr()?;
+            game_div.info_div.append_child(&release_date_p).to_jserr()?;
         }
 
         let button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
@@ -294,7 +284,7 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
         let onclick = Function::new_no_args(onclick_body.as_str());
         button_elem.set_onclick(Some(&onclick));
         button_elem.set_inner_text("Add");
-        game_div.append_child(&button_elem).to_jserr()?;
+        game_div.info_div.append_child(&button_elem).to_jserr()?;
     }
 
     // -- cache results for later use
@@ -411,6 +401,14 @@ fn edit_screen_populate_custom_info(custom_info: &core::SGameCustomInfo) -> Resu
     output_tag.set_inner_html("");
     output_own.set_inner_html("");
 
+    let output_tag_ul = document().create_element_typed::<HtmlUListElement>().to_jserr()?;
+    output_tag_ul.set_class_name("checkbox_list");
+    output_tag.append_child(&output_tag_ul).to_jserr()?;
+
+    let output_own_ul = document().create_element_typed::<HtmlUListElement>().to_jserr()?;
+    output_own_ul.set_class_name("checkbox_list");
+    output_own.append_child(&output_own_ul).to_jserr()?;
+
     let mut stored_err = None;
 
     {
@@ -419,7 +417,7 @@ fn edit_screen_populate_custom_info(custom_info: &core::SGameCustomInfo) -> Resu
                 return;
             }
 
-            if let Err(e) = create_checkbox(val, name, "game_edit_tag_", &output_tag) {
+            if let Err(e) = create_checkbox(val, name, "game_edit_tag_", &output_tag_ul, true) {
                 stored_err = Some(e);
             }
         };
@@ -436,7 +434,7 @@ fn edit_screen_populate_custom_info(custom_info: &core::SGameCustomInfo) -> Resu
                 return;
             }
 
-            if let Err(e) = create_checkbox(owned, name, "game_edit_own_", &output_own) {
+            if let Err(e) = create_checkbox(owned, name, "game_edit_own_", &output_own_ul, true) {
                 stored_err = Some(e);
             }
         };
@@ -733,18 +731,28 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
     Ok(())
 }
 
-fn create_checkbox(initial_val: bool, name: &str, id_prefix: &str, output_div: &HtmlDivElement) -> Result<(), JsError> {
+fn create_checkbox(initial_val: bool, name: &str, id_prefix: &str, output_elem: &HtmlElement, in_li: bool) -> Result<(), JsError> {
+
     let checkbox = document().create_element_typed::<HtmlInputElement>().to_jserr()?;
     checkbox.set_type("checkbox");
     checkbox.set_default_checked(initial_val);
     let id = format!("{}_{}", id_prefix, name);
     checkbox.set_id(id.as_str());
-    output_div.append_child(&checkbox).to_jserr()?;
 
     let label = document().create_element_typed::<HtmlLabelElement>().to_jserr()?;
     label.set_html_for(id.as_str());
     label.set_inner_text(name);
-    output_div.append_child(&label).to_jserr()?;
+
+    if in_li {
+        let li = document().create_element_typed::<HtmlLiElement>().to_jserr()?;
+        output_elem.append_child(&li).to_jserr()?;
+        li.append_child(&checkbox).to_jserr()?;
+        li.append_child(&label).to_jserr()?;
+    }
+    else {
+        output_elem.append_child(&checkbox).to_jserr()?;
+        output_elem.append_child(&label).to_jserr()?;
+    }
 
     Ok(())
 }

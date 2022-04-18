@@ -39,6 +39,10 @@ label {
     list-style-type: none;
 }
 
+.checkbox_list li input[type=checkbox] {
+    margin-right: 2vmin;
+}
+
 #main_nav_div {
     background-color: lightgray;
     padding: 10px;
@@ -103,4 +107,43 @@ label {
     border-radius: 3vmin;
     display: inline-block;
     font-size: 3vmin;
+}
+
+#game_details_cover_art {
+    width: 50vmin;
+}
+
+#game_details_info {
+    padding: 5vmin;
+}
+
+#game_details_info * {
+    margin-top: 0vmin;
+    margin-bottom: 2vmin;
+}
+
+#game_edit_cover_art {
+    width: 50vmin;
+}
+
+#game_edit_info {
+    padding: 5vmin;
+}
+
+#game_edit_info * {
+    margin-top: 0vmin;
+    margin-bottom: 2vmin;
+}
+
+#game_edit_info h2 {
+    margin-top: 10vmin;
+    margin-bottom: 5vmin;
+    border-bottom: 1px solid gray;
+}
+
+#game_edit_submit {
+    margin-left: 10vmin;
+    margin-top: 10vmin;
+    margin-bottom: 10vmin;
+    font-size: 6vmin;
 }
