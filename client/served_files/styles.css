@@ -7,17 +7,18 @@ body {
     margin-right: auto;
     border-left: 1px solid lightgray;
     border-right: 1px solid lightgray;
-    font-size: 4vmin;
+    font-size: 2vh;
+    max-width: 100vh;
 }
 
 h1 {
     border-bottom: 1px solid black;
-    padding-left: 5vmin;
-    font-size: 8vmin;
+    padding-left: 2.5vh;
+    font-size: 4vh;
 }
 
 h2 {
-    font-size: 5vmin;
+    font-size: 3vh;
     color: darkgray;
 }
 
@@ -25,30 +26,36 @@ h3 {
 }
 
 input[type=checkbox] {
-    transform: scale(3);
+    //transform: scale(3);
+    width: 2vh;
+    height: 2vh;
     vertical-align: middle;
 }
 
 label {
     vertical-align: middle;
-    padding-left: 2vmin;
+    padding-left: 0.05vh;
+}
+
+.checkbox_list {
+    padding-left: 0vh;
 }
 
 .checkbox_list li {
-    padding-bottom: 2vmin;
+    padding-bottom: 0.5vh;
     list-style-type: none;
 }
 
 .checkbox_list li input[type=checkbox] {
-    margin-right: 2vmin;
+    margin-right: 1vh;
 }
 
 #main_nav_div {
     background-color: lightgray;
-    padding: 10px;
+    padding: 0.5vh;
     overflow-x: scroll;
     white-space: nowrap;
-    font-size: 4vmin;
+    font-size: 2vh;
 }
 
 .main_nav_button {
@@ -57,21 +64,21 @@ label {
 
 .filter_div {
     background-color: whitesmoke;
-    padding: 3vmin;
+    padding: 2vh;
 }
 
 .game_in_list {
     background-color: whitesmoke;
-    margin-top: 5vmin;
-    margin-left: 5vmin;
-    margin-right: 5vmin;
-    margin-bottom: 0vmin;
-    padding: 3vmin;
-    padding-left: 0vmin;
+    margin-top: 2.5vh;
+    margin-left: 2.5vh;
+    margin-right: 2.5vh;
+    margin-bottom: 0vh;
+    padding: 1.5vh;
+    padding-left: 0vh;
 }
 
 .game_in_list h3 {
-    padding-left: 3vmin;
+    padding-left: 1.5vh;
 }
 
 .game_in_list_columns {
@@ -85,65 +92,65 @@ label {
     max-width: 30%;
 }
 .game_in_list_info {
-    padding-left: 5vmin;
-    padding-top: 0vmin;
+    padding-left: 2.5vh;
+    padding-top: 0vh;
 }
 
 .game_in_list_info * {
-    margin-bottom: 2vmin;
+    margin-bottom: 1vh;
 }
 
 .game_in_list_info p {
-    margin-top: 0vmin;
-    padding-top: 0vmin;
+    margin-top: 0vh;
+    padding-top: 0vh;
 }
 
 .game_check {
-    margin-left: 1vmin;
-    margin-right: 1vmin;
+    margin-left: 0.5vh;
+    margin-right: 0.5vh;
     background-color: lightgreen;
-    padding-left: 2vmin;
-    padding-right: 2vmin;
-    border-radius: 3vmin;
+    padding-left: 1vh;
+    padding-right: 1vh;
+    border-radius: 1.5vh;
     display: inline-block;
-    font-size: 3vmin;
+    font-size: 1.5vh;
 }
 
 #game_details_cover_art {
-    width: 50vmin;
+    width: 25vh;
 }
 
 #game_details_info {
-    padding: 5vmin;
+    padding: 2.5vh;
 }
 
 #game_details_info * {
-    margin-top: 0vmin;
-    margin-bottom: 2vmin;
+    margin-top: 0vh;
+    margin-bottom: 1vh;
 }
 
 #game_edit_cover_art {
-    width: 50vmin;
+    width: 25vh;
 }
 
 #game_edit_info {
-    padding: 5vmin;
+    padding: 2.5vh;
 }
 
 #game_edit_info * {
-    margin-top: 0vmin;
-    margin-bottom: 2vmin;
+    margin-top: 0vh;
+    margin-bottom: 1vh;
 }
 
 #game_edit_info h2 {
-    margin-top: 10vmin;
-    margin-bottom: 5vmin;
+    margin-top: 5vh;
+    margin-bottom: 2.5vh;
     border-bottom: 1px solid gray;
 }
 
 #game_edit_submit {
-    margin-left: 10vmin;
-    margin-top: 10vmin;
-    margin-bottom: 10vmin;
-    font-size: 6vmin;
+    margin-left: 5vh;
+    margin-top: 5vh;
+    margin-bottom: 5vh;
+    font-size: 3vh;
 }
