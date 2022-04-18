@@ -18,6 +18,7 @@ use web_sys::{
     HtmlLabelElement,
     HtmlLiElement,
     HtmlParagraphElement,
+    HtmlSelectElement,
     HtmlSpanElement,
     HtmlUListElement,
 };
@@ -1120,12 +1121,28 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
         None
     };
 
+    let jp_practice = match document()
+        .get_typed_element_by_id::<HtmlSelectElement>("randomizer_screen_jp_practice")
+        .to_jserr()?
+        .value()
+        .as_str()
+    {
+        "any" => None,
+        "require_true" => Some(true),
+        "require_false" => Some(false),
+        _ => {
+            show_error(String::from("Invalid value from randomizer_screen_jp_practice select."))?;
+            None
+        },
+    };
+
     let max_passes = 2;
 
     let filter = core::SRandomizerFilter {
         tags: core::SGameTagsFilter{
             couch_playable: couch,
             portable_playable: portable,
+            japanese_practice: jp_practice,
         },
         allow_unowned: checkbox_value("randomizer_screen_allow_unowned")?,
         max_passes,

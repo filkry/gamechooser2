@@ -3,7 +3,6 @@
 ## Post-import TODO
 
 Basically must:
-+ add JP tag, JP/JP-only filtering options
 + add screen allow creating manual entry (non-IGDB)
 + floating error/refresh message
 + better error handling in the client

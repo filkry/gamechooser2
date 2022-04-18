@@ -3,15 +3,23 @@ use chrono::{Datelike};
 use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct SGameTags0 {
+    pub couch_playable: bool,
+    pub portable_playable: bool,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SGameTags {
     pub couch_playable: bool,
     pub portable_playable: bool,
+    pub japanese_practice: bool,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SGameTagsFilter {
     pub couch_playable: Option<bool>,
     pub portable_playable: Option<bool>,
+    pub japanese_practice: Option<bool>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -84,6 +92,14 @@ pub enum EGameInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SGameCustomInfo0 {
+    pub via: String,
+
+    pub tags: SGameTags0,
+    pub own: SOwn,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SGameCustomInfo {
     pub via: String,
 
@@ -110,7 +126,15 @@ pub struct SAddCollectionGame {
 pub struct SCollectionGame0 {
     pub internal_id: u32, // $$$FRK(TODO): These internal IDs should have a type for type validation, but I'm lazy right now
     pub game_info: SGameInfo0,
-    pub custom_info: SGameCustomInfo,
+    pub custom_info: SGameCustomInfo0,
+    pub choose_state: SGameChooseState,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SCollectionGame1 {
+    pub internal_id: u32, // $$$FRK(TODO): These internal IDs should have a type for type validation, but I'm lazy right now
+    pub game_info: EGameInfo,
+    pub custom_info: SGameCustomInfo0,
     pub choose_state: SGameChooseState,
 }
 
@@ -174,6 +198,12 @@ pub struct SDatabase0 {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct SDatabase1 {
+    pub games: Vec<SCollectionGame1>,
+    pub sessions: Vec<SSession>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SDatabase {
     pub games: Vec<SCollectionGame>,
     pub sessions: Vec<SSession>,
@@ -182,7 +212,8 @@ pub struct SDatabase {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum EDatabase {
     V0(SDatabase0),
-    V1(SDatabase),
+    V1(SDatabase1),
+    V2(SDatabase),
 }
 
 impl std::ops::Deref for EDatabase {
@@ -190,7 +221,7 @@ impl std::ops::Deref for EDatabase {
 
     fn deref(&self) -> &Self::Target {
         #[allow(irrefutable_let_patterns)]
-        if let Self::V1(inner) = self {
+        if let Self::V2(inner) = self {
             return inner;
         }
         panic!("Trying to deref on database that is not of current version.");
@@ -200,10 +231,20 @@ impl std::ops::Deref for EDatabase {
 impl std::ops::DerefMut for EDatabase {
     fn deref_mut(&mut self) -> &mut Self::Target {
         #[allow(irrefutable_let_patterns)]
-        if let Self::V1(inner) = self {
+        if let Self::V2(inner) = self {
             return inner;
         }
         panic!("Trying to deref on database that is not of current version.");
+    }
+}
+
+impl SGameTags0 {
+    fn to_latest_version(self) -> SGameTags {
+        SGameTags {
+            couch_playable: self.couch_playable,
+            portable_playable: self.portable_playable,
+            japanese_practice: false,
+        }
     }
 }
 
@@ -211,15 +252,17 @@ impl SGameTags {
     pub fn each<F>(&self, mut f: F) where
         F: std::ops::FnMut(bool, &str)
     {
-        f(self.couch_playable, "couch playable");
-        f(self.portable_playable, "portable playable");
+        f(self.couch_playable, "couch");
+        f(self.portable_playable, "portable");
+        f(self.japanese_practice, "jp practice");
     }
 
     pub fn each_mut<F>(&mut self, mut f: F) where
         F: std::ops::FnMut(&mut bool, &str)
     {
-        f(&mut self.couch_playable, "couch playable");
-        f(&mut self.portable_playable, "portable playable");
+        f(&mut self.couch_playable, "couch");
+        f(&mut self.portable_playable, "portable");
+        f(&mut self.japanese_practice, "jp practice");
     }
 }
 
@@ -390,6 +433,16 @@ impl EGameInfo {
     }
 }
 
+impl SGameCustomInfo0 {
+    fn to_latest_version(self) -> SGameCustomInfo {
+        SGameCustomInfo {
+            via: self.via,
+            tags: self.tags.to_latest_version(),
+            own: self.own,
+        }
+    }
+}
+
 impl SGameCustomInfo {
     pub fn new() -> Self {
         Self {
@@ -405,6 +458,17 @@ impl SAddCollectionGame {
         Self {
             game_info,
             custom_info: SGameCustomInfo::new(),
+        }
+    }
+}
+
+impl SCollectionGame1 {
+    fn to_latest_version(self) -> SCollectionGame {
+        SCollectionGame {
+            internal_id: self.internal_id,
+            game_info: self.game_info,
+            custom_info: self.custom_info.to_latest_version(),
+            choose_state: self.choose_state,
         }
     }
 }
@@ -527,6 +591,9 @@ impl SRandomizerFilter {
         if let Some(portable) = self.tags.portable_playable {
             result = result && portable == game.custom_info.tags.portable_playable;
         }
+        if let Some(jp) = self.tags.japanese_practice {
+            result = result && jp == game.custom_info.tags.japanese_practice;
+        }
 
         result = result && (self.allow_unowned || game.custom_info.own.owned());
 
@@ -549,13 +616,21 @@ impl SDatabase {
 
 impl EDatabase {
     pub fn new() -> Self {
-        Self::V1(SDatabase::new())
+        Self::V2(SDatabase::new())
     }
 
     pub fn to_latest_version(self) -> Self {
         match self {
             EDatabase::V0(_) => panic!("V0 cannot be automatically converted to V1, requires using importer application to query IGDB for missing info."),
-            EDatabase::V1(_) => self
+            EDatabase::V1(db1) => {
+                EDatabase::V2(
+                    SDatabase {
+                        games: db1.games.into_iter().map(|g| g.to_latest_version()).collect(),
+                        sessions: db1.sessions,
+                    }
+                )
+            }
+            EDatabase::V2(_) => self,
         }
     }
 }

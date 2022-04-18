@@ -283,8 +283,8 @@ async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollecti
 
     scores.sort_by(|a, b| b.score.cmp(&a.score));
 
-    let mut result = Vec::with_capacity(10);
-    for i in 0..std::cmp::min(10, scores.len()) {
+    let mut result = Vec::with_capacity(20);
+    for i in 0..std::cmp::min(20, scores.len()) {
         result.push(db.games[scores[i].idx].clone());
     }
 

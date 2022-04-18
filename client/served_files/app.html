@@ -89,6 +89,14 @@
                         <label for="randomizer_screen_allow_unowned">Allow unowned games</label>
                     </li>
                 </ul>
+                <p>
+                    <label for="randomizer_screen_jp_practice">Japanese practice: </label>
+                    <select id="randomizer_screen_jp_practice">
+                        <option value="any">Any</option>
+                        <option value="require_true">Require tag</option>
+                        <option value="require_false">Require no tag</option>
+                    </select>
+                </p>
                 <button onclick="randomizer_screen_start()">Start choosin'</button>
             </div>
             <div id="randomizer_game_div" class="game_in_list">
