@@ -443,7 +443,8 @@ impl SGameChooseState {
 
     pub fn push(&mut self) {
         let today = chrono::offset::Local::now().naive_local().date();
-        self.next_valid_proposal_date = today.checked_add_signed(chrono::Duration::days((self.passes * 45) as i64)).unwrap();
+        let pass_count = std::cmp::max(1, self.passes);
+        self.next_valid_proposal_date = today.checked_add_signed(chrono::Duration::days((pass_count * 45) as i64)).unwrap();
     }
 
     pub fn retire(&mut self) {
