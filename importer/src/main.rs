@@ -304,7 +304,7 @@ fn create_gc2_db_from_gc1_data() {
             },
             "egs" => game.custom_info.own.egs = true,
             "battlenet" => game.custom_info.own.battlenet = true,
-            "itchio" => game.custom_info.own.battlenet = true,
+            "itchio" => game.custom_info.own.itch = true,
             "square" => game.custom_info.own.standalone_launcher = true,
             "gc" => game.custom_info.own.gamecube = true,
             "emu" => game.custom_info.own.emulator = true,
