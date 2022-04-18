@@ -3,7 +3,6 @@
 ## Post-import TODO
 
 Must:
-+ styling
 + end session -> pick next valid date, or retire
 
 Basically must:
