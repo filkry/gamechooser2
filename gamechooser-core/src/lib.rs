@@ -515,6 +515,12 @@ impl SRandomizerFilter {
     pub fn game_passes(&self, game: &SCollectionGame) -> bool {
         let mut result = true;
 
+        let today = chrono::offset::Local::now().naive_local().date();
+
+        if let Some(d) = game.game_info.release_date() {
+            result = result && d <= today;
+        }
+
         if let Some(couch) = self.tags.couch_playable {
             result = result && couch == game.custom_info.tags.couch_playable;
         }
@@ -526,7 +532,7 @@ impl SRandomizerFilter {
 
         result = result && (game.choose_state.ignore_passes || game.choose_state.passes <= self.max_passes);
         result = result && !game.choose_state.retired;
-        result = result && game.choose_state.next_valid_proposal_date <= chrono::offset::Local::now().naive_local().date();
+        result = result && game.choose_state.next_valid_proposal_date <= today;
 
         result
     }
