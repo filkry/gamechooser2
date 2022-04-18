@@ -297,7 +297,7 @@ async fn start_session(game_internal_id: u32, _user: AuthenticatedUser) -> Resul
     let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     for session in &db.sessions {
-        if session.game_internal_id == game_internal_id {
+        if matches!(session.state, core::ESessionState::Ongoing) && session.game_internal_id == game_internal_id {
             return Err(EErrorResponse::BadRequest(format!("There is already a session started for the game with ID {}", game_internal_id)));
         }
     }

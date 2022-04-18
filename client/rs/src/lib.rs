@@ -8,7 +8,6 @@ use chrono;
 use once_cell::sync::Lazy;
 use js_sys::{Function};
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::{JsCast};
 use web_sys::{
     HtmlAnchorElement,
     HtmlButtonElement,
@@ -1167,6 +1166,8 @@ pub async fn randomizer_pick_current_game() -> Result<(), JsError> {
     else {
         return Err(JsError::new("populate_randomizer_choose_screen was called without any data."));
     }
+
+    show_sessions().await?;
 
     Ok(())
 }

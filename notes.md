@@ -3,8 +3,6 @@
 ## Post-import TODO
 
 Must:
-+ issue: starting a session from randomizer doesn't go to results page
-+ check release date when filtering from randomizer
 + end session -> pick next valid date, or retire
 
 Basically must:
