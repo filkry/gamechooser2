@@ -395,6 +395,8 @@ fn edit_screen_populate_game_info(game_info: &core::EGameInfo) -> Result<(), JsE
 
 fn edit_screen_populate_custom_info(custom_info: &core::SGameCustomInfo) -> Result<(), JsError> {
 
+    populate_text_input("game_edit_via", custom_info.via.as_str())?;
+
     let output_tag = div("game_edit_tags")?;
     let output_own = div("game_edit_own")?;
 
