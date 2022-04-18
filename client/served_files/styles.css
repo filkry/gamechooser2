@@ -87,9 +87,8 @@ label {
 }
 
 .game_in_list img {
-    min-width: 30%;
-    width: 30%;
     max-width: 30%;
+    max-height: 25vh;
 }
 .game_in_list_info {
     padding-left: 2.5vh;
