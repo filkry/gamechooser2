@@ -14,6 +14,7 @@ Basically must:
 + stats screen basic stats
 
 Nice to have:
++ try out release webasm to see binary size
 + zip/otherwise compress old version of the database.json (since it gets quite large)
 + details screen pull additional stuff from IGDB
 + go through TODOs in code
