@@ -8,7 +8,6 @@ Basically must:
 + better error handling in the client
 
 Nice to have:
-+ try out release webasm to see binary size
 + zip/otherwise compress old version of the database.json (since it gets quite large)
 + details screen pull additional stuff from IGDB
 + go through TODOs in code
@@ -19,6 +18,7 @@ Nice to have:
 + periodically refresh data from IGDB
 
 Way later:
++ release webasm is like 1/4 the size, make some easy way to build/deploy as release instead
 + Strengthen auth to where I could expose this outside local network
 
 ## Next step
