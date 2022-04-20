@@ -190,6 +190,13 @@ pub struct SRandomizerList {
     pub shuffled_indices: Vec<usize>,
 }
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct SSimpleStats {
+    pub total_selectable: u32,
+    pub owned_selectable: u32,
+    pub unowned_selectable: u32,
+}
+
 // -- newest version always omits a version number to keep updating code simple
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SDatabase0 {
@@ -267,7 +274,7 @@ impl SGameTags {
 }
 
 impl SOwn {
-    fn owned(&self) -> bool {
+    pub fn owned(&self) -> bool {
         let mut owned = false;
         let check = |o: bool, _: &str| {
             owned = owned || o;
@@ -572,6 +579,16 @@ impl SSessionFilter {
         }
 
         return true;
+    }
+}
+
+impl Default for SRandomizerFilter {
+    fn default() -> Self {
+        Self {
+            tags: SGameTagsFilter::default(),
+            allow_unowned: true,
+            max_passes: 2,
+        }
     }
 }
 

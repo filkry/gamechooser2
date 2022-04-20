@@ -221,6 +221,10 @@ pub(super) async fn reset_choose_state(game: &core::SCollectionGame) -> Result<(
     post("reset_choose_state", Some(data_str.as_str())).await
 }
 
+pub(super) async fn simple_stats() -> Result<core::SSimpleStats, String> {
+    post_return_data("simple_stats", None).await
+}
+
 pub(super) async fn check_logged_in() -> bool {
     post("check_logged_in", None).await.is_ok()
 }

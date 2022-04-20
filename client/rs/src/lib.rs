@@ -229,7 +229,23 @@ pub fn show_randomizer() -> Result<(), JsError> {
 }
 
 #[wasm_bindgen]
-pub fn show_stats() -> Result<(), JsError> {
+pub async fn show_stats() -> Result<(), JsError> {
+    let stats = match server_api::simple_stats().await {
+        Ok(s) => s,
+        Err(e) => {
+            show_error(e)?;
+            return Ok(());
+        }
+    };
+
+    let total_string = format!("Total selectable games: {}", stats.total_selectable);
+    let owned_string = format!("Owned selectable games: {}", stats.owned_selectable);
+    let unowned_string = format!("Unowned selectable games: {}", stats.unowned_selectable);
+
+    element("stats_total_selectable")?.set_inner_text(total_string.as_str());
+    element("stats_owned_selectable")?.set_inner_text(owned_string.as_str());
+    element("stats_unowned_selectable")?.set_inner_text(unowned_string.as_str());
+
     swap_section_div("stats_div")
 }
 

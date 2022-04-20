@@ -500,6 +500,35 @@ async fn reset_choose_state_no_auth(game_internal_id: u32) -> Result<(), EErrorR
     return Err(EErrorResponse::NotAuthenticated);
 }
 
+#[post("/simple_stats")]
+async fn simple_stats() -> Result<RocketJson<core::SSimpleStats>, EErrorResponse> {
+    let filter = core::SRandomizerFilter::default();
+
+    let db = load_db().map_err(|_| EErrorResponse::DBError)?;
+
+    let mut total = 0;
+    let mut owned = 0;
+    let mut unowned = 0;
+
+    for game in &db.games {
+        if filter.game_passes(&game) {
+            total = total + 1;
+            if game.custom_info.own.owned() {
+                owned = owned + 1;
+            }
+            else {
+                unowned = unowned + 1;
+            }
+        }
+    }
+
+    Ok(RocketJson(core::SSimpleStats{
+        total_selectable: total,
+        owned_selectable: owned,
+        unowned_selectable: unowned,
+    }))
+}
+
 #[post("/check_logged_in")]
 async fn check_logged_in(_user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     Ok(())
@@ -556,5 +585,6 @@ fn rocket() -> _ {
             update_choose_state_no_auth,
             reset_choose_state,
             reset_choose_state_no_auth,
+            simple_stats,
         ])
 }

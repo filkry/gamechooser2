@@ -6,7 +6,6 @@ Basically must:
 + add screen allow creating manual entry (non-IGDB)
 + floating error/refresh message
 + better error handling in the client
-+ stats screen basic stats
 
 Nice to have:
 + try out release webasm to see binary size
