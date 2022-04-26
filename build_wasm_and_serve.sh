@@ -1,7 +1,7 @@
 #!/bin/sh
 
 cd client
-source build_wasm.sh
+./build_wasm.sh
 cd ..
 cd server
 cargo run
