@@ -192,7 +192,9 @@ fn swap_section_div(tgt_id: &str) -> Result<(), JsError> {
 
 #[wasm_bindgen]
 pub async fn initial_load() -> Result<(), JsError> {
+    let sl = SShowLoadingHelper::new();
     if server_api::check_logged_in().await {
+        drop(sl);
         show_sessions().await?;
     }
     else {
@@ -230,6 +232,7 @@ pub fn show_randomizer() -> Result<(), JsError> {
 
 #[wasm_bindgen]
 pub async fn show_stats() -> Result<(), JsError> {
+    let sl = SShowLoadingHelper::new();
     let stats = match server_api::simple_stats().await {
         Ok(s) => s,
         Err(e) => {
@@ -237,6 +240,7 @@ pub async fn show_stats() -> Result<(), JsError> {
             return Ok(());
         }
     };
+    drop(sl);
 
     let total_string = format!("Total selectable games: {}", stats.total_selectable);
     let owned_string = format!("Owned selectable games: {}", stats.owned_selectable);
@@ -249,10 +253,45 @@ pub async fn show_stats() -> Result<(), JsError> {
     swap_section_div("stats_div")
 }
 
+fn show_loading(show: bool) -> Result<(), JsError> {
+    if show {
+        element("loading_overlay")?.style().set_property("display", "block").to_jserr()?;
+        element("loading_message")?.style().set_property("display", "block").to_jserr()?;
+    }
+    else {
+        element("loading_overlay")?.style().set_property("display", "none").to_jserr()?;
+        element("loading_message")?.style().set_property("display", "none").to_jserr()?;
+    }
+
+    Ok(())
+}
+
+struct SShowLoadingHelper {
+}
+
+impl SShowLoadingHelper {
+    fn new() -> Self {
+        if let Err(_) = show_loading(true) {
+            weblog!("show_loading failed");
+        }
+        Self {}
+    }
+}
+
+impl Drop for SShowLoadingHelper {
+    fn drop(&mut self) {
+        if let Err(_) = show_loading(false) {
+            weblog!("show_loading failed");
+        }
+    }
+}
+
 #[wasm_bindgen]
 pub async fn login_screen_submit() -> Result<(), JsError> {
     let sec_input : HtmlInputElement = document().get_typed_element_by_id::<HtmlInputElement>("login_screen_secret").to_jserr()?;
+    let sl = SShowLoadingHelper::new();
     if server_api::login(sec_input.value().as_str()).await.to_jserr().is_ok() {
+        drop(sl);
         show_sessions().await?;
     }
 
@@ -265,6 +304,7 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
 
     // -- do the request
     let name_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("add_screen_name_search_input").to_jserr()?;
+    let sl = SShowLoadingHelper::new();
     let games : Vec<core::EGameInfo> = match server_api::search_igdb(
         name_search_input.value().as_str(),
         checkbox_value("add_screen_games_only")?,
@@ -276,6 +316,7 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
             return Ok(());
         },
     };
+    drop(sl);
 
     let output_elem = div("add_screen_search_igdb_output")?;
     output_elem.set_inner_html("");
@@ -633,6 +674,7 @@ async fn edit_screen_submit_edit_helper(mut game: core::SCollectionGame) -> Resu
     update_custom_info_from_edit_screen(&mut game.custom_info)?;
     update_choose_state_from_edit_screen(&mut game.choose_state)?;
 
+    let _sl = SShowLoadingHelper::new();
     if let Err(e) = server_api::edit_game(game.clone()).await {
         show_error(e)?;
     }
@@ -643,6 +685,7 @@ async fn edit_screen_submit_add_helper(mut game: core::SAddCollectionGame) -> Re
     update_game_info_from_edit_screen(&mut game.game_info)?;
     update_custom_info_from_edit_screen(&mut game.custom_info)?;
 
+    let _sl = SShowLoadingHelper::new();
     if let Err(e) = server_api::add_game(game.clone()).await {
         show_error(e)?;
     }
@@ -923,6 +966,7 @@ pub async fn session_screen_apply_filter() -> Result<(), JsError> {
         None
     };
 
+    let sl = SShowLoadingHelper::new();
     let sessions = match server_api::get_sessions(
         checkbox_value("sessions_screen_filter_active")?,
         checkbox_value("sessions_screen_filter_memorable")?,
@@ -935,12 +979,14 @@ pub async fn session_screen_apply_filter() -> Result<(), JsError> {
         }
     };
 
+    drop(sl);
     populate_sessions_screen_list(sessions)?;
 
     Ok(())
 }
 
 async fn enter_collection_screen() -> Result<(), JsError> {
+    let sl = SShowLoadingHelper::new();
     let games = match server_api::get_recent_collection_games().await {
         Ok(g) => g,
         Err(e) => {
@@ -948,6 +994,7 @@ async fn enter_collection_screen() -> Result<(), JsError> {
             return Ok(());
         }
     };
+    drop(sl);
 
     populate_collection_screen_game_list(games)?;
 
@@ -962,6 +1009,7 @@ pub async fn collection_screen_search() -> Result<(), JsError> {
 
     // -- do the request
     let collection_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("collection_search_input").to_jserr()?;
+    let sl = SShowLoadingHelper::new();
     let games : Vec<core::SCollectionGame> = match server_api::search_collection(collection_search_input.value().as_str()).await {
         Ok(g) => g,
         Err(e) => {
@@ -969,6 +1017,7 @@ pub async fn collection_screen_search() -> Result<(), JsError> {
             return Ok(());
         }
     };
+    drop(sl);
 
     populate_collection_screen_game_list(games)?;
 
@@ -1014,10 +1063,12 @@ pub async fn collection_screen_start_session(internal_id: u32) -> Result<(), JsE
 
     let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message").to_jserr()?;
 
+    let sl = SShowLoadingHelper::new();
     match server_api::start_session(game.internal_id).await {
         Ok(_) => p.set_inner_text("Successfully started session."),
         Err(e) => p.set_inner_text(e.as_str()),
     }
+    drop(sl);
 
     swap_section_div("result_div")?;
 
@@ -1053,10 +1104,12 @@ pub async fn session_screen_finish_session(internal_id: u32) -> Result<(), JsErr
     let retire = checkbox_value(retire_checkbox_id.as_str())?;
 
     let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message").to_jserr()?;
+    let sl = SShowLoadingHelper::new();
     match server_api::finish_session(internal_id, memorable, retire).await {
         Ok(_) => p.set_inner_text("Successfully finished session."),
         Err(_) => p.set_inner_text("Failed to finish session."),
     }
+    drop(sl);
 
     swap_section_div("result_div")?;
 
@@ -1070,10 +1123,12 @@ async fn populate_randomizer_choose_screen() -> Result<(), JsError> {
     if let EGameRandomizer::Choosing(session) = &app.game_randomizer {
         if session.cur_idx >= session.randomizer_list.shuffled_indices.len() {
             // -- out of games
+            let sl = SShowLoadingHelper::new();
             if let Err(e) = server_api::update_choose_state(&session.randomizer_list.games).await {
                 show_error(e)?;
                 return Ok(());
             }
+            drop(sl);
 
             done = true;
             show_result("End of randomizer candidates! You having nothing to play!")?;
@@ -1164,6 +1219,7 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
         max_passes,
     };
 
+    let sl = SShowLoadingHelper::new();
     let randomizer_list = match server_api::get_randomizer_games(filter).await {
         Ok(l) => l,
         Err(e) => {
@@ -1171,6 +1227,7 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
             return Ok(());
         }
     };
+    drop(sl);
 
     weblog!("Valid game count: {:?}", randomizer_list.games.len());
 
@@ -1199,18 +1256,22 @@ pub async fn randomizer_pick_current_game() -> Result<(), JsError> {
         {
             let cur_game_idx = session.randomizer_list.shuffled_indices[session.cur_idx];
             let game_internal_id = session.randomizer_list.games[cur_game_idx].internal_id;
+            let sl = SShowLoadingHelper::new();
             if let Err(e) = server_api::start_session(game_internal_id).await {
                 show_error(e)?;
                 return Ok(());
             }
+            drop(sl);
         }
 
         // -- update all the choose date on games
         {
+            let sl = SShowLoadingHelper::new();
             if let Err(e) = server_api::update_choose_state(&session.randomizer_list.games).await {
                 show_error(e)?;
                 return Ok(());
             }
+            drop(sl);
         }
     }
     else {
@@ -1314,6 +1375,7 @@ pub async fn game_details_reset() -> Result<(), JsError> {
         std::mem::take(&mut app.details_screen_game)
     };
 
+    let sl = SShowLoadingHelper::new();
     match server_api::reset_choose_state(&game.expect("checked above")).await {
         Ok(_) => show_result("Successfully reset game.")?,
         Err(e) => {
@@ -1321,6 +1383,7 @@ pub async fn game_details_reset() -> Result<(), JsError> {
             show_result(msg.as_str())?
         }
     }
+    drop(sl);
 
     Ok(())
 }
