@@ -68,6 +68,8 @@
                         <label for="add_screen_games_only">Games only (no DLC, etc)</label>
                     </li>
                 </ul>
+                <hr>
+                or, <button onclick="add_screen_add_custom()">add a game manually</button>
             </div>
             <div id="add_screen_search_igdb_output"></div>
         </div>
@@ -211,6 +213,7 @@
             show_stats,
             add_screen_search_igdb,
             add_screen_add_result,
+            add_screen_add_custom,
             edit_screen_submit,
             collection_screen_search,
             collection_screen_view_details,
@@ -239,6 +242,7 @@
             window.show_stats = show_stats;
             window.add_screen_search_igdb = add_screen_search_igdb;
             window.add_screen_add_result = add_screen_add_result;
+            window.add_screen_add_custom = add_screen_add_custom;
             window.edit_screen_submit = edit_screen_submit;
             window.collection_screen_search = collection_screen_search;
             window.collection_screen_view_details = collection_screen_view_details;

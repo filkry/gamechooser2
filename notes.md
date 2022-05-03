@@ -3,8 +3,6 @@
 ## Post-import TODO
 
 Basically must:
-+ auto-restart docker and server on NAS
-+ add screen allow creating manual entry (non-IGDB)
 + floating error/refresh message
 
 Nice to have:

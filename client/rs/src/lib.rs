@@ -595,6 +595,15 @@ pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
     Ok(())
 }
 
+#[wasm_bindgen]
+pub fn add_screen_add_custom() -> Result<(), JsError> {
+    let game_info = core::EGameInfo::new_custom(String::new(), None);
+
+    add_game(core::SAddCollectionGame::new(game_info))?;
+
+    Ok(())
+}
+
 fn update_game_info_from_edit_screen(game_info: &mut core::EGameInfo) -> Result<(), JsError> {
     game_info.set_title(document().get_typed_element_by_id::<HtmlInputElement>("game_edit_title").to_jserr()?.value().as_str());
 
