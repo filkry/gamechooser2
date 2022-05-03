@@ -3,23 +3,25 @@
 ## Post-import TODO
 
 Basically must:
++ auto-restart docker and server on NAS
 + add screen allow creating manual entry (non-IGDB)
 + floating error/refresh message
-+ better error handling in the client
 
 Nice to have:
-+ zip/otherwise compress old version of the database.json (since it gets quite large)
 + details screen pull additional stuff from IGDB
++ details screen show session history
 + go through TODOs in code
 + when adding, try to catch duplicate entries
-? discover how all sessions got deleted one time
 + edit screen new own add/remove UI
 + stats screen burndown chart
 + periodically refresh data from IGDB
++ add star ratings when closing sessions (optional)
 
 Way later:
++ zip/otherwise compress old version of the database.json (since it gets quite large)
 + release webasm is like 1/4 the size, make some easy way to build/deploy as release instead
 + Strengthen auth to where I could expose this outside local network
++ even better error handling in the client
 
 ## Next step
 Next step is probably to proof of concept using google docs or sheets as a storage backend...
