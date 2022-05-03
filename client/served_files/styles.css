@@ -208,3 +208,8 @@ label {
 #error_message h3 {
     text-align: center;
 }
+
+#stats_div {
+    padding-left: 5vw;
+    padding-right: 5vw;
+}
