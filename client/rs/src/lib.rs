@@ -407,6 +407,17 @@ fn details_screen_populate_game_info(game_info: &core::EGameInfo) -> Result<(), 
         let release_date_str = format!("Release date: {:?}", d);
         populate_inner_text("game_details_release_date", release_date_str.as_str())?;
     }
+
+    if let core::EGameInfo::IGDB(igdb) = &game_info {
+        let a = document().get_typed_element_by_id::<HtmlAnchorElement>("game_details_igdb_link").to_jserr()?;
+        let page_url = format!("https://www.igdb.com/games/{}", igdb.slug);
+        a.set_href(page_url.as_str());
+        a.style().set_property("display", "block").to_jserr()?;
+    }
+    else {
+        element("game_details_igdb_link")?.style().set_property("display", "none").to_jserr()?;
+    }
+
     let cover_url = game_info.cover_url();
     populate_img("game_details_cover_art", cover_url.as_ref().map(|u| u.as_str()))?;
 
@@ -898,6 +909,16 @@ fn create_own_checks(own: &core::SOwn, output_div: &HtmlDivElement) -> Result<()
     Ok(())
 }
 
+fn create_igdb_link(igdb: &core::SGameInfoIGDB) -> Result<HtmlAnchorElement, JsError> {
+    let a = document().create_element_typed::<HtmlAnchorElement>().to_jserr()?;
+    let page_url = format!("https://www.igdb.com/games/{}", igdb.slug);
+    a.set_inner_text("IGDB page ⧉");
+    a.set_href(page_url.as_str());
+    a.set_target("_blank");
+    a.set_rel("noopener noreferrer");
+    Ok(a)
+}
+
 fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Result<(), JsError> {
     let doc = document();
 
@@ -912,6 +933,11 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
             let release_date_p = doc.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
             release_date_p.set_inner_text(format!("Release date: {:?}", d).as_str());
             game_div.info_div.append_child(&release_date_p).to_jserr()?;
+        }
+
+        if let core::EGameInfo::IGDB(igdb) = &game.game_info {
+            let a = create_igdb_link(&igdb)?;
+            game_div.info_div.append_child(&a).to_jserr()?;
         }
 
         let checks_container = doc.create_element_typed::<HtmlDivElement>().to_jserr()?;
