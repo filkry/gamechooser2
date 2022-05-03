@@ -171,6 +171,7 @@ pub struct SSessionAndGameInfo {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SSessionFilter {
+    pub game_id: Option<u32>,
     pub active_only: bool,
     pub memorable_only: bool,
     pub year: Option<u32>,
@@ -543,6 +544,12 @@ impl SSession {
 
 impl SSessionFilter {
     pub fn session_passes(&self, session: &SSession) -> bool {
+        if let Some(game_id_inner) = self.game_id {
+            if session.game_internal_id != game_id_inner {
+                return false;
+            }
+        }
+
         if self.active_only && !matches!(session.state, ESessionState::Ongoing) {
             return false;
         }

@@ -438,9 +438,27 @@ fn details_screen_populate_custom_info(custom_info: &core::SGameCustomInfo) -> R
     Ok(())
 }
 
-fn view_details(game: core::SCollectionGame) -> Result<(), JsError> {
+async fn view_details(game: core::SCollectionGame) -> Result<(), JsError> {
     details_screen_populate_game_info(&game.game_info)?;
     details_screen_populate_custom_info(&game.custom_info)?;
+
+    let _sl = SShowLoadingHelper::new();
+    let sessions = match server_api::get_sessions(
+        Some(game.internal_id),
+        false,
+        false,
+        None,
+    ).await {
+        Ok(s) => s,
+        Err(e) => {
+            show_error(e)?;
+            return Ok(());
+        }
+    };
+
+    for _session in sessions {
+        div("game_details_sessions")?.set_inner_text("At least one session exists, but session details list has not yet been implemented.");
+    }
 
     {
         let mut app = APP.try_write().expect("Should never actually have contention.");
@@ -1003,6 +1021,7 @@ pub async fn session_screen_apply_filter() -> Result<(), JsError> {
 
     let sl = SShowLoadingHelper::new();
     let sessions = match server_api::get_sessions(
+        None,
         checkbox_value("sessions_screen_filter_active")?,
         checkbox_value("sessions_screen_filter_memorable")?,
         year,
@@ -1088,7 +1107,7 @@ pub async fn collection_screen_view_details(internal_id: u32) -> Result<(), JsEr
     let game = collection_screen_game_by_id(internal_id)
         .ok_or(JsError::new("Somehow viewing a game that was not in collection screen."))?;
 
-    view_details(game)
+    view_details(game).await
 }
 
 #[wasm_bindgen]
