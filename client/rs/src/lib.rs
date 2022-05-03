@@ -255,11 +255,11 @@ pub async fn show_stats() -> Result<(), JsError> {
 
 fn show_loading(show: bool) -> Result<(), JsError> {
     if show {
-        element("loading_overlay")?.style().set_property("display", "block").to_jserr()?;
+        element("popup_overlay")?.style().set_property("display", "block").to_jserr()?;
         element("loading_message")?.style().set_property("display", "block").to_jserr()?;
     }
     else {
-        element("loading_overlay")?.style().set_property("display", "none").to_jserr()?;
+        element("popup_overlay")?.style().set_property("display", "none").to_jserr()?;
         element("loading_message")?.style().set_property("display", "none").to_jserr()?;
     }
 
@@ -952,9 +952,9 @@ fn show_result(msg: &str) -> Result<(), JsError> {
 }
 
 fn show_error(e: String) -> Result<(), JsError> {
-    let err_div = div("error_div")?;
-    err_div.set_inner_text(e.as_str());
-    err_div.style().set_property("display", "block").to_jserr()?;
+    element("popup_overlay")?.style().set_property("display", "block").to_jserr()?;
+    element("error_message")?.style().set_property("display", "block").to_jserr()?;
+    element("error_message_content")?.set_inner_text(e.as_str());
     Ok(())
 }
 

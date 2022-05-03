@@ -11,7 +11,6 @@
         <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;700&display=swap" rel="stylesheet">
       </head>
     <header>
-        <div id="error_div" style="display:none"></div>
         <div id="main_nav_div">
             <button class="main_nav_button" onclick="show_sessions()">Sessions</button>
             <button class="main_nav_button" onclick="show_collection()">Collection</button>
@@ -181,11 +180,17 @@
         <div id="result_div" style="display:none">
             <p id="result_message"></p>
         </div>
-        <div id="loading_overlay" style="display:none">
+        <div id="popup_overlay" style="display:none">
         </div>
         <div id="loading_message" style="display:none">
             <p>Communicating with server...</p>
             <img src="postmoogle.gif">
+        </div>
+        <div id="error_message" style="display:none">
+            <h3>Error</h3>
+            <p id="error_message_content"></p>
+            <hr>
+            <p>I'm a very simple app and can't recover from errors, please refresh me.</p>
         </div>
     </body>
     <script>

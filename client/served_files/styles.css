@@ -154,7 +154,7 @@ label {
     font-size: 3vh;
 }
 
-#loading_overlay {
+#popup_overlay {
     background-color: lightgray;
     position: fixed;
     z-index: 1;
@@ -187,4 +187,24 @@ label {
     display: block;
     height: 70%;
     width: auto;
+}
+
+#error_message {
+    background-color: indianred;
+    position: fixed;
+    z-index: 2;
+    top: 25%;
+    left: 25%;
+    width: 50vw;
+    height: 35vw;
+    border-radius: 3vmin;
+}
+
+#error_message p {
+    text-align: center;
+    font-size: 2.6vmin;
+}
+
+#error_message h3 {
+    text-align: center;
 }
