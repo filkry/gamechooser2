@@ -143,9 +143,13 @@ impl SGameInListDiv {
         game_div.append_child(&columns_div).to_jserr()?;
 
         if let Some(url) = game_info.cover_url() {
+            let cover_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+            cover_div.set_class_name("game_in_list_cover_div");
+            columns_div.append_child(&cover_div).to_jserr()?;
+
             let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
             img_elem.set_src(url.as_str());
-            columns_div.append_child(&img_elem).to_jserr()?;
+            cover_div.append_child(&img_elem).to_jserr()?;
         }
 
         let info_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;

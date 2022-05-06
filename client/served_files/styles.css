@@ -86,10 +86,14 @@ label {
     flex-direction: row;
 }
 
-.game_in_list img {
+.game_in_list_cover_div {
     max-width: 30%;
+}
+
+.game_in_list_cover_div img {
     max-height: 25vh;
 }
+
 .game_in_list_info {
     padding-left: 2.5vh;
     padding-top: 0vh;
