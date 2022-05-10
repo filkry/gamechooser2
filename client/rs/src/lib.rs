@@ -1370,7 +1370,7 @@ pub async fn randomizer_push_current_game() -> Result<(), JsError> {
     if let EGameRandomizer::Choosing(session) = &mut app.game_randomizer {
         let cur_game_idx = session.randomizer_list.shuffled_indices[session.cur_idx];
         let game = &mut session.randomizer_list.games[cur_game_idx];
-        game.choose_state.push();
+        game.choose_state.push(45);
 
         session.cur_idx = session.cur_idx + 1;
     }
