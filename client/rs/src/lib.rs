@@ -1274,6 +1274,7 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
             japanese_practice: jp_practice,
         },
         allow_unowned: checkbox_value("randomizer_screen_allow_unowned")?,
+        only_firsts: checkbox_value("randomizer_screen_only_firsts")?,
         max_passes,
     };
 

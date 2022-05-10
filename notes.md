@@ -4,7 +4,6 @@
 
 Nice to have:
 + details screen show session history
-+ randomizer allow filtering only games not played before
 + go through TODOs in code
 + when adding, try to catch duplicate entries
 + stats screen burndown chart

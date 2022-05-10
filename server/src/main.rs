@@ -417,7 +417,9 @@ async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Re
     let db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     let mut active_session_game_ids = std::collections::HashSet::new();
+    let mut all_session_game_ids = std::collections::HashSet::new();
     for session in &db.sessions {
+        all_session_game_ids.insert(session.game_internal_id);
         if let core::ESessionState::Ongoing = session.state {
             active_session_game_ids.insert(session.game_internal_id);
         }
@@ -426,7 +428,7 @@ async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Re
     let mut result = Vec::with_capacity(db.games.len());
 
     for game in &db.games {
-        if !active_session_game_ids.contains(&game.internal_id) && filter_inner.game_passes(&game) {
+        if !active_session_game_ids.contains(&game.internal_id) && filter_inner.game_passes(&game, all_session_game_ids.contains(&game.internal_id)) {
             //println!("Passed game with: {:?}", game.choose_state);
             result.push(game.clone());
         }
@@ -514,7 +516,7 @@ async fn simple_stats() -> Result<RocketJson<core::SSimpleStats>, EErrorResponse
     let mut unowned = 0;
 
     for game in &db.games {
-        if filter.game_passes(&game) {
+        if filter.game_passes(&game, false) { // TODO: false here is misleading
             total = total + 1;
             if game.custom_info.own.owned() {
                 owned = owned + 1;

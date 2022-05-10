@@ -181,6 +181,7 @@ pub struct SSessionFilter {
 pub struct SRandomizerFilter {
     pub tags: SGameTagsFilter,
     pub allow_unowned: bool,
+    pub only_firsts: bool,
     pub max_passes: u16,
 }
 
@@ -594,13 +595,15 @@ impl Default for SRandomizerFilter {
         Self {
             tags: SGameTagsFilter::default(),
             allow_unowned: true,
+            only_firsts: true,
             max_passes: 2,
         }
     }
 }
 
 impl SRandomizerFilter {
-    pub fn game_passes(&self, game: &SCollectionGame) -> bool {
+    // -- $$$FRK(TODO): having to do the has_any_sessions check outside is kinda busto
+    pub fn game_passes(&self, game: &SCollectionGame, has_any_sessions: bool) -> bool {
         let mut result = true;
 
         let today = chrono::offset::Local::now().naive_local().date();
@@ -620,6 +623,10 @@ impl SRandomizerFilter {
         }
 
         result = result && (self.allow_unowned || game.custom_info.own.owned());
+        // -- some games I've played before were added but have no sessions, usually they have the
+        // -- ignore_passes flag so we use that one too
+        let has_any_sessions_proxy = has_any_sessions || game.choose_state.ignore_passes;
+        result = result && !(self.only_firsts && has_any_sessions_proxy);
 
         result = result && (game.choose_state.ignore_passes || game.choose_state.passes <= self.max_passes);
         result = result && !game.choose_state.retired;
