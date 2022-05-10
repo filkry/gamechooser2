@@ -349,13 +349,16 @@ async fn finish_session(session_internal_id: u32, memorable: bool, retire: bool,
         return Err(EErrorResponse::BadRequest(String::from("Could not find session with matching internal_id to finish.")));
     }
 
-    if retire {
-        let game_id = game_id_opt.expect("checked above");
+    let game_id = game_id_opt.expect("checked above");
 
-        for game in &mut db.games {
-            if game.internal_id == game_id {
+    for game in &mut db.games {
+        if game.internal_id == game_id {
+            if retire {
                 game.choose_state.retire();
             }
+            game.choose_state.push(90);
+
+            break;
         }
     }
 

@@ -510,13 +510,13 @@ impl SGameChooseState {
 
     pub fn pass(&mut self) {
         self.passes = self.passes + 1;
-        self.push();
+        self.push(45);
     }
 
-    pub fn push(&mut self) {
+    pub fn push(&mut self, min_days: u16) {
         let today = chrono::offset::Local::now().naive_local().date();
-        let pass_count = std::cmp::max(1, self.passes);
-        self.next_valid_proposal_date = today.checked_add_signed(chrono::Duration::days((pass_count * 45) as i64)).unwrap();
+        let pass_days = std::cmp::max(min_days, (self.passes + 1) * 45);
+        self.next_valid_proposal_date = today.checked_add_signed(chrono::Duration::days(pass_days as i64)).unwrap();
     }
 
     pub fn retire(&mut self) {
