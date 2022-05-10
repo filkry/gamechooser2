@@ -4,20 +4,23 @@
 
 Nice to have:
 + details screen show session history
++ randomizer allow filtering only games not played before
 + go through TODOs in code
 + when adding, try to catch duplicate entries
-+ edit screen new own add/remove UI
 + stats screen burndown chart
 + periodically refresh data from IGDB
 + add star ratings when closing sessions (optional)
 + handle back button
++ standardize game display so that we always have the relevant preview information
 
 Way later:
++ keep DB in memory while server is running
 + zip/otherwise compress old version of the database.json (since it gets quite large)
 + release webasm is like 1/4 the size, make some easy way to build/deploy as release instead
 + Strengthen auth to where I could expose this outside local network
 + even better error handling in the client
 + details screen embed additional stuff from IGDB
++ edit screen new own add/remove UI
 
 ## Next step
 Next step is probably to proof of concept using google docs or sheets as a storage backend...
