@@ -2,6 +2,9 @@
 
 ## Post-import TODO
 
+Must have:
++ when retiring, allow marking game as ignore passes
+
 Nice to have:
 + details screen show session history
 + go through TODOs in code
