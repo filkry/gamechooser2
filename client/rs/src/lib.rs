@@ -509,7 +509,8 @@ fn edit_screen_populate_custom_info(custom_info: &core::SGameCustomInfo) -> Resu
                 return;
             }
 
-            if let Err(e) = create_checkbox(val, name, "game_edit_tag_", &output_tag_ul, true) {
+            let cb_id = format!("game_edit_tag_{}", name);
+            if let Err(e) = create_checkbox(val, cb_id.as_str(), name, &output_tag_ul, true) {
                 stored_err = Some(e);
             }
         };
@@ -526,7 +527,8 @@ fn edit_screen_populate_custom_info(custom_info: &core::SGameCustomInfo) -> Resu
                 return;
             }
 
-            if let Err(e) = create_checkbox(owned, name, "game_edit_own_", &output_own_ul, true) {
+            let cb_id = format!("game_edit_own_{}", name);
+            if let Err(e) = create_checkbox(owned, cb_id.as_str(), name, &output_own_ul, true) {
                 stored_err = Some(e);
             }
         };
@@ -791,33 +793,14 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
                 checkbox_list.set_class_name("checkbox_list");
                 session_div.info_div.append_child(&checkbox_list).to_jserr()?;
 
-                let memorable_li = document.create_element_typed::<HtmlLiElement>().to_jserr()?;
-                checkbox_list.append_child(&memorable_li).to_jserr()?;
-
-                let memorable_elem = document.create_element_typed::<HtmlInputElement>().to_jserr()?;
-                memorable_elem.set_type("checkbox");
                 let memorable_elem_id = format!("session_screen_memorable_{}", session.session.internal_id);
-                memorable_elem.set_id(memorable_elem_id.as_str());
-                memorable_li.append_child(&memorable_elem).to_jserr()?;
+                create_checkbox(false, memorable_elem_id.as_str(), "Memorable", &checkbox_list, true)?;
 
-                let memorable_elem_label = document.create_element_typed::<HtmlLabelElement>().to_jserr()?;
-                memorable_elem_label.set_html_for(memorable_elem_id.as_str());
-                memorable_elem_label.set_inner_text("Memorable");
-                memorable_li.append_child(&memorable_elem_label).to_jserr()?;
-
-                let retire_li = document.create_element_typed::<HtmlLiElement>().to_jserr()?;
-                checkbox_list.append_child(&retire_li).to_jserr()?;
-
-                let retire_elem = document.create_element_typed::<HtmlInputElement>().to_jserr()?;
-                retire_elem.set_type("checkbox");
                 let retire_elem_id = format!("session_screen_retire_{}", session.session.internal_id);
-                retire_elem.set_id(retire_elem_id.as_str());
-                retire_li.append_child(&retire_elem).to_jserr()?;
+                create_checkbox(false, retire_elem_id.as_str(), "Retire", &checkbox_list, true)?;
 
-                let retire_elem_label = document.create_element_typed::<HtmlLabelElement>().to_jserr()?;
-                retire_elem_label.set_html_for(retire_elem_id.as_str());
-                retire_elem_label.set_inner_text("Retire");
-                retire_li.append_child(&retire_elem_label).to_jserr()?;
+                let ignore_passes_id = format!("session_screen_ignore_passes_{}", session.session.internal_id);
+                create_checkbox(false, ignore_passes_id.as_str(), "Allow infinite passes", &checkbox_list, true)?;
 
                 let button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
                 let onclick_body = format!("session_screen_finish_session({});", session.session.internal_id);
@@ -848,17 +831,15 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
     Ok(())
 }
 
-fn create_checkbox(initial_val: bool, name: &str, id_prefix: &str, output_elem: &HtmlElement, in_li: bool) -> Result<(), JsError> {
-
+fn create_checkbox(initial_val: bool, elem_id: &str, label_text: &str, output_elem: &HtmlElement, in_li: bool) -> Result<(), JsError> {
     let checkbox = document().create_element_typed::<HtmlInputElement>().to_jserr()?;
     checkbox.set_type("checkbox");
     checkbox.set_default_checked(initial_val);
-    let id = format!("{}_{}", id_prefix, name);
-    checkbox.set_id(id.as_str());
+    checkbox.set_id(elem_id);
 
     let label = document().create_element_typed::<HtmlLabelElement>().to_jserr()?;
-    label.set_html_for(id.as_str());
-    label.set_inner_text(name);
+    label.set_html_for(elem_id);
+    label.set_inner_text(label_text);
 
     if in_li {
         let li = document().create_element_typed::<HtmlLiElement>().to_jserr()?;
@@ -1161,9 +1142,12 @@ pub async fn session_screen_finish_session(internal_id: u32) -> Result<(), JsErr
     let retire_checkbox_id = format!("session_screen_retire_{}", internal_id);
     let retire = checkbox_value(retire_checkbox_id.as_str())?;
 
+    let ignore_passes_id = format!("session_screen_ignore_passes_{}", internal_id);
+    let set_ignore_passes = checkbox_value(ignore_passes_id.as_str())?;
+
     let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message").to_jserr()?;
     let sl = SShowLoadingHelper::new();
-    match server_api::finish_session(internal_id, memorable, retire).await {
+    match server_api::finish_session(internal_id, memorable, retire, set_ignore_passes).await {
         Ok(_) => p.set_inner_text("Successfully finished session."),
         Err(_) => p.set_inner_text("Failed to finish session."),
     }

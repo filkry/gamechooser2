@@ -523,6 +523,10 @@ impl SGameChooseState {
     pub fn retire(&mut self) {
         self.retired = true;
     }
+
+    pub fn set_ignore_passes(&mut self) {
+        self.ignore_passes = true;
+    }
 }
 
 impl SSession {

@@ -3,14 +3,13 @@
 ## Post-import TODO
 
 Must have:
-+ when retiring, allow marking game as ignore passes
++ periodically refresh data from IGDB
 
 Nice to have:
 + details screen show session history
 + go through TODOs in code
 + when adding, try to catch duplicate entries
 + stats screen burndown chart
-+ periodically refresh data from IGDB
 + add star ratings when closing sessions (optional)
 + handle back button
 + standardize game display so that we always have the relevant preview information

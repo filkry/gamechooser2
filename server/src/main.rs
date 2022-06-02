@@ -332,8 +332,8 @@ async fn start_session_no_auth(game_internal_id: u32) -> Result<(), EErrorRespon
     return Err(EErrorResponse::NotAuthenticated);
 }
 
-#[post("/finish_session/<session_internal_id>/<memorable>/<retire>")]
-async fn finish_session(session_internal_id: u32, memorable: bool, retire: bool, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
+#[post("/finish_session/<session_internal_id>/<memorable>/<retire>/<set_ignore_passes>")]
+async fn finish_session(session_internal_id: u32, memorable: bool, retire: bool, set_ignore_passes: bool, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
 
     let mut game_id_opt = None;
@@ -355,6 +355,9 @@ async fn finish_session(session_internal_id: u32, memorable: bool, retire: bool,
         if game.internal_id == game_id {
             if retire {
                 game.choose_state.retire();
+            }
+            if set_ignore_passes {
+                game.choose_state.set_ignore_passes();
             }
             game.choose_state.push(90);
 

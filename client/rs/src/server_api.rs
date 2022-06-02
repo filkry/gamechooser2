@@ -204,8 +204,8 @@ pub(super) async fn start_session(internal_id: u32) -> Result<(), String> {
     post("start_session", Some(data_str.as_str())).await
 }
 
-pub(super) async fn finish_session(internal_id: u32, memorable: bool, retire: bool) -> Result<(), String> {
-    let data_str = format!("{}/{}/{}", internal_id, memorable, retire);
+pub(super) async fn finish_session(internal_id: u32, memorable: bool, retire: bool, set_ignore_passes: bool) -> Result<(), String> {
+    let data_str = format!("{}/{}/{}/{}", internal_id, memorable, retire, set_ignore_passes);
     post("finish_session", Some(data_str.as_str())).await
 }
 
