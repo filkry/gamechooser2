@@ -67,6 +67,11 @@ label {
     padding: 2vh;
 }
 
+.update_div {
+    background-color: whitesmoke;
+    padding: 2vh;
+}
+
 .game_in_list {
     background-color: whitesmoke;
     margin-top: 2.5vh;

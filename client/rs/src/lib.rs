@@ -1063,6 +1063,21 @@ pub async fn collection_screen_search() -> Result<(), JsError> {
     Ok(())
 }
 
+#[wasm_bindgen]
+pub async fn update_igdb_games() -> Result<(), JsError> {
+    let sl = SShowLoadingHelper::new();
+    match server_api::update_igdb_games().await {
+        Ok(g) => g,
+        Err(e) => {
+            show_error(e)?;
+            return Ok(());
+        }
+    };
+    drop(sl);
+
+    Ok(())
+}
+
 fn collection_screen_game_by_id(internal_id: u32) -> Option<core::SCollectionGame> {
     let mut result = None;
 

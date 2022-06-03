@@ -40,6 +40,7 @@ enum MyEnum {
 #[allow(dead_code)]
 enum EErrorResponse {
     DBError,
+    ExternalAPIError(String),
     BadRequest(String),
     NotAuthenticated,
 }
@@ -56,6 +57,13 @@ impl<'r> Responder<'r, 'static> for EErrorResponse {
                     .status(rocket::http::Status::InternalServerError)
                     .header(rocket::http::ContentType::Plain)
                     .sized_body(body.len(), std::io::Cursor::new(body))
+                    .ok()
+            },
+            Self::ExternalAPIError(msg) => {
+                Response::build()
+                    .status(rocket::http::Status::InternalServerError)
+                    .header(rocket::http::ContentType::Plain)
+                    .sized_body(msg.len(), std::io::Cursor::new(msg))
                     .ok()
             },
             Self::BadRequest(msg) => {
@@ -259,6 +267,64 @@ async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectio
     }
 
     Ok(RocketJson(result))
+}
+
+#[post("/update_igdb_games")]
+async fn update_igdb_games() -> Result<(), EErrorResponse> {
+    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
+
+    let mut games_with_sessions = std::collections::HashSet::with_capacity(db.games.len());
+    for session in &db.sessions {
+        games_with_sessions.insert(session.game_internal_id);
+    }
+
+    let today = chrono::offset::Local::now().naive_local().date();
+
+    // -- we might falsley believe a game came out if it had a bad date, so
+    // -- we still update for games that "released" in the last 6 months
+    let mut six_months_ago = today;
+    for _ in 0..(6*30) {
+        six_months_ago = six_months_ago.pred();
+    }
+
+    let mut games_to_update = Vec::with_capacity(db.games.len());
+    for (i, game) in db.games.iter().enumerate() {
+        if let core::EGameInfo::IGDB(igdb_game_info) = &game.game_info {
+            if games_with_sessions.contains(&game.internal_id) {
+                continue;
+            }
+
+            if let Some(d) = igdb_game_info.cached_release_date {
+                if d >= six_months_ago {
+                    games_to_update.push(i);
+                }
+            }
+        }
+    }
+
+    let session = SReqwestTwitchAPIClient::new_session().await.map_err(|e| EErrorResponse::ExternalAPIError(e))?;
+
+    for i in games_to_update {
+        let game = &mut db.games[i];
+
+        let mut new_game_info = None;
+        if let core::EGameInfo::IGDB(igdb_info) = &mut game.game_info {
+            let igdb_game_info = SReqwestTwitchAPIClient::get_game_info(&session, igdb_info.id).await.map_err(|e| EErrorResponse::ExternalAPIError(e))?;
+            new_game_info = Some(igdb_game_info);
+        }
+
+        if let Some(gi) = new_game_info {
+            println!("Updated game \"{}\"", game.game_info.title());
+            game.game_info = gi;
+        }
+
+        // -- just hard sleep here to avoid using up our API request budget
+        tokio::time::sleep(std::time::Duration::from_secs_f32(0.5)).await;
+    }
+
+    save_db(db).map_err(|_| EErrorResponse::DBError)?;
+
+    Ok(())
 }
 
 #[post("/search_collection/<query>")]
@@ -581,6 +647,7 @@ fn rocket() -> _ {
             edit_game,
             edit_game_no_auth,
             get_recent_collection_games,
+            update_igdb_games,
             search_collection,
             start_session,
             start_session_no_auth,

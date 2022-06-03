@@ -54,6 +54,9 @@
                 <input type="text" id="collection_search_input" onkeypress="collection_search_box_keypress(event)">
                 <button onclick="collection_screen_search()">Search collection</button>
             </div>
+            <div class="update_div">
+                <button onclick="update_igdb_games()">Update IGDB games</button>
+            </div>
             <div id="collection_screen_game_list"></div>
         </div>
         <div id="add_div" style="display:none">
@@ -228,6 +231,7 @@
             add_screen_add_custom,
             edit_screen_submit,
             collection_screen_search,
+            update_igdb_games,
             collection_screen_view_details,
             collection_screen_edit_game,
             collection_screen_start_session,
@@ -257,6 +261,7 @@
             window.add_screen_add_custom = add_screen_add_custom;
             window.edit_screen_submit = edit_screen_submit;
             window.collection_screen_search = collection_screen_search;
+            window.update_igdb_games = update_igdb_games;
             window.collection_screen_view_details = collection_screen_view_details;
             window.collection_screen_edit_game = collection_screen_edit_game;
             window.collection_screen_start_session = collection_screen_start_session;

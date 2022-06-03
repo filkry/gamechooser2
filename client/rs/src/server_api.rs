@@ -178,6 +178,11 @@ pub(super) async fn get_recent_collection_games() -> Result<Vec<core::SCollectio
     post_return_data("get_recent_collection_games", None).await
 }
 
+pub(super) async fn update_igdb_games() -> Result<(), String> {
+    post("update_igdb_games", None).await?;
+    Ok(())
+}
+
 pub(super) async fn search_collection(query: &str) -> Result<Vec<core::SCollectionGame>, String> {
     post_return_data("search_collection", Some(query)).await
 }

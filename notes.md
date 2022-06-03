@@ -3,7 +3,6 @@
 ## Post-import TODO
 
 Must have:
-+ periodically refresh data from IGDB
 
 Nice to have:
 + details screen show session history
@@ -13,6 +12,7 @@ Nice to have:
 + add star ratings when closing sessions (optional)
 + handle back button
 + standardize game display so that we always have the relevant preview information
++ Progress bar for IGDB updates
 
 Way later:
 + keep DB in memory while server is running
