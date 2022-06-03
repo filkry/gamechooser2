@@ -1,5 +1,6 @@
 #[macro_use] extern crate rocket;
 
+use std::ops::{Deref, DerefMut};
 use std::result::{Result};
 
 //use reqwest;
@@ -8,9 +9,13 @@ use serde_json;
 use sublime_fuzzy;
 use rocket::response::{Responder, Response};
 use rocket::serde::json::Json as RocketJson;
+use tokio::sync::RwLock;
+use once_cell::sync::Lazy;
 
 use gamechooser_core as core;
 use igdb_api_client::SReqwestTwitchAPIClient;
+
+static MEMORY_DB : Lazy<RwLock<Result<core::EDatabase, ()>>> = Lazy::new(|| RwLock::new(load_db()));
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct SConfigFile {
@@ -147,7 +152,7 @@ fn load_db() -> Result<core::EDatabase, ()> {
     Ok(updated_db)
 }
 
-fn save_db(db: core::EDatabase) -> Result<(), ()> {
+fn save_db(db: &core::EDatabase) -> Result<(), ()> {
     let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
     let mut path = std::path::PathBuf::new();
     path.push(cfg.db_path.clone());
@@ -209,7 +214,8 @@ async fn search_igdb(name: &str, games_only: bool) -> Result<RocketJson<Vec<core
 
 #[post("/add_game", data = "<game>")]
 async fn add_game(game: RocketJson<core::SAddCollectionGame>, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
-    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
+    let mut db_guard = MEMORY_DB.write().await;
+    let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
 
     let mut max_id = 0;
     for collection_game in &db.games {
@@ -218,7 +224,7 @@ async fn add_game(game: RocketJson<core::SAddCollectionGame>, _user: Authenticat
 
     db.games.push(core::SCollectionGame::new(game.into_inner(), max_id + 1));
 
-    save_db(db).map_err(|_| EErrorResponse::DBError)?;
+    save_db(&db).map_err(|_| EErrorResponse::DBError)?;
 
     Ok(())
 }
@@ -231,7 +237,8 @@ async fn add_game_no_auth(game: RocketJson<core::SAddCollectionGame>) -> Result<
 
 #[post("/edit_game", data = "<game>")]
 async fn edit_game(game: RocketJson<core::SCollectionGame>, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
-    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
+    let mut db_guard = MEMORY_DB.write().await;
+    let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
 
     let edit_internal_id = game.internal_id;
 
@@ -256,13 +263,14 @@ async fn edit_game_no_auth(game: RocketJson<core::SAddCollectionGame>, _user: Au
 
 #[post("/get_recent_collection_games")]
 async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectionGame>>, EErrorResponse> {
-    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
+    let db_guard = MEMORY_DB.read().await;
+    let db = db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
 
     let mut result = Vec::with_capacity(10);
 
     let mut count = 0;
     while count < 10 && db.games.len() > 0 {
-        result.push(db.games.pop().expect("len checked above"));
+        result.push(db.games[db.games.len() - 1 - count].clone());
         count += 1;
     }
 
@@ -271,7 +279,8 @@ async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectio
 
 #[post("/update_igdb_games")]
 async fn update_igdb_games() -> Result<(), EErrorResponse> {
-    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
+    let mut db_guard = MEMORY_DB.write().await;
+    let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
 
     let mut games_with_sessions = std::collections::HashSet::with_capacity(db.games.len());
     for session in &db.sessions {
@@ -329,7 +338,8 @@ async fn update_igdb_games() -> Result<(), EErrorResponse> {
 
 #[post("/search_collection/<query>")]
 async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollectionGame>>, EErrorResponse> {
-    let db = load_db().map_err(|_| EErrorResponse::DBError)?;
+    let db_guard = MEMORY_DB.read().await;
+    let db = db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
 
     #[derive(Debug)]
     struct SScore {
@@ -359,8 +369,8 @@ async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollecti
 
 #[post("/start_session/<game_internal_id>")]
 async fn start_session(game_internal_id: u32, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
-    // -- $$$FRK(TODO): Need a custom responder I think to handle different error codes from the same routine?
-    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
+    let mut db_guard = MEMORY_DB.write().await;
+    let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
 
     for session in &db.sessions {
         if matches!(session.state, core::ESessionState::Ongoing) && session.game_internal_id == game_internal_id {
@@ -387,7 +397,7 @@ async fn start_session(game_internal_id: u32, _user: AuthenticatedUser) -> Resul
 
     db.sessions.push(core::SSession::new(max_id + 1, game_internal_id));
 
-    save_db(db).map_err(|_| EErrorResponse::DBError)?;
+    save_db(&db).map_err(|_| EErrorResponse::DBError)?;
 
     Ok(())
 }
@@ -400,7 +410,8 @@ async fn start_session_no_auth(game_internal_id: u32) -> Result<(), EErrorRespon
 
 #[post("/finish_session/<session_internal_id>/<memorable>/<retire>/<set_ignore_passes>")]
 async fn finish_session(session_internal_id: u32, memorable: bool, retire: bool, set_ignore_passes: bool, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
-    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
+    let mut db_guard = MEMORY_DB.write().await;
+    let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
 
     let mut game_id_opt = None;
     for s in &mut db.sessions {
@@ -431,7 +442,7 @@ async fn finish_session(session_internal_id: u32, memorable: bool, retire: bool,
         }
     }
 
-    save_db(db).map_err(|_| EErrorResponse::DBError)?;
+    save_db(&db).map_err(|_| EErrorResponse::DBError)?;
 
     Ok(())
 }
@@ -444,7 +455,8 @@ async fn finish_session_no_auth(session_internal_id: u32, memorable: bool) -> Re
 
 #[post("/get_sessions", data = "<filter>")]
 async fn get_sessions(filter: RocketJson<core::SSessionFilter>, _user: AuthenticatedUser) -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, EErrorResponse> {
-    let db = load_db().map_err(|_| EErrorResponse::DBError)?;
+    let db_guard = MEMORY_DB.read().await;
+    let db = db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
 
     let mut result = Vec::with_capacity(10);
 
@@ -483,7 +495,8 @@ async fn get_sessions_no_auth(filter: RocketJson<core::SSessionFilter>) -> Resul
 async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Result<RocketJson<core::SRandomizerList>, EErrorResponse> {
     let filter_inner = filter.into_inner();
 
-    let db = load_db().map_err(|_| EErrorResponse::DBError)?;
+    let db_guard = MEMORY_DB.read().await;
+    let db = db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
 
     let mut active_session_game_ids = std::collections::HashSet::new();
     let mut all_session_game_ids = std::collections::HashSet::new();
@@ -520,7 +533,8 @@ async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Re
 #[post("/update_choose_state", data = "<games>")]
 async fn update_choose_state(games: RocketJson<Vec<core::SCollectionGame>>, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     let games_inner = games.into_inner();
-    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
+    let mut db_guard = MEMORY_DB.write().await;
+    let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
 
     let mut input_idx = 0;
     let mut output_idx = 0;
@@ -542,7 +556,7 @@ async fn update_choose_state(games: RocketJson<Vec<core::SCollectionGame>>, _use
         }
     }
 
-    save_db(db).map_err(|_| EErrorResponse::DBError)?;
+    save_db(&db).map_err(|_| EErrorResponse::DBError)?;
 
     Ok(())
 }
@@ -555,12 +569,13 @@ async fn update_choose_state_no_auth(games: RocketJson<Vec<core::SCollectionGame
 
 #[post("/reset_choose_state/<game_internal_id>")]
 async fn reset_choose_state(game_internal_id: u32, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
-    let mut db = load_db().map_err(|_| EErrorResponse::DBError)?;
+    let mut db_guard = MEMORY_DB.write().await;
+    let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
 
     for game in &mut db.games {
         if game.internal_id == game_internal_id {
             game.choose_state.reset();
-            save_db(db).map_err(|_| EErrorResponse::DBError)?;
+            save_db(&db).map_err(|_| EErrorResponse::DBError)?;
             return Ok(());
         }
     }
@@ -578,7 +593,8 @@ async fn reset_choose_state_no_auth(game_internal_id: u32) -> Result<(), EErrorR
 async fn simple_stats() -> Result<RocketJson<core::SSimpleStats>, EErrorResponse> {
     let filter = core::SRandomizerFilter::default();
 
-    let db = load_db().map_err(|_| EErrorResponse::DBError)?;
+    let db_guard = MEMORY_DB.read().await;
+    let db = db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
 
     let mut total = 0;
     let mut owned = 0;

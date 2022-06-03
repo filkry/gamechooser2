@@ -509,7 +509,7 @@ fn edit_screen_populate_custom_info(custom_info: &core::SGameCustomInfo) -> Resu
                 return;
             }
 
-            let cb_id = format!("game_edit_tag_{}", name);
+            let cb_id = format!("game_edit_tag__{}", name);
             if let Err(e) = create_checkbox(val, cb_id.as_str(), name, &output_tag_ul, true) {
                 stored_err = Some(e);
             }
@@ -527,7 +527,7 @@ fn edit_screen_populate_custom_info(custom_info: &core::SGameCustomInfo) -> Resu
                 return;
             }
 
-            let cb_id = format!("game_edit_own_{}", name);
+            let cb_id = format!("game_edit_own__{}", name);
             if let Err(e) = create_checkbox(owned, cb_id.as_str(), name, &output_own_ul, true) {
                 stored_err = Some(e);
             }
