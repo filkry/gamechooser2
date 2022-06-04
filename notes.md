@@ -3,6 +3,8 @@
 ## Post-import TODO
 
 Must have:
++ fix image aspect ratio in randomizer screen
++ show tags on randomizer game cards
 
 Nice to have:
 + details screen show session history
