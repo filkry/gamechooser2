@@ -94,7 +94,11 @@ impl<'r> Responder<'r, 'static> for EErrorResponse {
 impl<'r> rocket::request::FromRequest<'r> for AuthenticatedUser {
     type Error = String;
 
-    async fn from_request(req: &'r rocket::request::Request<'_>) -> rocket::request::Outcome<Self, Self::Error> {
+    async fn from_request(_req: &'r rocket::request::Request<'_>) -> rocket::request::Outcome<Self, Self::Error> {
+        // -- accept anything always auth
+        rocket::request::Outcome::Success(Self{})
+
+        /*
         let cfg : SConfigFile = match confy::load("gamechooser2_server") {
             Ok(c) => c,
             Err(_) => {
@@ -112,6 +116,7 @@ impl<'r> rocket::request::FromRequest<'r> for AuthenticatedUser {
             },
             None => rocket::request::Outcome::Forward(()),
         }
+        */
     }
 }
 
