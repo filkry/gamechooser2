@@ -3,22 +3,36 @@
 ## Post-import TODO
 
 Must have:
-+ fix image aspect ratio in randomizer screen
-+ show tags on randomizer game cards
++ unified game card UI, with optional fronted tags and option to pop out to all tags
+    + fix image aspect ratio in randomizer screen
+    + show tags on randomizer game cards
++ session UI embeds game UI, no dupe code
++ popup edit game menu
++ session star reviews
++ duplicate management
+    + search for existing duplicates
+    + option to delete game in edit menu
+    + when adding, try to catch duplicate entries
++ separate pass options:
+    + pass (wait for sale) -> auto longer wait period
+    + pass (unreleased) -> auto longer wait period
++ separate UI presentation for tags and ownership
++ screen to show EVERY game in DB in compact form
++ retro tag, new tag update screen
++ zip/otherwise compress old version of the database.json (since it gets quite large)
++ separate "no release date" option into:
+    + no release date (unreleased)
+    + no release date (released)
+    + and fix data
 
 Nice to have:
 + details screen show session history
 + go through TODOs in code
-+ when adding, try to catch duplicate entries
 + stats screen burndown chart
-+ add star ratings when closing sessions (optional)
 + handle back button
-+ standardize game display so that we always have the relevant preview information
 + Progress bar for IGDB updates
 
 Way later:
-+ keep DB in memory while server is running
-+ zip/otherwise compress old version of the database.json (since it gets quite large)
 + release webasm is like 1/4 the size, make some easy way to build/deploy as release instead
 + Strengthen auth to where I could expose this outside local network
 + even better error handling in the client
