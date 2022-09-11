@@ -72,7 +72,7 @@ label {
     padding: 2vh;
 }
 
-.game_in_list {
+.game_card {
     background-color: whitesmoke;
     margin-top: 2.5vh;
     margin-left: 2.5vh;
@@ -82,35 +82,55 @@ label {
     padding-left: 0vh;
 }
 
-.game_in_list h3 {
+.game_card_info_button {
+    float: right;
+}
+
+.game_card h3 {
     padding-left: 1.5vh;
 }
 
-.game_in_list_columns {
-    display: flex;
-    flex-direction: row;
+.game_card h4 {
+    color: darkgray;
+    width: 100%;
+    border-bottom: 1px;
+    border-bottom-style: solid;
 }
 
-.game_in_list_cover_div {
+.game_card_columns {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.game_card_columns div {
+    padding-right: 2.5vh;
+}
+
+.game_card_cover_div {
     max-width: 30%;
 }
 
-.game_in_list_cover_div img {
+.game_card_cover_div img {
     max-height: 25vh;
 }
 
-.game_in_list_info {
-    padding-left: 2.5vh;
+.game_card_info {
     padding-top: 0vh;
+    flex: 1 1;
 }
 
-.game_in_list_info * {
+.game_card_info * {
     margin-bottom: 1vh;
 }
 
-.game_in_list_info p {
+.game_card_info p {
     margin-top: 0vh;
     padding-top: 0vh;
+}
+
+.game_card_customizable_div {
+    width: 100%;
 }
 
 .game_check {

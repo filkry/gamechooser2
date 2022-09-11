@@ -164,9 +164,9 @@ pub struct SSession {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SSessionAndGameInfo {
+pub struct SSessionAndCollectionGame {
     pub session: SSession,
-    pub game_info: EGameInfo,
+    pub collection_game: SCollectionGame,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -459,7 +459,7 @@ async fn finish_session_no_auth(session_internal_id: u32, memorable: bool) -> Re
 }
 
 #[post("/get_sessions", data = "<filter>")]
-async fn get_sessions(filter: RocketJson<core::SSessionFilter>, _user: AuthenticatedUser) -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, EErrorResponse> {
+async fn get_sessions(filter: RocketJson<core::SSessionFilter>, _user: AuthenticatedUser) -> Result<RocketJson<Vec<core::SSessionAndCollectionGame>>, EErrorResponse> {
     let db_guard = MEMORY_DB.read().await;
     let db = db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
 
@@ -480,9 +480,9 @@ async fn get_sessions(filter: RocketJson<core::SSessionFilter>, _user: Authentic
             //println!("Session {:?} had no valid game in collection!", session);
             let game = game_opt.ok_or(EErrorResponse::BadRequest(String::from("Server has bad data, won't be able to continue until it's fixed.")))?;
 
-            result.push(core::SSessionAndGameInfo{
+            result.push(core::SSessionAndCollectionGame{
                 session: session.clone(),
-                game_info: game.game_info,
+                collection_game: game,
             });
         }
     }
@@ -492,7 +492,7 @@ async fn get_sessions(filter: RocketJson<core::SSessionFilter>, _user: Authentic
 
 #[post("/get_sessions", data = "<filter>", rank = 2)]
 #[allow(unused_variables)]
-async fn get_sessions_no_auth(filter: RocketJson<core::SSessionFilter>) -> Result<RocketJson<Vec<core::SSessionAndGameInfo>>, EErrorResponse> {
+async fn get_sessions_no_auth(filter: RocketJson<core::SSessionFilter>) -> Result<RocketJson<Vec<core::SSessionAndCollectionGame>>, EErrorResponse> {
     return Err(EErrorResponse::NotAuthenticated);
 }
 

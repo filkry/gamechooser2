@@ -192,7 +192,7 @@ pub(super) async fn get_sessions(
     active_only: bool,
     memorable_only: bool,
     year: Option<u32>,
-) -> Result<Vec<core::SSessionAndGameInfo>, String> {
+) -> Result<Vec<core::SSessionAndCollectionGame>, String> {
 
     let filter = core::SSessionFilter {
         game_id,

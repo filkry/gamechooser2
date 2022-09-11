@@ -1,3 +1,4 @@
+mod game_card;
 mod web;
 mod server_api;
 
@@ -9,7 +10,7 @@ use once_cell::sync::Lazy;
 use js_sys::{Function};
 use wasm_bindgen::prelude::*;
 use web_sys::{
-    HtmlAnchorElement,
+    //HtmlAnchorElement,
     HtmlButtonElement,
     HtmlDivElement,
     HtmlElement,
@@ -19,11 +20,12 @@ use web_sys::{
     HtmlLiElement,
     HtmlParagraphElement,
     HtmlSelectElement,
-    HtmlSpanElement,
+    //HtmlSpanElement,
     HtmlUListElement,
 };
 
 use gamechooser_core as core;
+use game_card::SGameCard;
 use web::{document, TToJsError, TErgonomicDocument};
 
 macro_rules! weblog {
@@ -49,7 +51,7 @@ enum EGameRandomizer {
 }
 
 struct SAppState {
-    session_screen_sessions: Option<Vec<core::SSessionAndGameInfo>>,
+    session_screen_sessions: Option<Vec<core::SSessionAndCollectionGame>>,
 
     collection_screen_games: Option<Vec<core::SCollectionGame>>,
 
@@ -67,11 +69,6 @@ enum ETagQuery {
     TrueOrFalse,
     True,
     False,
-}
-
-struct SGameInListDiv {
-    pub main_div: HtmlDivElement,
-    pub info_div: HtmlDivElement,
 }
 
 static APP: Lazy<RwLock<SAppState>> = Lazy::new(|| RwLock::new(SAppState::new()));
@@ -122,45 +119,6 @@ impl Default for EGameRandomizer {
 // -- I think this is necessary for something
 #[wasm_bindgen]
 extern {
-}
-
-impl SGameInListDiv {
-    fn new(game_info: &core::EGameInfo, add_class: Option<&str>) -> Result<Self, JsError> {
-        let document = document();
-
-        let game_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
-        game_div.set_class_name("game_in_list");
-        if let Some(ac) = add_class {
-            game_div.set_class_name(format!("game_in_list {}", ac).as_str());
-        }
-
-        let title_elem = document.create_element("h3").to_jserr()?;
-        title_elem.set_text_content(Some(game_info.title()));
-        game_div.append_child(&title_elem).to_jserr()?;
-
-        let columns_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
-        columns_div.set_class_name("game_in_list_columns");
-        game_div.append_child(&columns_div).to_jserr()?;
-
-        if let Some(url) = game_info.cover_url() {
-            let cover_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
-            cover_div.set_class_name("game_in_list_cover_div");
-            columns_div.append_child(&cover_div).to_jserr()?;
-
-            let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
-            img_elem.set_src(url.as_str());
-            cover_div.append_child(&img_elem).to_jserr()?;
-        }
-
-        let info_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
-        info_div.set_class_name("game_in_list_info");
-        columns_div.append_child(&info_div).to_jserr()?;
-
-        Ok(Self {
-            main_div: game_div,
-            info_div,
-        })
-    }
 }
 
 fn element(id: &str) -> Result<HtmlElement, JsError> {
@@ -331,21 +289,23 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
     }
 
     for game in &games {
-        let game_div = SGameInListDiv::new(game, None)?;
-        output_elem.append_child(&game_div.main_div).to_jserr()?;
+        let result_elem = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+        output_elem.append_child(&result_elem).to_jserr()?;
 
-        if let Some(d) = game.release_date() {
-            let release_date_p = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
-            release_date_p.set_inner_text(format!("Release date: {:?}", d).as_str());
-            game_div.info_div.append_child(&release_date_p).to_jserr()?;
-        }
+        let mut game_div = SGameCard::new_from_game_info(game)?;
+        game_div
+            .show_release_date()
+            .show_igdb_link()
+            .regen()?;
+
+        result_elem.append_child(&game_div.main_div).to_jserr()?;
 
         let button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
         let onclick_body = format!("add_screen_add_result({});", game.igdb_id().expect("IGDB results should have an igdb_id"));
         let onclick = Function::new_no_args(onclick_body.as_str());
         button_elem.set_onclick(Some(&onclick));
         button_elem.set_inner_text("Add");
-        game_div.info_div.append_child(&button_elem).to_jserr()?;
+        result_elem.append_child(&button_elem).to_jserr()?;
     }
 
     // -- cache results for later use
@@ -357,6 +317,7 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn populate_inner_text(id: &str, value: &str) -> Result<(), JsError> {
     let elem = document().get_typed_element_by_id::<HtmlElement>(id).to_jserr()?;
     elem.set_inner_text(value);
@@ -405,46 +366,13 @@ fn populate_img(id: &str, src: Option<&str>) -> Result<(), JsError> {
     Ok(())
 }
 
-fn details_screen_populate_game_info(game_info: &core::EGameInfo) -> Result<(), JsError> {
-    populate_inner_text("game_details_title", game_info.title())?;
-    if let Some(d) = game_info.release_date() {
-        let release_date_str = format!("Release date: {:?}", d);
-        populate_inner_text("game_details_release_date", release_date_str.as_str())?;
-    }
-
-    if let core::EGameInfo::IGDB(igdb) = &game_info {
-        let a = document().get_typed_element_by_id::<HtmlAnchorElement>("game_details_igdb_link").to_jserr()?;
-        let page_url = format!("https://www.igdb.com/games/{}", igdb.slug);
-        a.set_href(page_url.as_str());
-        a.style().set_property("display", "block").to_jserr()?;
-    }
-    else {
-        element("game_details_igdb_link")?.style().set_property("display", "none").to_jserr()?;
-    }
-
-    let cover_url = game_info.cover_url();
-    populate_img("game_details_cover_art", cover_url.as_ref().map(|u| u.as_str()))?;
-
-    Ok(())
-}
-
-fn details_screen_populate_custom_info(custom_info: &core::SGameCustomInfo) -> Result<(), JsError> {
-    if custom_info.via.len() > 0 {
-        let via_str = format!("Via: {}", custom_info.via);
-        populate_inner_text("game_details_via", via_str.as_str())?;
-    }
-
-    let tags_and_own = div("game_details_tags_and_own")?;
-    tags_and_own.set_inner_html("");
-    create_tag_checks(&custom_info.tags, &tags_and_own)?;
-    create_own_checks(&custom_info.own, &tags_and_own)?;
-
-    Ok(())
-}
-
 async fn view_details(game: core::SCollectionGame) -> Result<(), JsError> {
-    details_screen_populate_game_info(&game.game_info)?;
-    details_screen_populate_custom_info(&game.custom_info)?;
+    let mut card = SGameCard::new_from_collection_game(&game)?;
+    card.show_all().regen()?;
+
+    let card_div = div("game_details_card")?;
+    card_div.set_inner_html("");
+    card_div.append_child(&card.main_div).to_jserr()?;
 
     let _sl = SShowLoadingHelper::new();
     let sessions = match server_api::get_sessions(
@@ -773,25 +701,38 @@ pub async fn edit_screen_submit() -> Result<(), JsError> {
     Ok(())
 }
 
-fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Result<(), JsError> {
+fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndCollectionGame>) -> Result<(), JsError> {
     let document = document();
 
     let output_elem = document.get_typed_element_by_id::<HtmlDivElement>("session_screen_session_list").to_jserr()?;
     output_elem.set_inner_html("");
 
     for session in &sessions {
-        let session_div = SGameInListDiv::new(&session.game_info, None)?;
-        output_elem.append_child(&session_div.main_div).to_jserr()?;
+        let session_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+        output_elem.append_child(&session_div).to_jserr()?;
 
+        // create the game card
+        let mut game_card = SGameCard::new_from_collection_game(&session.collection_game)?;
+        game_card.show_release_date().regen()?;
+
+        session_div.append_child(&game_card.main_div).to_jserr()?;
+
+        let card_custom = game_card.customizable_div()?;
+
+        let header_elem = document.create_element("h4").to_jserr()?;
+        header_elem.set_text_content(Some("Session"));
+        card_custom.append_child(&header_elem).to_jserr()?;
+
+        // populate session_div with session-specific info
         let start_date_elem = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
         start_date_elem.set_inner_text(format!("Start date: {}", session.session.start_date).as_str());
-        session_div.info_div.append_child(&start_date_elem).to_jserr()?;
+        card_custom.append_child(&start_date_elem).to_jserr()?;
 
         match session.session.state {
             core::ESessionState::Ongoing => {
                 let checkbox_list = document.create_element_typed::<HtmlUListElement>().to_jserr()?;
                 checkbox_list.set_class_name("checkbox_list");
-                session_div.info_div.append_child(&checkbox_list).to_jserr()?;
+                card_custom.append_child(&checkbox_list).to_jserr()?;
 
                 let memorable_elem_id = format!("session_screen_memorable_{}", session.session.internal_id);
                 create_checkbox(false, memorable_elem_id.as_str(), "Memorable", &checkbox_list, true)?;
@@ -807,16 +748,16 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndGameInfo>) -> Re
                 let onclick = Function::new_no_args(onclick_body.as_str());
                 button_elem.set_onclick(Some(&onclick));
                 button_elem.set_inner_text("Finish session");
-                session_div.info_div.append_child(&button_elem).to_jserr()?;
+                card_custom.append_child(&button_elem).to_jserr()?;
             },
             core::ESessionState::Finished{end_date, memorable} => {
                 let end_date_elem = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
                 end_date_elem.set_inner_text(format!("End date: {}", end_date).as_str());
-                session_div.info_div.append_child(&end_date_elem).to_jserr()?;
+                card_custom.append_child(&end_date_elem).to_jserr()?;
 
                 let memorable_elem = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
                 memorable_elem.set_inner_text(format!("Memorable: {}", memorable).as_str());
-                session_div.info_div.append_child(&memorable_elem).to_jserr()?;
+                card_custom.append_child(&memorable_elem).to_jserr()?;
             }
         }
 
@@ -855,73 +796,6 @@ fn create_checkbox(initial_val: bool, elem_id: &str, label_text: &str, output_el
     Ok(())
 }
 
-fn create_check_span(val: bool, name: &str, output_div: &HtmlDivElement) -> Result<(), JsError> {
-    if val {
-        let span = document().create_element_typed::<HtmlSpanElement>().to_jserr()?;
-        span.set_inner_text(format!("✓ {}", name).as_str());
-        span.set_class_name("game_check");
-        output_div.append_child(&span).to_jserr()?;
-    }
-
-    Ok(())
-}
-
-fn create_tag_checks(tags: &core::SGameTags, output_div: &HtmlDivElement) -> Result<(), JsError> {
-    let mut stored_err = None;
-
-    let capture_err = |owned: bool, name: &str| {
-        if stored_err.is_some() {
-            return;
-        }
-
-        if let Err(e) = create_check_span(owned, name, &output_div) {
-            stored_err = Some(e);
-        }
-    };
-
-    tags.each(capture_err);
-
-    // -- verify no js errors during the tag adding stage
-    if let Some(e) = stored_err {
-        return Err(e);
-    }
-
-    Ok(())
-}
-
-fn create_own_checks(own: &core::SOwn, output_div: &HtmlDivElement) -> Result<(), JsError> {
-    let mut stored_err = None;
-
-    let capture_err = |owned: bool, name: &str| {
-        if stored_err.is_some() {
-            return;
-        }
-
-        if let Err(e) = create_check_span(owned, name, &output_div) {
-            stored_err = Some(e);
-        }
-    };
-
-    own.each(capture_err);
-
-    // -- verify no js errors during the tag adding stage
-    if let Some(e) = stored_err {
-        return Err(e);
-    }
-
-    Ok(())
-}
-
-fn create_igdb_link(igdb: &core::SGameInfoIGDB) -> Result<HtmlAnchorElement, JsError> {
-    let a = document().create_element_typed::<HtmlAnchorElement>().to_jserr()?;
-    let page_url = format!("https://www.igdb.com/games/{}", igdb.slug);
-    a.set_inner_text("IGDB page ⧉");
-    a.set_href(page_url.as_str());
-    a.set_target("_blank");
-    a.set_rel("noopener noreferrer");
-    Ok(a)
-}
-
 fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Result<(), JsError> {
     let doc = document();
 
@@ -929,39 +803,28 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
     output_elem.set_inner_html("");
 
     for game in &games {
-        let game_div = SGameInListDiv::new(&game.game_info, None)?;
-        output_elem.append_child(&game_div.main_div).to_jserr()?;
+        let collection_item_div = doc.create_element_typed::<HtmlDivElement>().to_jserr()?;
+        output_elem.append_child(&collection_item_div).to_jserr()?;
 
-        if let Some(d) = game.game_info.release_date() {
-            let release_date_p = doc.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
-            release_date_p.set_inner_text(format!("Release date: {:?}", d).as_str());
-            game_div.info_div.append_child(&release_date_p).to_jserr()?;
-        }
+        let mut game_card = SGameCard::new_from_collection_game(&game)?;
 
-        if let core::EGameInfo::IGDB(igdb) = &game.game_info {
-            let a = create_igdb_link(&igdb)?;
-            game_div.info_div.append_child(&a).to_jserr()?;
-        }
+        game_card
+            .show_release_date()
+            .show_igdb_link()
+            .show_own_info()
+            .show_tag_info()
+            .regen()?;
 
-        let checks_container = doc.create_element_typed::<HtmlDivElement>().to_jserr()?;
-        game_div.info_div.append_child(&checks_container).to_jserr()?;
+        collection_item_div.append_child(&game_card.main_div).to_jserr()?;
 
-        create_tag_checks(&game.custom_info.tags, &checks_container)?;
-        create_own_checks(&game.custom_info.own, &checks_container)?;
-
-        let edit_button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
-        let onclick_body = format!("collection_screen_view_details({});", game.internal_id);
-        let onclick = Function::new_no_args(onclick_body.as_str());
-        edit_button_elem.set_onclick(Some(&onclick));
-        edit_button_elem.set_inner_text("View details");
-        game_div.info_div.append_child(&edit_button_elem).to_jserr()?;
+        let customizable_div = game_card.customizable_div()?;
 
         let start_sesion_button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
         let onclick_body = format!("collection_screen_start_session({});", game.internal_id);
         let onclick = Function::new_no_args(onclick_body.as_str());
         start_sesion_button_elem.set_onclick(Some(&onclick));
         start_sesion_button_elem.set_inner_text("Start session");
-        game_div.info_div.append_child(&start_sesion_button_elem).to_jserr()?;
+        customizable_div.append_child(&start_sesion_button_elem).to_jserr()?;
     }
 
     // -- cache results for later use
@@ -1194,30 +1057,52 @@ async fn populate_randomizer_choose_screen() -> Result<(), JsError> {
             let game_idx = session.randomizer_list.shuffled_indices[session.cur_idx];
             let game = &session.randomizer_list.games[game_idx];
 
-            populate_inner_text("randomizer_game_title", game.game_info.title())?;
-            let cover_url = game.game_info.cover_url();
-            match cover_url {
-                Some(u) => populate_img("randomizer_game_cover", Some(u.as_str()))?,
-                None => populate_img("randomizer_game_cover", None)?,
+            let card_div = div("randomizer_game_card")?;
+            card_div.set_inner_text("");
+
+            let mut game_card = SGameCard::new_from_collection_game(&game)?;
+            game_card
+                .show_igdb_link()
+                .show_via()
+                .show_own_info()
+                .regen()?;
+
+            card_div.append_child(&game_card.main_div).to_jserr()?;
+
+            let customizable_div = game_card.customizable_div()?;
+
+            let doc = document();
+
+            {
+                let button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+                let onclick = Function::new_no_args("randomizer_pick_current_game()");
+                button_elem.set_onclick(Some(&onclick));
+                button_elem.set_inner_text("Start this game!");
+                customizable_div.append_child(&button_elem).to_jserr()?;
             }
 
-            if game.custom_info.via.len() > 0 {
-                let via_text = format!("Via: {}", game.custom_info.via);
-                populate_inner_text("randomizer_game_via", via_text.as_str())?;
-                element("randomizer_game_via")?.style().set_property("display", "block").to_jserr()?;
-            }
-            else {
-                element("randomizer_game_via")?.style().set_property("display", "none").to_jserr()?;
+            {
+                let button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+                let onclick = Function::new_no_args("randomizer_pass_current_game()");
+                button_elem.set_onclick(Some(&onclick));
+                button_elem.set_inner_text("Pass this game");
+                customizable_div.append_child(&button_elem).to_jserr()?;
             }
 
-            if let core::EGameInfo::IGDB(igdb) = &game.game_info {
-                let a = document().get_typed_element_by_id::<HtmlAnchorElement>("randomizer_game_igdb_link").to_jserr()?;
-                let page_url = format!("https://www.igdb.com/games/{}", igdb.slug);
-                a.set_href(page_url.as_str());
-                a.style().set_property("display", "block").to_jserr()?;
+            {
+                let button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+                let onclick = Function::new_no_args("randomizer_push_current_game()");
+                button_elem.set_onclick(Some(&onclick));
+                button_elem.set_inner_text("Push to later");
+                customizable_div.append_child(&button_elem).to_jserr()?;
             }
-            else {
-                element("randomizer_game_igdb_link")?.style().set_property("display", "none").to_jserr()?;
+
+            {
+                let button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+                let onclick = Function::new_no_args("randomizer_retire_current_game()");
+                button_elem.set_onclick(Some(&onclick));
+                button_elem.set_inner_text("Retire");
+                customizable_div.append_child(&button_elem).to_jserr()?;
             }
 
             div("randomizer_game_div")?.style().set_property("display", "block").to_jserr()?;
