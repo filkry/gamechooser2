@@ -80,7 +80,7 @@ impl SGameCard {
                 let onclick_body = format!("game_card_view_details({});", collection_game.internal_id);
                 let onclick = Function::new_no_args(onclick_body.as_str());
                 info_button_elem.set_onclick(Some(&onclick));
-                info_button_elem.set_inner_text("🛈");
+                info_button_elem.set_inner_text("ℹ");
                 header_buttons_div.append_child(&info_button_elem).to_jserr()?;
             }
 

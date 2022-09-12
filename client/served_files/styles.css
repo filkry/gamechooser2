@@ -94,6 +94,7 @@ label {
 
 .game_card_header_buttons_div button {
     font-size: 3vh;
+    min-width: 5vh;
 }
 
 .game_card h3 {
