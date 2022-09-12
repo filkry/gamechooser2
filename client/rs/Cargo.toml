@@ -42,5 +42,7 @@ features = [
   'RequestMode',
   'Response',
   'Storage',
+  'SvgElement',
+  'SvgRectElement',
   'Window',
 ]

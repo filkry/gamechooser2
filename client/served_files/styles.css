@@ -82,17 +82,11 @@ label {
     padding-left: 0vh;
 }
 
-.game_card_header_div {
-    position: relative;
+.game_card_footer_buttons_div {
+    text-align: right;
 }
 
-.game_card_header_buttons_div {
-    position: absolute;
-    top: 0;
-    right: 0;
-}
-
-.game_card_header_buttons_div button {
+.game_card_footer_buttons_div button {
     font-size: 3vh;
     min-width: 5vh;
 }
@@ -249,7 +243,29 @@ label {
     text-align: center;
 }
 
-#stats_div {
+#stats_container {
     padding-left: 5vw;
     padding-right: 5vw;
+    padding-bottom: 10vh;
+}
+
+#stats_container h2 {
+    margin-top: 5vh;
+    font-size: 3vh;
+}
+
+#stats_container h3 {
+    font-size: 2vh;
+    font-weight: normal;
+    margin-bottom: .5vh;
+}
+
+.percentage_chart_container {
+    width: 100%;
+    height: 3vh;
+}
+
+.percentage_chart {
+    width: 100%;
+    height: 100%;
 }

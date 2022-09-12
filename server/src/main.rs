@@ -1,5 +1,6 @@
 #[macro_use] extern crate rocket;
 
+use std::collections::{HashMap};
 use std::ops::{Deref, DerefMut};
 use std::result::{Result};
 
@@ -15,7 +16,12 @@ use once_cell::sync::Lazy;
 use gamechooser_core as core;
 use igdb_api_client::SReqwestTwitchAPIClient;
 
-static MEMORY_DB : Lazy<RwLock<Result<core::EDatabase, ()>>> = Lazy::new(|| RwLock::new(load_db()));
+struct SData {
+    serialized_db: core::EDatabase,
+    game_sessions_reverse_lookup: HashMap<u32, Vec<u32>>,
+}
+
+static MEMORY_DB : Lazy<RwLock<Result<SData, ()>>> = Lazy::new(|| RwLock::new(load_db()));
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct SConfigFile {
@@ -120,7 +126,7 @@ impl<'r> rocket::request::FromRequest<'r> for AuthenticatedUser {
     }
 }
 
-fn load_db() -> Result<core::EDatabase, ()> {
+fn load_db() -> Result<SData, ()> {
     let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
     let mut path = std::path::PathBuf::new();
     path.push(cfg.db_path);
@@ -154,7 +160,26 @@ fn load_db() -> Result<core::EDatabase, ()> {
 
     let updated_db = db.to_latest_version();
 
-    Ok(updated_db)
+    // -- generate additional data for SData
+    let mut game_sessions_reverse_lookup = HashMap::new();
+    for session in &updated_db.sessions {
+        if !game_sessions_reverse_lookup.contains_key(&session.game_internal_id) {
+            game_sessions_reverse_lookup.insert(session.game_internal_id, Vec::new());
+        }
+
+        match game_sessions_reverse_lookup.get_mut(&session.game_internal_id) {
+            Some(session_list) => session_list.push(session.internal_id),
+            None => {
+                eprintln!("Created entry in game_sessions_reverse_lookup but couldn't find it immediately after.");
+                return Err(())
+            }
+        };
+    }
+
+    Ok(SData{
+        serialized_db: updated_db,
+        game_sessions_reverse_lookup,
+    })
 }
 
 fn save_db(db: &core::EDatabase) -> Result<(), ()> {
@@ -220,7 +245,7 @@ async fn search_igdb(name: &str, games_only: bool) -> Result<RocketJson<Vec<core
 #[post("/add_game", data = "<game>")]
 async fn add_game(game: RocketJson<core::SAddCollectionGame>, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     let mut db_guard = MEMORY_DB.write().await;
-    let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
+    let db = &mut db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?.serialized_db;
 
     let mut max_id = 0;
     for collection_game in &db.games {
@@ -243,7 +268,7 @@ async fn add_game_no_auth(game: RocketJson<core::SAddCollectionGame>) -> Result<
 #[post("/edit_game", data = "<game>")]
 async fn edit_game(game: RocketJson<core::SCollectionGame>, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     let mut db_guard = MEMORY_DB.write().await;
-    let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
+    let db = &mut db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?.serialized_db;
 
     let edit_internal_id = game.internal_id;
 
@@ -269,7 +294,7 @@ async fn edit_game_no_auth(game: RocketJson<core::SAddCollectionGame>, _user: Au
 #[post("/get_recent_collection_games")]
 async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectionGame>>, EErrorResponse> {
     let db_guard = MEMORY_DB.read().await;
-    let db = db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
+    let db = &db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?.serialized_db;
 
     let mut result = Vec::with_capacity(10);
 
@@ -285,7 +310,7 @@ async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectio
 #[post("/update_igdb_games")]
 async fn update_igdb_games() -> Result<(), EErrorResponse> {
     let mut db_guard = MEMORY_DB.write().await;
-    let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
+    let db = &mut db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?.serialized_db;
 
     let mut games_with_sessions = std::collections::HashSet::with_capacity(db.games.len());
     for session in &db.sessions {
@@ -344,7 +369,7 @@ async fn update_igdb_games() -> Result<(), EErrorResponse> {
 #[post("/search_collection/<query>")]
 async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollectionGame>>, EErrorResponse> {
     let db_guard = MEMORY_DB.read().await;
-    let db = db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
+    let db = &db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?.serialized_db;
 
     #[derive(Debug)]
     struct SScore {
@@ -375,7 +400,7 @@ async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollecti
 #[post("/start_session/<game_internal_id>")]
 async fn start_session(game_internal_id: u32, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     let mut db_guard = MEMORY_DB.write().await;
-    let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
+    let db = &mut db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?.serialized_db;
 
     for session in &db.sessions {
         if matches!(session.state, core::ESessionState::Ongoing) && session.game_internal_id == game_internal_id {
@@ -416,7 +441,7 @@ async fn start_session_no_auth(game_internal_id: u32) -> Result<(), EErrorRespon
 #[post("/finish_session/<session_internal_id>/<memorable>/<retire>/<set_ignore_passes>")]
 async fn finish_session(session_internal_id: u32, memorable: bool, retire: bool, set_ignore_passes: bool, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     let mut db_guard = MEMORY_DB.write().await;
-    let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
+    let db = &mut db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?.serialized_db;
 
     let mut game_id_opt = None;
     for s in &mut db.sessions {
@@ -461,7 +486,7 @@ async fn finish_session_no_auth(session_internal_id: u32, memorable: bool) -> Re
 #[post("/get_sessions", data = "<filter>")]
 async fn get_sessions(filter: RocketJson<core::SSessionFilter>, _user: AuthenticatedUser) -> Result<RocketJson<Vec<core::SSessionAndCollectionGame>>, EErrorResponse> {
     let db_guard = MEMORY_DB.read().await;
-    let db = db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
+    let db = &db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?.serialized_db;
 
     let mut result = Vec::with_capacity(10);
 
@@ -501,7 +526,7 @@ async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Re
     let filter_inner = filter.into_inner();
 
     let db_guard = MEMORY_DB.read().await;
-    let db = db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
+    let db = &db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?.serialized_db;
 
     let mut active_session_game_ids = std::collections::HashSet::new();
     let mut all_session_game_ids = std::collections::HashSet::new();
@@ -539,7 +564,7 @@ async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Re
 async fn update_choose_state(games: RocketJson<Vec<core::SCollectionGame>>, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     let games_inner = games.into_inner();
     let mut db_guard = MEMORY_DB.write().await;
-    let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
+    let db = &mut db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?.serialized_db;
 
     let mut input_idx = 0;
     let mut output_idx = 0;
@@ -575,7 +600,7 @@ async fn update_choose_state_no_auth(games: RocketJson<Vec<core::SCollectionGame
 #[post("/reset_choose_state/<game_internal_id>")]
 async fn reset_choose_state(game_internal_id: u32, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
     let mut db_guard = MEMORY_DB.write().await;
-    let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
+    let db = &mut db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?.serialized_db;
 
     for game in &mut db.games {
         if game.internal_id == game_internal_id {
@@ -596,32 +621,106 @@ async fn reset_choose_state_no_auth(game_internal_id: u32) -> Result<(), EErrorR
 
 #[post("/simple_stats")]
 async fn simple_stats() -> Result<RocketJson<core::SSimpleStats>, EErrorResponse> {
+    let db_guard = MEMORY_DB.read().await;
+    let data = db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
+
+    let mut stats = core::SSimpleStats{
+        total_collection_size: 0,
+
+        collection_released: 0,
+        collection_owned: 0,
+        collection_selectable: 0,
+        collection_retired: 0,
+        collection_passed_many_times: 0,
+        collection_cooldown: 0,
+
+        collection_played_before: 0,
+        collection_couch_playable_tag: 0,
+        collection_japanese_practice_tag: 0,
+        collection_portable_playable_tag: 0,
+
+        selectable_owned: 0,
+        selectable_played_before: 0,
+        selectable_couch_playable_tag: 0,
+        selectable_japanese_practice_tag: 0,
+        selectable_portable_playable_tag: 0,
+    };
+
+    let today = chrono::offset::Local::now().naive_local().date();
+
+    fn inc(stat: &mut u32) {
+        *stat = *stat + 1;
+    }
+
     let filter = core::SRandomizerFilter::default();
 
-    let db_guard = MEMORY_DB.read().await;
-    let db = db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
+    for game in &data.serialized_db.games {
+        inc(&mut stats.total_collection_size);
 
-    let mut total = 0;
-    let mut owned = 0;
-    let mut unowned = 0;
+        let selectable = filter.game_passes(&game, false);
 
-    for game in &db.games {
-        if filter.game_passes(&game, false) { // TODO: false here is misleading
-            total = total + 1;
-            if game.custom_info.own.owned() {
-                owned = owned + 1;
+        if selectable {
+            inc(&mut stats.collection_selectable);
+        }
+
+        if game.game_info.released() {
+            inc(&mut stats.collection_released);
+        }
+
+        if game.choose_state.retired {
+            inc(&mut stats.collection_retired);
+        }
+        else if game.choose_state.passes > core::SRandomizerFilter::max_passes() {
+            inc(&mut stats.collection_passed_many_times);
+        }
+        else if game.choose_state.next_valid_proposal_date > today {
+            inc(&mut stats.collection_cooldown);
+        }
+
+        if game.custom_info.own.owned() {
+            inc(&mut stats.collection_owned);
+
+            if selectable {
+                inc(&mut stats.selectable_owned);
             }
-            else {
-                unowned = unowned + 1;
+        }
+
+        if let Some(session_list) = data.game_sessions_reverse_lookup.get(&game.internal_id) {
+            if session_list.len() > 0 {
+                inc(&mut stats.collection_played_before);
+
+                if selectable {
+                    inc(&mut stats.selectable_played_before);
+                }
+            }
+        }
+
+        if game.custom_info.tags.couch_playable {
+            inc(&mut stats.collection_couch_playable_tag);
+
+            if selectable {
+                inc(&mut stats.selectable_couch_playable_tag);
+            }
+        }
+
+        if game.custom_info.tags.japanese_practice {
+            inc(&mut stats.collection_japanese_practice_tag);
+
+            if selectable {
+                inc(&mut stats.selectable_japanese_practice_tag);
+            }
+        }
+
+        if game.custom_info.tags.portable_playable {
+            inc(&mut stats.collection_portable_playable_tag);
+
+            if selectable {
+                inc(&mut stats.selectable_portable_playable_tag);
             }
         }
     }
 
-    Ok(RocketJson(core::SSimpleStats{
-        total_selectable: total,
-        owned_selectable: owned,
-        unowned_selectable: unowned,
-    }))
+    Ok(RocketJson(stats))
 }
 
 #[post("/check_logged_in")]

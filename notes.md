@@ -3,10 +3,6 @@
 ## Post-import TODO
 
 Must have:
-+ unified game card UI, with optional fronted tags and option to pop out to all tags
-    + fix image aspect ratio in randomizer screen
-    + show tags on randomizer game cards
-+ session UI embeds game UI, no dupe code
 + popup edit game menu
 + session star reviews
 + duplicate management

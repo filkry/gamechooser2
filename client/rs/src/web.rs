@@ -10,6 +10,8 @@ use web_sys::{
     HtmlParagraphElement,
     HtmlSpanElement,
     HtmlUListElement,
+    SvgElement,
+    SvgRectElement,
 };
 
 pub trait TDOMElement {
@@ -79,6 +81,16 @@ impl TDOMElement for HtmlSpanElement {
 impl TDOMElement for HtmlUListElement {
     fn tag() -> &'static str {
         "ul"
+    }
+}
+impl TDOMElement for SvgElement {
+    fn tag() -> &'static str {
+        "svg"
+    }
+}
+impl TDOMElement for SvgRectElement {
+    fn tag() -> &'static str {
+        "rect"
     }
 }
 

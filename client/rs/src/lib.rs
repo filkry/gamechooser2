@@ -1,4 +1,5 @@
 mod game_card;
+mod stats;
 mod web;
 mod server_api;
 
@@ -205,13 +206,53 @@ pub async fn show_stats() -> Result<(), JsError> {
     };
     drop(sl);
 
-    let total_string = format!("Total selectable games: {}", stats.total_selectable);
-    let owned_string = format!("Owned selectable games: {}", stats.owned_selectable);
-    let unowned_string = format!("Unowned selectable games: {}", stats.unowned_selectable);
+    let stats_div = div("stats_container")?;
+    stats_div.set_inner_text("");
 
-    element("stats_total_selectable")?.set_inner_text(total_string.as_str());
-    element("stats_owned_selectable")?.set_inner_text(owned_string.as_str());
-    element("stats_unowned_selectable")?.set_inner_text(unowned_string.as_str());
+    let document = document();
+
+    let append_stat_header = |tag: &str, title: &str| -> Result<(), JsError> {
+        let h3 = document.create_element(tag).to_jserr()?;
+        h3.set_text_content(Some(title));
+        stats_div.append_child(&h3).to_jserr()?;
+        Ok(())
+    };
+
+    append_stat_header("h2", "Collection")?;
+
+    append_stat_header("h3", "Released")?;
+    stats::create_binary_percentage_chart(&stats_div, stats.collection_released, stats.total_collection_size)?;
+
+    append_stat_header("h3", "Selectable")?;
+    let classes = [stats.collection_selectable, stats.collection_retired, stats.collection_passed_many_times, stats.collection_cooldown];
+    let class_titles = ["selectable", "retired", "passed", "cooldown"];
+    stats::create_class_percentage_chart(&stats_div, &classes, Some(&class_titles))?;
+
+    append_stat_header("h3", "Owned")?;
+    stats::create_binary_percentage_chart(&stats_div, stats.collection_owned, stats.total_collection_size)?;
+
+    append_stat_header("h3", "Played before")?;
+    stats::create_binary_percentage_chart(&stats_div, stats.collection_played_before, stats.total_collection_size)?;
+
+    append_stat_header("h3", "Japanese practice tag")?;
+    stats::create_binary_percentage_chart(&stats_div, stats.collection_japanese_practice_tag, stats.total_collection_size)?;
+
+    append_stat_header("h3", "Portable playable tag")?;
+    stats::create_binary_percentage_chart(&stats_div, stats.collection_portable_playable_tag, stats.total_collection_size)?;
+
+    append_stat_header("h2", "Selectable")?;
+
+    append_stat_header("h3", "Owned")?;
+    stats::create_binary_percentage_chart(&stats_div, stats.selectable_owned, stats.collection_selectable)?;
+
+    append_stat_header("h3", "Played before")?;
+    stats::create_binary_percentage_chart(&stats_div, stats.selectable_played_before, stats.collection_selectable)?;
+
+    append_stat_header("h3", "Japanese practice tag")?;
+    stats::create_binary_percentage_chart(&stats_div, stats.selectable_japanese_practice_tag, stats.collection_selectable)?;
+
+    append_stat_header("h3", "Portable playable tag")?;
+    stats::create_binary_percentage_chart(&stats_div, stats.selectable_portable_playable_tag, stats.collection_selectable)?;
 
     swap_section_div("stats_div")
 }

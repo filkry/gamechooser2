@@ -194,9 +194,25 @@ pub struct SRandomizerList {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct SSimpleStats {
-    pub total_selectable: u32,
-    pub owned_selectable: u32,
-    pub unowned_selectable: u32,
+    pub total_collection_size: u32,
+
+    pub collection_released: u32,
+    pub collection_selectable: u32,
+    pub collection_retired: u32,
+    pub collection_passed_many_times: u32,
+    pub collection_cooldown: u32,
+
+    pub collection_owned: u32,
+    pub collection_played_before: u32,
+    pub collection_couch_playable_tag: u32,
+    pub collection_japanese_practice_tag: u32,
+    pub collection_portable_playable_tag: u32,
+
+    pub selectable_owned: u32,
+    pub selectable_played_before: u32,
+    pub selectable_couch_playable_tag: u32,
+    pub selectable_japanese_practice_tag: u32,
+    pub selectable_portable_playable_tag: u32,
 }
 
 // -- newest version always omits a version number to keep updating code simple
@@ -401,6 +417,14 @@ impl EGameInfo {
         }
     }
 
+    pub fn released(&self) -> bool {
+        let today = chrono::offset::Local::now().naive_local().date();
+        match self.release_date() {
+            Some(d) => d <= today,
+            None => true,
+        }
+    }
+
     pub fn igdb_id(&self) -> Option<u32> {
         if let Self::IGDB(inner) = self {
             return Some(inner.id);
@@ -600,21 +624,23 @@ impl Default for SRandomizerFilter {
             tags: SGameTagsFilter::default(),
             allow_unowned: true,
             only_firsts: true,
-            max_passes: 2,
+            max_passes: Self::max_passes(),
         }
     }
 }
 
 impl SRandomizerFilter {
+    pub fn max_passes() -> u16 {
+        2
+    }
+
     // -- $$$FRK(TODO): having to do the has_any_sessions check outside is kinda busto
     pub fn game_passes(&self, game: &SCollectionGame, has_any_sessions: bool) -> bool {
         let mut result = true;
 
         let today = chrono::offset::Local::now().naive_local().date();
 
-        if let Some(d) = game.game_info.release_date() {
-            result = result && d <= today;
-        }
+        result = result && game.game_info.released();
 
         if let Some(couch) = self.tags.couch_playable {
             result = result && couch == game.custom_info.tags.couch_playable;
