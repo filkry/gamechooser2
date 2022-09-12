@@ -71,13 +71,27 @@ impl SGameCard {
         header_div.append_child(&title_elem).to_jserr()?;
 
         if let EGame::CollectionGame(collection_game) = &game {
-            let info_button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
-            info_button_elem.set_class_name("game_card_info_button");
-            let onclick_body = format!("game_card_view_details({});", collection_game.internal_id);
-            let onclick = Function::new_no_args(onclick_body.as_str());
-            info_button_elem.set_onclick(Some(&onclick));
-            info_button_elem.set_inner_text("🛈");
-            header_div.append_child(&info_button_elem).to_jserr()?;
+            let header_buttons_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+            header_buttons_div.set_class_name("game_card_header_buttons_div");
+            header_div.append_child(&header_buttons_div).to_jserr()?;
+
+            {
+                let info_button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+                let onclick_body = format!("game_card_view_details({});", collection_game.internal_id);
+                let onclick = Function::new_no_args(onclick_body.as_str());
+                info_button_elem.set_onclick(Some(&onclick));
+                info_button_elem.set_inner_text("🛈");
+                header_buttons_div.append_child(&info_button_elem).to_jserr()?;
+            }
+
+            {
+                let edit_button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+                let onclick_body = format!("edit_cached_game({});", collection_game.internal_id);
+                let onclick = Function::new_no_args(onclick_body.as_str());
+                edit_button_elem.set_onclick(Some(&onclick));
+                edit_button_elem.set_inner_text("✎");
+                header_buttons_div.append_child(&edit_button_elem).to_jserr()?;
+            }
         }
 
         let columns_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;

@@ -86,11 +86,14 @@ label {
     position: relative;
 }
 
-.game_card_info_button {
+.game_card_header_buttons_div {
     position: absolute;
-    font-size: 3vh;
     top: 0;
     right: 0;
+}
+
+.game_card_header_buttons_div button {
+    font-size: 3vh;
 }
 
 .game_card h3 {

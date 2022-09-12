@@ -38,7 +38,7 @@ macro_rules! weblog {
 enum EGameEdit {
     None,
     Add(core::SAddCollectionGame),
-    Edit(core::SCollectionGame),
+    Edit(u32),
 }
 
 struct SGameRandomizerSession {
@@ -503,7 +503,7 @@ fn edit_game(game: core::SCollectionGame) -> Result<(), JsError> {
 
     {
         let mut app = APP.try_write().expect("Should never actually have contention.");
-        app.game_edit= EGameEdit::Edit(game);
+        app.game_edit = EGameEdit::Edit(game.internal_id);
     }
 
     edit_screen_update_text()?;
@@ -644,7 +644,7 @@ fn update_choose_state_from_edit_screen(choose_state: &mut core::SGameChooseStat
     Ok(())
 }
 
-async fn edit_screen_submit_edit_helper(mut game: core::SCollectionGame) -> Result<(), JsError> {
+async fn edit_screen_submit_edit_helper(game: &mut core::SCollectionGame) -> Result<(), JsError> {
     update_game_info_from_edit_screen(&mut game.game_info)?;
     update_custom_info_from_edit_screen(&mut game.custom_info)?;
     update_choose_state_from_edit_screen(&mut game.choose_state)?;
@@ -689,7 +689,10 @@ pub async fn edit_screen_submit() -> Result<(), JsError> {
                 },
             }
         },
-        EGameEdit::Edit(game) => {
+        EGameEdit::Edit(internal_id) => {
+            let mut app = APP.try_write().expect("Should never actually have contention");
+            let game = cached_collection_game_by_id_mut(&mut app.collection_game_cache, internal_id).ok_or(JsError::new("Submitting edits to game that isn't in cache"))?;
+
             match edit_screen_submit_edit_helper(game).await {
                 Ok(_) => p.set_inner_text("Successfully edited game"),
                 Err(e) => {
@@ -979,9 +982,11 @@ fn cached_collection_game_by_id_mut(cache: &mut HashMap<u32, core::SCollectionGa
 
 #[wasm_bindgen]
 pub async fn edit_cached_game(internal_id: u32) -> Result<(), JsError> {
-    let app = APP.try_read().expect("Should never actually have contention");
-    let game = cached_collection_game_by_id(&app, internal_id)
-        .ok_or(JsError::new("Somehow editing a game that was not cached from the server."))?;
+    let game = {
+        let app = APP.try_read().expect("Should never actually have contention");
+        cached_collection_game_by_id(&app, internal_id)
+            .ok_or(JsError::new("Somehow editing a game that was not cached from the server."))?
+    };
 
     edit_game(game)?;
     Ok(())
