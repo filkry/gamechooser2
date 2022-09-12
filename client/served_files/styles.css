@@ -269,6 +269,12 @@ label {
     height: 3vh;
 }
 
+.percentage_chart text {
+    font-size: 1.5vh;
+    opacity:  0.5;
+    font-weight:  bold;
+}
+
 .percentage_chart_legend {
     display:  inline-block;
     width:  1vh;

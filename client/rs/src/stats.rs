@@ -54,6 +54,10 @@ pub fn create_class_percentage_chart(parent: &HtmlDivElement, classes: &[u32], c
             colors[i].2,
         ).unwrap();
 
+        if class_percent >= 0.1 {
+            write!(inner_html, "<text x=\"{}%\" y=\"70%\">{}</text>", (cur_percent + 0.02) * 100.0, classes[i]).unwrap();
+        }
+
         cur_percent = cur_percent + class_percent;
     }
 
