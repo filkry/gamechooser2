@@ -82,8 +82,15 @@ label {
     padding-left: 0vh;
 }
 
+.game_card_header_div {
+    position: relative;
+}
+
 .game_card_info_button {
-    float: right;
+    position: absolute;
+    font-size: 3vh;
+    top: 0;
+    right: 0;
 }
 
 .game_card h3 {

@@ -2,6 +2,7 @@ mod game_card;
 mod web;
 mod server_api;
 
+use std::collections::HashMap;
 use std::sync::RwLock;
 
 //use console_error_panic_hook;
@@ -41,7 +42,7 @@ enum EGameEdit {
 }
 
 struct SGameRandomizerSession {
-    randomizer_list: core::SRandomizerList,
+    shuffled_internal_ids: Vec<u32>,
     cur_idx: usize,
 }
 
@@ -51,13 +52,13 @@ enum EGameRandomizer {
 }
 
 struct SAppState {
-    session_screen_sessions: Option<Vec<core::SSessionAndCollectionGame>>,
+    collection_game_cache: HashMap<u32, core::SCollectionGame>,
 
-    collection_screen_games: Option<Vec<core::SCollectionGame>>,
+    session_screen_sessions: Vec<core::SSession>,
 
     last_search_igdb_results: Option<Vec<core::EGameInfo>>,
 
-    details_screen_game: Option<core::SCollectionGame>,
+    details_screen_game: Option<u32>,
 
     game_edit: EGameEdit,
 
@@ -76,9 +77,9 @@ static APP: Lazy<RwLock<SAppState>> = Lazy::new(|| RwLock::new(SAppState::new())
 impl SAppState {
     pub fn new() -> Self {
         Self {
-            session_screen_sessions: None,
+            collection_game_cache: HashMap::new(),
+            session_screen_sessions: Vec::new(),
             last_search_igdb_results: None,
-            collection_screen_games: None,
             details_screen_game: None,
             game_edit: EGameEdit::None,
             game_randomizer: EGameRandomizer::Uninit,
@@ -394,7 +395,9 @@ async fn view_details(game: core::SCollectionGame) -> Result<(), JsError> {
 
     {
         let mut app = APP.try_write().expect("Should never actually have contention.");
-        app.details_screen_game = Some(game);
+        let internal_id = game.internal_id;
+        app.collection_game_cache.insert(internal_id, game);
+        app.details_screen_game = Some(internal_id);
     }
 
     swap_section_div("game_details_div")?;
@@ -766,7 +769,12 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndCollectionGame>)
     // -- cache results for later use
     {
         let mut app = APP.try_write().expect("Should never actually have contention.");
-        app.session_screen_sessions = Some(sessions);
+        app.session_screen_sessions.clear();
+        for session_and_game in sessions {
+            app.session_screen_sessions.push(session_and_game.session);
+            let internal_id = session_and_game.collection_game.internal_id;
+            app.collection_game_cache.insert(internal_id, session_and_game.collection_game);
+        }
     }
 
     Ok(())
@@ -820,7 +828,7 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
         let customizable_div = game_card.customizable_div()?;
 
         let start_sesion_button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
-        let onclick_body = format!("collection_screen_start_session({});", game.internal_id);
+        let onclick_body = format!("start_session({});", game.internal_id);
         let onclick = Function::new_no_args(onclick_body.as_str());
         start_sesion_button_elem.set_onclick(Some(&onclick));
         start_sesion_button_elem.set_inner_text("Start session");
@@ -830,7 +838,9 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
     // -- cache results for later use
     {
         let mut app = APP.try_write().expect("Should never actually have contention.");
-        app.collection_screen_games = Some(games);
+        for game in games {
+            app.collection_game_cache.insert(game.internal_id, game);
+        }
     }
 
     Ok(())
@@ -941,42 +951,58 @@ pub async fn update_igdb_games() -> Result<(), JsError> {
     Ok(())
 }
 
-fn collection_screen_game_by_id(internal_id: u32) -> Option<core::SCollectionGame> {
-    let mut result = None;
+fn cached_collection_game_by_id(app: &SAppState, internal_id: u32) -> Option<core::SCollectionGame> {
+    let result = app.collection_game_cache.get(&internal_id).cloned();
 
-    let app = APP.try_read().expect("Should never actually have contention");
-    if let Some(games) = &app.collection_screen_games {
-        for g in games {
-            if internal_id == g.internal_id {
-                result = Some(g.clone());
-                break;
-            }
+    if let None = result {
+        weblog!("Something requested a game not in the cache, dumping cache");
+        for (k, v) in &app.collection_game_cache {
+            weblog!("ID {}: \"{}\"", k, v.game_info.title());
         }
     }
 
     result
 }
 
-#[wasm_bindgen]
-pub async fn collection_screen_edit_game(internal_id: u32) -> Result<(), JsError> {
-    let game = collection_screen_game_by_id(internal_id)
-        .ok_or(JsError::new("Somehow editing a game that was not in collection screen."))?;
+fn cached_collection_game_by_id_mut(cache: &mut HashMap<u32, core::SCollectionGame>, internal_id: u32) -> Option<&mut core::SCollectionGame> {
+    if !cache.contains_key(&internal_id) {
+        weblog!("Something requested a game not in the cache, dumping cache");
+        for (k, v) in cache {
+            weblog!("ID {}: \"{}\"", k, v.game_info.title());
+        }
 
-    edit_game(game)
+        return None;
+    }
+
+    cache.get_mut(&internal_id)
 }
 
 #[wasm_bindgen]
-pub async fn collection_screen_view_details(internal_id: u32) -> Result<(), JsError> {
-    let game = collection_screen_game_by_id(internal_id)
-        .ok_or(JsError::new("Somehow viewing a game that was not in collection screen."))?;
+pub async fn edit_cached_game(internal_id: u32) -> Result<(), JsError> {
+    let app = APP.try_read().expect("Should never actually have contention");
+    let game = cached_collection_game_by_id(&app, internal_id)
+        .ok_or(JsError::new("Somehow editing a game that was not cached from the server."))?;
+
+    edit_game(game)?;
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn game_card_view_details(internal_id: u32) -> Result<(), JsError> {
+    let game = {
+        let app = APP.try_read().map_err(|_| JsError::new("Should never actually have contention"))?;
+        cached_collection_game_by_id(&app, internal_id)
+            .ok_or(JsError::new(format!("Somehow viewing a game (internal id {}) that was not cached from the server.", internal_id).as_str()))?
+    };
 
     view_details(game).await
 }
 
 #[wasm_bindgen]
-pub async fn collection_screen_start_session(internal_id: u32) -> Result<(), JsError> {
-    let game = collection_screen_game_by_id(internal_id)
-        .ok_or(JsError::new("Somehow starting session for a game that was not in collection screen."))?;
+pub async fn start_session(internal_id: u32) -> Result<(), JsError> {
+    let app = APP.try_read().expect("Should never actually have contention");
+    let game = cached_collection_game_by_id(&app, internal_id)
+        .ok_or(JsError::new("Somehow starting session for a game that was not cached from the server."))?;
 
     let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message").to_jserr()?;
 
@@ -998,15 +1024,14 @@ pub async fn session_screen_finish_session(internal_id: u32) -> Result<(), JsErr
         let mut result = None;
 
         let app = APP.try_read().expect("Should never actually have contention");
-        if let Some(sessions) = &app.session_screen_sessions {
-            for s in sessions {
-                if s.session.internal_id == internal_id {
-                    result = Some(s.clone());
-                    break;
-                }
-                else {
-                    weblog!("Trying to finish session for internal_id {} but it's not in the list!", internal_id);
-                }
+
+        for s in &app.session_screen_sessions {
+            if s.internal_id == internal_id {
+                result = Some(s.clone());
+                break;
+            }
+            else {
+                weblog!("Trying to finish session for internal_id {} but it's not in the list!", internal_id);
             }
         }
 
@@ -1036,26 +1061,40 @@ pub async fn session_screen_finish_session(internal_id: u32) -> Result<(), JsErr
     Ok(())
 }
 
+async fn commit_randomizer_choose_states(session: &SGameRandomizerSession, app: &SAppState) -> Result<(), JsError> {
+    let sl = SShowLoadingHelper::new();
+
+    // -- build list of collection games to send to server
+    let mut collection_games = Vec::with_capacity(session.shuffled_internal_ids.len());
+    for internal_id in session.shuffled_internal_ids.iter().copied() {
+        let game = cached_collection_game_by_id(app, internal_id).ok_or(JsError::new("randomizer game not in cache"))?;
+        collection_games.push(game);
+    }
+
+    if let Err(e) = server_api::update_choose_state(&collection_games).await {
+        show_error(e)?;
+        return Ok(());
+    }
+    drop(sl);
+
+    Ok(())
+}
+
 async fn populate_randomizer_choose_screen() -> Result<(), JsError> {
     let mut app = APP.try_write().expect("Should never actually have contention.");
     let mut done = false;
 
     if let EGameRandomizer::Choosing(session) = &app.game_randomizer {
-        if session.cur_idx >= session.randomizer_list.shuffled_indices.len() {
+        if session.cur_idx >= session.shuffled_internal_ids.len() {
             // -- out of games
-            let sl = SShowLoadingHelper::new();
-            if let Err(e) = server_api::update_choose_state(&session.randomizer_list.games).await {
-                show_error(e)?;
-                return Ok(());
-            }
-            drop(sl);
+            commit_randomizer_choose_states(&session, &app).await?;
 
             done = true;
             show_result("End of randomizer candidates! You having nothing to play!")?;
         }
         else {
-            let game_idx = session.randomizer_list.shuffled_indices[session.cur_idx];
-            let game = &session.randomizer_list.games[game_idx];
+            let internal_id = session.shuffled_internal_ids[session.cur_idx];
+            let game = cached_collection_game_by_id(&app, internal_id).ok_or(JsError::new("randomizer game not in cache"))?;
 
             let card_div = div("randomizer_game_card")?;
             card_div.set_inner_text("");
@@ -1176,8 +1215,16 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
 
     {
         let mut app = APP.try_write().expect("Should never actually have contention.");
+
+        let mut internal_id_list = Vec::with_capacity(randomizer_list.games.len());
+        for game in randomizer_list.games {
+            let internal_id = game.internal_id;
+            app.collection_game_cache.insert(internal_id, game);
+            internal_id_list.push(internal_id);
+        }
+
         app.game_randomizer = EGameRandomizer::Choosing(SGameRandomizerSession{
-            randomizer_list,
+            shuffled_internal_ids: internal_id_list,
             cur_idx: 0,
         });
     }
@@ -1197,8 +1244,7 @@ pub async fn randomizer_pick_current_game() -> Result<(), JsError> {
     if let EGameRandomizer::Choosing(session) = randomizer {
         // -- start the session
         {
-            let cur_game_idx = session.randomizer_list.shuffled_indices[session.cur_idx];
-            let game_internal_id = session.randomizer_list.games[cur_game_idx].internal_id;
+            let game_internal_id = session.shuffled_internal_ids[session.cur_idx];
             let sl = SShowLoadingHelper::new();
             if let Err(e) = server_api::start_session(game_internal_id).await {
                 show_error(e)?;
@@ -1208,14 +1254,8 @@ pub async fn randomizer_pick_current_game() -> Result<(), JsError> {
         }
 
         // -- update all the choose date on games
-        {
-            let sl = SShowLoadingHelper::new();
-            if let Err(e) = server_api::update_choose_state(&session.randomizer_list.games).await {
-                show_error(e)?;
-                return Ok(());
-            }
-            drop(sl);
-        }
+        let app = APP.try_read().expect("Should never actually have contention.");
+        commit_randomizer_choose_states(&session, &app).await?;
     }
     else {
         return Err(JsError::new("populate_randomizer_choose_screen was called without any data."));
@@ -1230,16 +1270,23 @@ pub async fn randomizer_pick_current_game() -> Result<(), JsError> {
 pub async fn randomizer_pass_current_game() -> Result<(), JsError> {
     let mut app = APP.try_write().expect("Should never actually have contention.");
 
-    if let EGameRandomizer::Choosing(session) = &mut app.game_randomizer {
-        let cur_game_idx = session.randomizer_list.shuffled_indices[session.cur_idx];
-        let game = &mut session.randomizer_list.games[cur_game_idx];
-        game.choose_state.pass();
+    // -- wraps the use of &mut app so the borrow checker knows we're looking at separate fields
+    fn mut_wrapper(app: &mut SAppState) -> Result<(), JsError> {
+        if let EGameRandomizer::Choosing(session) = &mut app.game_randomizer {
+            let internal_id = session.shuffled_internal_ids[session.cur_idx];
+            let game = cached_collection_game_by_id_mut(&mut app.collection_game_cache, internal_id).expect("Randomizer game not in cache.");
+            game.choose_state.pass();
 
-        session.cur_idx = session.cur_idx + 1;
+            session.cur_idx = session.cur_idx + 1;
+        }
+        else {
+            show_error(String::from("randomizer_pass_current_game was called without any data."))?;
+        }
+
+        Ok(())
     }
-    else {
-        show_error(String::from("randomizer_pass_current_game was called without any data."))?;
-    }
+
+    mut_wrapper(&mut app)?;
 
     drop(app);
 
@@ -1252,16 +1299,23 @@ pub async fn randomizer_pass_current_game() -> Result<(), JsError> {
 pub async fn randomizer_push_current_game() -> Result<(), JsError> {
     let mut app = APP.try_write().expect("Should never actually have contention.");
 
-    if let EGameRandomizer::Choosing(session) = &mut app.game_randomizer {
-        let cur_game_idx = session.randomizer_list.shuffled_indices[session.cur_idx];
-        let game = &mut session.randomizer_list.games[cur_game_idx];
-        game.choose_state.push(45);
+    // -- wraps the use of &mut app so the borrow checker knows we're looking at separate fields
+    fn mut_wrapper(app: &mut SAppState) -> Result<(), JsError> {
+        if let EGameRandomizer::Choosing(session) = &mut app.game_randomizer {
+            let internal_id = session.shuffled_internal_ids[session.cur_idx];
+            let game = cached_collection_game_by_id_mut(&mut app.collection_game_cache, internal_id).expect("Randomizer game not in cache.");
+            game.choose_state.push(45);
 
-        session.cur_idx = session.cur_idx + 1;
+            session.cur_idx = session.cur_idx + 1;
+        }
+        else {
+            show_error(String::from("randomizer_push_current_game was called without any data."))?;
+        }
+
+        Ok(())
     }
-    else {
-        show_error(String::from("randomizer_push_current_game was called without any data."))?;
-    }
+
+    mut_wrapper(&mut app)?;
 
     drop(app);
 
@@ -1274,16 +1328,23 @@ pub async fn randomizer_push_current_game() -> Result<(), JsError> {
 pub async fn randomizer_retire_current_game() -> Result<(), JsError> {
     let mut app = APP.try_write().expect("Should never actually have contention.");
 
-    if let EGameRandomizer::Choosing(session) = &mut app.game_randomizer {
-        let cur_game_idx = session.randomizer_list.shuffled_indices[session.cur_idx];
-        let game = &mut session.randomizer_list.games[cur_game_idx];
-        game.choose_state.retire();
+    // -- wraps the use of &mut app so the borrow checker knows we're looking at separate fields
+    fn mut_wrapper(app: &mut SAppState) -> Result<(), JsError> {
+        if let EGameRandomizer::Choosing(session) = &mut app.game_randomizer {
+            let internal_id = session.shuffled_internal_ids[session.cur_idx];
+            let game = cached_collection_game_by_id_mut(&mut app.collection_game_cache, internal_id).expect("Randomizer game not in cache.");
+            game.choose_state.retire();
 
-        session.cur_idx = session.cur_idx + 1;
+            session.cur_idx = session.cur_idx + 1;
+        }
+        else {
+            show_error(String::from("randomizer_retire_current_game was called without any data."))?;
+        }
+
+        Ok(())
     }
-    else {
-        show_error(String::from("randomizer_retire_current_game was called without any data."))?;
-    }
+
+    mut_wrapper(&mut app)?;
 
     drop(app);
 
@@ -1294,7 +1355,7 @@ pub async fn randomizer_retire_current_game() -> Result<(), JsError> {
 
 #[wasm_bindgen]
 pub async fn game_details_edit() -> Result<(), JsError> {
-    let game = {
+    let internal_id = {
         let mut app = APP.try_write().expect("Should never actually have contention.");
         if app.details_screen_game.is_none() {
             show_error(String::from("No game on details screen to edit."))?;
@@ -1303,13 +1364,14 @@ pub async fn game_details_edit() -> Result<(), JsError> {
         std::mem::take(&mut app.details_screen_game)
     };
 
-    edit_game(game.expect("checked above"))?;
+    edit_cached_game(internal_id.expect("taken above")).await?;
+
     Ok(())
 }
 
 #[wasm_bindgen]
 pub async fn game_details_reset() -> Result<(), JsError> {
-    let game = {
+    let internal_id = {
         let mut app = APP.try_write().expect("Should never actually have contention.");
         if app.details_screen_game.is_none() {
             show_error(String::from("No game on details screen to edit."))?;
@@ -1318,8 +1380,11 @@ pub async fn game_details_reset() -> Result<(), JsError> {
         std::mem::take(&mut app.details_screen_game)
     };
 
+    let app = APP.try_read().expect("Should never actually have contention.");
+    let cached_game = cached_collection_game_by_id(&app, internal_id.expect("checked above"));
+
     let sl = SShowLoadingHelper::new();
-    match server_api::reset_choose_state(&game.expect("checked above")).await {
+    match server_api::reset_choose_state(&cached_game.expect("game was not cached")).await {
         Ok(_) => show_result("Successfully reset game.")?,
         Err(e) => {
             let msg = format!("Failed to reset message, got error: {}", e);

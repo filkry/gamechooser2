@@ -27,7 +27,7 @@ pub struct SGameCard {
     game: EGame, // copy
 
     pub main_div: HtmlDivElement,
-    columns_div: HtmlDivElement,
+    _columns_div: HtmlDivElement,
     info_column_div: HtmlDivElement,
     generated_info_div: HtmlDivElement,
     pub customizable_info_div: Option<HtmlDivElement>,
@@ -62,9 +62,13 @@ impl SGameCard {
         let main_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
         main_div.set_class_name("game_card");
 
+        let header_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+        header_div.set_class_name("game_card_header_div");
+        main_div.append_child(&header_div).to_jserr()?;
+
         let title_elem = document.create_element("h3").to_jserr()?;
         title_elem.set_text_content(Some(game.game_info().title()));
-        main_div.append_child(&title_elem).to_jserr()?;
+        header_div.append_child(&title_elem).to_jserr()?;
 
         if let EGame::CollectionGame(collection_game) = &game {
             let info_button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
@@ -73,7 +77,7 @@ impl SGameCard {
             let onclick = Function::new_no_args(onclick_body.as_str());
             info_button_elem.set_onclick(Some(&onclick));
             info_button_elem.set_inner_text("🛈");
-            main_div.append_child(&info_button_elem).to_jserr()?;
+            header_div.append_child(&info_button_elem).to_jserr()?;
         }
 
         let columns_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
@@ -100,7 +104,7 @@ impl SGameCard {
         Ok(Self {
             game,
             main_div,
-            columns_div,
+            _columns_div: columns_div,
             info_column_div,
             generated_info_div,
             customizable_info_div: None,
