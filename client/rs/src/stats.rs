@@ -7,7 +7,7 @@ use web_sys::{
 
 use super::web::{document, TToJsError, TErgonomicDocument};
 
-pub fn create_class_percentage_chart(parent: &HtmlDivElement, classes: &[u32], _class_names: Option<&[&str]>) -> Result<(), JsError> {
+pub fn create_class_percentage_chart(parent: &HtmlDivElement, classes: &[u32], class_names_opt: Option<&[&str]>) -> Result<(), JsError> {
     let colors = [
         (0xff, 0xa6, 0),
         (0xff, 0x63, 0x61),
@@ -27,6 +27,17 @@ pub fn create_class_percentage_chart(parent: &HtmlDivElement, classes: &[u32], _
     let mut total = 0;
     for class_val in classes {
         total = total + class_val;
+    }
+
+    if let Some(class_names) = class_names_opt {
+        for i in 0..class_names.len() {
+            write!(inner_html,
+                "<div class=\"percentage_chart_legend\" style=\"background-color: rgb({},{},{});\"> </div><span class=\"percentage_chart_legend_name\">{}</span>",
+                colors[i].0,
+                colors[i].1,
+                colors[i].2,
+                class_names[i]).unwrap();
+        }
     }
 
     inner_html.push_str("<svg class=\"percentage_chart\">");

@@ -262,10 +262,21 @@ label {
 
 .percentage_chart_container {
     width: 100%;
-    height: 3vh;
 }
 
 .percentage_chart {
     width: 100%;
-    height: 100%;
+    height: 3vh;
+}
+
+.percentage_chart_legend {
+    display:  inline-block;
+    width:  1vh;
+    height:  1vh;
+    margin-left:  1vh;
+    margin-right:  1vh;
+}
+
+.percentage_chart_legend_name {
+    font-size: 1vh;
 }

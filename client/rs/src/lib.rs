@@ -218,7 +218,7 @@ pub async fn show_stats() -> Result<(), JsError> {
         Ok(())
     };
 
-    append_stat_header("h2", "Collection")?;
+    append_stat_header("h2", format!("Collection ({})", stats.total_collection_size).as_str())?;
 
     append_stat_header("h3", "Released")?;
     stats::create_binary_percentage_chart(&stats_div, stats.collection_released, stats.total_collection_size)?;
@@ -240,7 +240,7 @@ pub async fn show_stats() -> Result<(), JsError> {
     append_stat_header("h3", "Portable playable tag")?;
     stats::create_binary_percentage_chart(&stats_div, stats.collection_portable_playable_tag, stats.total_collection_size)?;
 
-    append_stat_header("h2", "Selectable")?;
+    append_stat_header("h2", format!("Selectable ({})", stats.collection_selectable).as_str())?;
 
     append_stat_header("h3", "Owned")?;
     stats::create_binary_percentage_chart(&stats_div, stats.selectable_owned, stats.collection_selectable)?;
