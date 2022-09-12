@@ -301,12 +301,14 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
 
         result_elem.append_child(&game_div.main_div).to_jserr()?;
 
+        let customizable_div = game_div.customizable_div()?;
+
         let button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
         let onclick_body = format!("add_screen_add_result({});", game.igdb_id().expect("IGDB results should have an igdb_id"));
         let onclick = Function::new_no_args(onclick_body.as_str());
         button_elem.set_onclick(Some(&onclick));
         button_elem.set_inner_text("Add");
-        result_elem.append_child(&button_elem).to_jserr()?;
+        customizable_div.append_child(&button_elem).to_jserr()?;
     }
 
     // -- cache results for later use
