@@ -62,6 +62,14 @@
         </div>
         <div id="full_collection_div" style="display:none">
             <h1 id="full_collection_header" class="page_header">Full collection</h1>
+            <div class="filter_div">
+                <ul class="checkbox_list">
+                    <li>
+                        <input type="checkbox" id="live_games_only" onchange="show_full_collection()" checked>
+                        <label for="live_games_only">Live games only (no retired, passed)</label>
+                    </li>
+                </ul>
+            </div>
             <div id="full_collection_screen_game_list"></div>
         </div>
         <div id="add_div" style="display:none">

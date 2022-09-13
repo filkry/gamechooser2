@@ -551,6 +551,12 @@ impl SGameChooseState {
     pub fn set_ignore_passes(&mut self) {
         self.ignore_passes = true;
     }
+
+    // -- returns whether the game could ever conceivably be selectable
+    pub fn alive(&self) -> bool {
+        !self.retired
+            && (self.ignore_passes || self.passes <= SRandomizerFilter::max_passes())
+    }
 }
 
 impl SSession {

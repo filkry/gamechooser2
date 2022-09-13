@@ -904,7 +904,14 @@ fn populate_full_collection_screen_game_list(games: Vec<core::SCollectionGame>) 
     let output_elem = doc.get_typed_element_by_id::<HtmlDivElement>("full_collection_screen_game_list").to_jserr()?;
     output_elem.set_inner_html("");
 
+    let live_only = checkbox_value("live_games_only")?;
+
     for game in &games {
+
+        if live_only && !game.choose_state.alive() {
+            continue;
+        }
+
         let game_card = SCompactGameCard::new_from_collection_game(&game)?;
         output_elem.append_child(&game_card.main_div).to_jserr()?;
     }
