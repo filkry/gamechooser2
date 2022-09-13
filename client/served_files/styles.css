@@ -138,6 +138,56 @@ label {
     width: 100%;
 }
 
+#full_collection_screen_game_list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.compact_game_card {
+    background-color: whitesmoke;
+    margin-top: .5vh;
+    margin-left: .5vh;
+    margin-right: .5vh;
+    margin-bottom: .5vh;
+    padding: .5vh;
+    width: 20vh;
+    min-width: 20vh;
+    max-width: 20vh;
+    height: 40vh;
+    min-height: 40vh;
+    max-height: 40vh;
+    flex: 1;
+    position: relative;
+}
+
+.compact_game_card img {
+    width: 19vh;
+    margin-left: auto;
+    margin-right: auto;
+    border-color: darkgray;
+    border-style: solid;
+    border-width: 1px;
+}
+
+.compact_game_card_floating_buttons_div {
+    text-align: right;
+    position:  absolute;
+    top: 0;
+    right:  0;
+}
+
+.compact_game_card_floating_buttons_div button {
+    font-size: 3vh;
+    min-width: 5vh;
+}
+
+.compact_game_card h3 {
+    margin-top: 0.5vh;
+    padding-left: 1.5vh;
+    font-size: 1.5vh;
+}
+
 .game_check {
     margin-left: 0.5vh;
     margin-right: 0.5vh;

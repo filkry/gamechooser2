@@ -27,7 +27,7 @@ use web_sys::{
 };
 
 use gamechooser_core as core;
-use game_card::SGameCard;
+use game_card::{SGameCard, SCompactGameCard};
 use web::{document, TToJsError, TErgonomicDocument};
 
 macro_rules! weblog {
@@ -134,6 +134,7 @@ fn div(id: &str) -> Result<HtmlDivElement, JsError> {
 fn swap_section_div(tgt_id: &str) -> Result<(), JsError> {
     div("sessions_div")?.style().set_property("display", "none").to_jserr()?;
     div("collection_div")?.style().set_property("display", "none").to_jserr()?;
+    div("full_collection_div")?.style().set_property("display", "none").to_jserr()?;
     div("add_div")?.style().set_property("display", "none").to_jserr()?;
     div("randomizer_div")?.style().set_property("display", "none").to_jserr()?;
     div("stats_div")?.style().set_property("display", "none").to_jserr()?;
@@ -181,6 +182,11 @@ pub async fn show_sessions() -> Result<(), JsError> {
 #[wasm_bindgen]
 pub async fn show_collection() -> Result<(), JsError> {
     enter_collection_screen().await
+}
+
+#[wasm_bindgen]
+pub async fn show_full_collection() -> Result<(), JsError> {
+    enter_full_collection_screen().await
 }
 
 #[wasm_bindgen]
@@ -892,6 +898,28 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
     Ok(())
 }
 
+fn populate_full_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Result<(), JsError> {
+    let doc = document();
+
+    let output_elem = doc.get_typed_element_by_id::<HtmlDivElement>("full_collection_screen_game_list").to_jserr()?;
+    output_elem.set_inner_html("");
+
+    for game in &games {
+        let game_card = SCompactGameCard::new_from_collection_game(&game)?;
+        output_elem.append_child(&game_card.main_div).to_jserr()?;
+    }
+
+    // -- cache results for later use
+    {
+        let mut app = APP.try_write().expect("Should never actually have contention.");
+        for game in games {
+            app.collection_game_cache.insert(game.internal_id, game);
+        }
+    }
+
+    Ok(())
+}
+
 fn show_result(msg: &str) -> Result<(), JsError> {
     let p = document().get_typed_element_by_id::<HtmlParagraphElement>("result_message").to_jserr()?;
     p.set_inner_text(msg);
@@ -993,6 +1021,24 @@ pub async fn update_igdb_games() -> Result<(), JsError> {
         }
     };
     drop(sl);
+
+    Ok(())
+}
+
+async fn enter_full_collection_screen() -> Result<(), JsError> {
+    let sl = SShowLoadingHelper::new();
+    let games = match server_api::get_full_collection().await {
+        Ok(g) => g,
+        Err(e) => {
+            show_error(e)?;
+            return Ok(());
+        }
+    };
+    drop(sl);
+
+    populate_full_collection_screen_game_list(games)?;
+
+    swap_section_div("full_collection_div")?;
 
     Ok(())
 }

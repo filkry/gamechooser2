@@ -14,6 +14,7 @@
         <div id="main_nav_div">
             <button class="main_nav_button" onclick="show_sessions()">Sessions</button>
             <button class="main_nav_button" onclick="show_collection()">Collection</button>
+            <button class="main_nav_button" onclick="show_full_collection()">Full</button>
             <button class="main_nav_button" onclick="show_add()">Add</button>
             <button class="main_nav_button" onclick="show_randomizer()">Randomizer</button>
             <button class="main_nav_button" onclick="show_stats()">Stats</button>
@@ -58,6 +59,10 @@
                 <button onclick="update_igdb_games()">Update IGDB games</button>
             </div>
             <div id="collection_screen_game_list"></div>
+        </div>
+        <div id="full_collection_div" style="display:none">
+            <h1 id="full_collection_header" class="page_header">Full collection</h1>
+            <div id="full_collection_screen_game_list"></div>
         </div>
         <div id="add_div" style="display:none">
             <h1 class="page_header">Add to collection</h1>
@@ -203,6 +208,7 @@
             login_screen_submit,
             show_sessions,
             show_collection,
+            show_full_collection,
             show_add,
             show_randomizer,
             show_stats,
@@ -233,6 +239,7 @@
             window.login_screen_submit = login_screen_submit;
             window.show_sessions = show_sessions;
             window.show_collection = show_collection;
+            window.show_full_collection = show_full_collection;
             window.show_add = show_add;
             window.show_randomizer = show_randomizer;
             window.show_stats = show_stats;

@@ -39,6 +39,12 @@ pub struct SGameCard {
     show_tag_info: bool,
 }
 
+pub struct SCompactGameCard {
+    game: EGame, // copy
+
+    pub main_div: HtmlDivElement,
+}
+
 impl EGame {
     fn game_info(&self) -> &core::EGameInfo {
         match self {
@@ -231,6 +237,87 @@ impl SGameCard {
         Ok(())
     }
 
+}
+
+impl SCompactGameCard {
+    fn new_internal(game: EGame) -> Result<Self, JsError> {
+        let document = document();
+
+        let main_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+        main_div.set_class_name("compact_game_card");
+
+        let columns_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+        columns_div.set_class_name("compact_game_card_columns");
+        main_div.append_child(&columns_div).to_jserr()?;
+
+        let cover_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+        cover_div.set_class_name("compact_game_card_cover_div");
+        columns_div.append_child(&cover_div).to_jserr()?;
+
+        if let Some(url) = game.game_info().cover_url() {
+            let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
+            img_elem.set_src(url.as_str());
+            cover_div.append_child(&img_elem).to_jserr()?;
+        }
+        else {
+
+            let img_elem = document.create_element_typed::<HtmlImageElement>().to_jserr()?;
+            img_elem.set_src("controller_image.png");
+            cover_div.append_child(&img_elem).to_jserr()?;
+        }
+
+        let info_column_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+        info_column_div.set_class_name("game_card_info");
+        columns_div.append_child(&info_column_div).to_jserr()?;
+
+        let title_elem = document.create_element("h3").to_jserr()?;
+        title_elem.set_text_content(Some(game.game_info().title()));
+        info_column_div.append_child(&title_elem).to_jserr()?;
+
+        let generated_info_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+        info_column_div.append_child(&generated_info_div).to_jserr()?;
+
+        // custom_info elements
+        if let Some(custom_info) = &game.custom_info() {
+            let checks_container = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+            generated_info_div.append_child(&checks_container).to_jserr()?;
+
+            create_tag_checks(&custom_info.tags, &checks_container)?;
+        }
+
+        if let EGame::CollectionGame(collection_game) = &game {
+            let floating_buttons_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+            floating_buttons_div.set_class_name("compact_game_card_floating_buttons_div");
+            main_div.append_child(&floating_buttons_div).to_jserr()?;
+
+            {
+                let info_button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+                let onclick_body = format!("game_card_view_details({});", collection_game.internal_id);
+                let onclick = Function::new_no_args(onclick_body.as_str());
+                info_button_elem.set_onclick(Some(&onclick));
+                info_button_elem.set_inner_text("ℹ");
+                floating_buttons_div.append_child(&info_button_elem).to_jserr()?;
+            }
+
+            {
+                let edit_button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+                let onclick_body = format!("edit_cached_game({});", collection_game.internal_id);
+                let onclick = Function::new_no_args(onclick_body.as_str());
+                edit_button_elem.set_onclick(Some(&onclick));
+                edit_button_elem.set_inner_text("✎");
+                floating_buttons_div.append_child(&edit_button_elem).to_jserr()?;
+            }
+        }
+
+        Ok(Self {
+            game,
+            main_div,
+        })
+    }
+
+    pub fn new_from_collection_game(collection_game: &core::SCollectionGame) -> Result<Self, JsError> {
+        Self::new_internal(EGame::CollectionGame(collection_game.clone()))
+    }
 }
 
 // HELPER FUNCTIONS

@@ -187,6 +187,10 @@ pub(super) async fn search_collection(query: &str) -> Result<Vec<core::SCollecti
     post_return_data("search_collection", Some(query)).await
 }
 
+pub(super) async fn get_full_collection() -> Result<Vec<core::SCollectionGame>, String> {
+    post_return_data("get_full_collection", None).await
+}
+
 pub(super) async fn get_sessions(
     game_id: Option<u32>,
     active_only: bool,

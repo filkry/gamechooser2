@@ -316,6 +316,14 @@ async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectio
     Ok(RocketJson(result))
 }
 
+#[post("/get_full_collection")]
+async fn get_full_collection() -> Result<RocketJson<Vec<core::SCollectionGame>>, EErrorResponse> {
+    let db_guard = MEMORY_DB.read().await;
+    let db = &db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?.serialized_db;
+
+    Ok(RocketJson(db.games.clone()))
+}
+
 #[post("/update_igdb_games")]
 async fn update_igdb_games() -> Result<(), EErrorResponse> {
     let mut db_guard = MEMORY_DB.write().await;
@@ -776,6 +784,7 @@ fn rocket() -> _ {
             edit_game,
             edit_game_no_auth,
             get_recent_collection_games,
+            get_full_collection,
             update_igdb_games,
             search_collection,
             start_session,

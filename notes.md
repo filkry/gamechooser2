@@ -13,7 +13,6 @@ Must have:
     + pass (wait for sale) -> auto longer wait period
     + pass (unreleased) -> auto longer wait period
 + separate UI presentation for tags and ownership
-+ screen to show EVERY game in DB in compact form
 + retro tag, new tag update screen
 + zip/otherwise compress old version of the database.json (since it gets quite large)
 + separate "no release date" option into:
