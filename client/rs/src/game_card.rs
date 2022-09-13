@@ -40,7 +40,7 @@ pub struct SGameCard {
 }
 
 pub struct SCompactGameCard {
-    game: EGame, // copy
+    _game: EGame, // copy
 
     pub main_div: HtmlDivElement,
 }
@@ -310,7 +310,7 @@ impl SCompactGameCard {
         }
 
         Ok(Self {
-            game,
+            _game: game,
             main_div,
         })
     }

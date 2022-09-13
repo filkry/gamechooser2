@@ -29,7 +29,7 @@ async fn check_err(resp: &Response) -> Result<(), String> {
     Ok(())
 }
 
-pub(super) async fn search_igdb(title: &str, games_only: bool) -> Result<Vec<core::EGameInfo>, String> {
+pub(super) async fn search_igdb(title: &str, games_only: bool) -> Result<Vec<core::SSearchIGDBResult>, String> {
     let window = window();
 
     let mut opts = RequestInit::new();

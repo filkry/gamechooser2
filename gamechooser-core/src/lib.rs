@@ -117,6 +117,12 @@ pub struct SGameChooseState {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SSearchIGDBResult {
+    pub game_info: EGameInfo,
+    pub in_collection: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SAddCollectionGame {
     pub game_info: EGameInfo,
     pub custom_info: SGameCustomInfo,

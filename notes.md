@@ -5,10 +5,6 @@
 Must have:
 + popup edit game menu
 + session star reviews
-+ duplicate management
-    + search for existing duplicates
-    + option to delete game in edit menu
-    + when adding, try to catch duplicate entries
 + separate pass options:
     + pass (wait for sale) -> auto longer wait period
     + pass (unreleased) -> auto longer wait period

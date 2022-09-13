@@ -57,7 +57,7 @@ struct SAppState {
 
     session_screen_sessions: Vec<core::SSession>,
 
-    last_search_igdb_results: Option<Vec<core::EGameInfo>>,
+    last_search_igdb_results: Option<Vec<core::SSearchIGDBResult>>,
 
     details_screen_game: Option<u32>,
 
@@ -315,7 +315,7 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
     // -- do the request
     let name_search_input = &document.get_typed_element_by_id::<HtmlInputElement>("add_screen_name_search_input").to_jserr()?;
     let sl = SShowLoadingHelper::new();
-    let games : Vec<core::EGameInfo> = match server_api::search_igdb(
+    let games : Vec<core::SSearchIGDBResult> = match server_api::search_igdb(
         name_search_input.value().as_str(),
         checkbox_value("add_screen_games_only")?,
     ).await {
@@ -340,7 +340,7 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
         let result_elem = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
         output_elem.append_child(&result_elem).to_jserr()?;
 
-        let mut game_div = SGameCard::new_from_game_info(game)?;
+        let mut game_div = SGameCard::new_from_game_info(&game.game_info)?;
         game_div
             .show_release_date()
             .show_igdb_link()
@@ -350,8 +350,15 @@ pub async fn add_screen_search_igdb() -> Result<(), JsError> {
 
         let customizable_div = game_div.customizable_div()?;
 
+        if game.in_collection {
+            let warning_elem = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+            warning_elem.set_class_name("add_game_duplicate");
+            warning_elem.set_inner_text("⚠ Already in collection️");
+            customizable_div.append_child(&warning_elem).to_jserr()?;
+        }
+
         let button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
-        let onclick_body = format!("add_screen_add_result({});", game.igdb_id().expect("IGDB results should have an igdb_id"));
+        let onclick_body = format!("add_screen_add_result({});", game.game_info.igdb_id().expect("IGDB results should have an igdb_id"));
         let onclick = Function::new_no_args(onclick_body.as_str());
         button_elem.set_onclick(Some(&onclick));
         button_elem.set_inner_text("Add");
@@ -589,7 +596,7 @@ pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
         let app = APP.try_read().expect("Should never actually have contention");
         if let Some(games) = &app.last_search_igdb_results {
             for g in games {
-                if let Some(inner_id) = g.igdb_id() {
+                if let Some(inner_id) = g.game_info.igdb_id() {
                     if inner_id == igdb_id {
                         result = Some(g.clone());
                         break;
@@ -605,7 +612,7 @@ pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
         return Err(JsError::new("Somehow adding an IGDB game that was not in search results."))
     }
     let game = game_opt.expect("checked above");
-    add_game(core::SAddCollectionGame::new(game))?;
+    add_game(core::SAddCollectionGame::new(game.game_info))?;
 
     Ok(())
 }

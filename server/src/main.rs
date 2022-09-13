@@ -18,6 +18,7 @@ use igdb_api_client::SReqwestTwitchAPIClient;
 
 struct SData {
     serialized_db: core::EDatabase,
+    game_igdb_id_to_internal_id: HashMap<u32, u32>,
     game_sessions_reverse_lookup: HashMap<u32, Vec<u32>>,
 }
 
@@ -127,6 +128,7 @@ impl<'r> rocket::request::FromRequest<'r> for AuthenticatedUser {
 }
 
 fn refresh_db_acceleration(data: &mut SData) -> Result<(), ()> {
+    data.game_igdb_id_to_internal_id.clear();
     data.game_sessions_reverse_lookup.clear();
 
     // -- generate additional data for SData
@@ -142,6 +144,12 @@ fn refresh_db_acceleration(data: &mut SData) -> Result<(), ()> {
                 return Err(())
             }
         };
+    }
+
+    for game in &data.serialized_db.games {
+        if let core::EGameInfo::IGDB(igdb_info) = &game.game_info {
+            data.game_igdb_id_to_internal_id.insert(igdb_info.id, game.internal_id);
+        }
     }
 
     Ok(())
@@ -183,6 +191,7 @@ fn load_db() -> Result<SData, ()> {
 
     let mut data = SData {
         serialized_db: updated_db,
+        game_igdb_id_to_internal_id: HashMap::new(),
         game_sessions_reverse_lookup: HashMap::new(),
     };
 
@@ -194,6 +203,9 @@ fn load_db() -> Result<SData, ()> {
 fn save_db(data: &mut SData) -> Result<(), ()> {
     let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
     let mut path = std::path::PathBuf::new();
+
+    refresh_db_acceleration(data)?;
+
     path.push(cfg.db_path.clone());
     path.push("database.json");
 
@@ -245,9 +257,28 @@ fn save_db(data: &mut SData) -> Result<(), ()> {
 }
 
 #[post("/search_igdb/<name>/<games_only>")]
-async fn search_igdb(name: &str, games_only: bool) -> Result<RocketJson<Vec<core::EGameInfo>>, String> {
-    let session = SReqwestTwitchAPIClient::new_session().await?;
-    let results = SReqwestTwitchAPIClient::search(&session, name, games_only).await?;
+async fn search_igdb(name: &str, games_only: bool) -> Result<RocketJson<Vec<core::SSearchIGDBResult>>, EErrorResponse> {
+    let db_guard = MEMORY_DB.read().await;
+    let db = db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
+
+    let session = SReqwestTwitchAPIClient::new_session().await.map_err(|e| EErrorResponse::ExternalAPIError(e))?;
+    let igdb_games = SReqwestTwitchAPIClient::search(&session, name, games_only).await.map_err(|e| EErrorResponse::ExternalAPIError(e))?;
+
+    let mut results = Vec::with_capacity(igdb_games.len());
+    for game in igdb_games {
+        let igdb_id = match &game {
+            core::EGameInfo::Custom(_) => 0,
+            core::EGameInfo::IGDB(igdb_info) => igdb_info.id,
+        };
+
+        let in_collection = db.game_igdb_id_to_internal_id.contains_key(&igdb_id);
+
+        results.push(core::SSearchIGDBResult{
+            game_info: game,
+            in_collection,
+        });
+    }
+
     Ok(RocketJson(results))
 }
 

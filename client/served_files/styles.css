@@ -199,6 +199,11 @@ label {
     font-size: 1.5vh;
 }
 
+.add_game_duplicate {
+    background-color: khaki;
+    padding: 1vh;
+}
+
 #game_details_cover_art {
     width: 25vh;
 }
