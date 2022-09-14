@@ -12,6 +12,7 @@ use once_cell::sync::Lazy;
 use js_sys::{Function};
 use wasm_bindgen::prelude::*;
 use web_sys::{
+    Element,
     //HtmlAnchorElement,
     HtmlButtonElement,
     HtmlDivElement,
@@ -398,6 +399,41 @@ fn populate_date_input(id: &str, value: Option<chrono::naive::NaiveDate>) -> Res
     Ok(())
 }
 
+fn populate_release_date_input(id: &str, value: core::EReleaseDate) -> Result<(), JsError> {
+    let type_id = format!("{}_type", id);
+    let date_id = format!("{}_date", id);
+
+    let date_type_elem = document().get_typed_element_by_id::<HtmlSelectElement>(type_id.as_str()).to_jserr()?;
+    let date_date_elem = document().get_typed_element_by_id::<HtmlInputElement>(date_id.as_str()).to_jserr()?;
+
+    match value {
+        core::EReleaseDate::UnknownUnreleased => {
+            date_type_elem.set_value("unknown_unreleased");
+
+            let d = chrono::offset::Local::now().naive_local().date();
+            date_date_elem.style().set_property("display", "none").to_jserr()?;
+            let date_str = d.format("%Y-%m-%d").to_string();
+            date_date_elem.set_value(date_str.as_str());
+        },
+        core::EReleaseDate::UnknownReleased => {
+            date_type_elem.set_value("unknown_released");
+
+            let d = chrono::offset::Local::now().naive_local().date();
+            date_date_elem.style().set_property("display", "none").to_jserr()?;
+            let date_str = d.format("%Y-%m-%d").to_string();
+            date_date_elem.set_value(date_str.as_str());
+        },
+        core::EReleaseDate::Known(d) => {
+            date_type_elem.set_value("known");
+
+            date_date_elem.style().set_property("display", "block").to_jserr()?;
+            let date_str = d.format("%Y-%m-%d").to_string();
+            date_date_elem.set_value(date_str.as_str());
+        },
+    };
+    Ok(())
+}
+
 fn populate_checkox_input(id: &str, value: bool) -> Result<(), JsError> {
     let elem = document().get_typed_element_by_id::<HtmlInputElement>(id).to_jserr()?;
     elem.set_checked(value);
@@ -463,7 +499,7 @@ async fn view_details(game: core::SCollectionGame) -> Result<(), JsError> {
 
 fn edit_screen_populate_game_info(game_info: &core::EGameInfo) -> Result<(), JsError> {
     populate_text_input("game_edit_title", game_info.title())?;
-    populate_date_input("game_edit_release_date", game_info.release_date())?;
+    populate_release_date_input("game_edit_release_date", game_info.release_date())?;
     let cover_url = game_info.cover_url();
     populate_img("game_edit_cover_art", cover_url.as_ref().map(|u| u.as_str()))?;
 
@@ -619,7 +655,7 @@ pub fn add_screen_add_result(igdb_id: u32) -> Result<(), JsError> {
 
 #[wasm_bindgen]
 pub fn add_screen_add_custom() -> Result<(), JsError> {
-    let game_info = core::EGameInfo::new_custom(String::new(), None);
+    let game_info = core::EGameInfo::new_custom(String::new(), core::EReleaseDate::UnknownUnreleased);
 
     add_game(core::SAddCollectionGame::new(game_info))?;
 
@@ -629,9 +665,20 @@ pub fn add_screen_add_custom() -> Result<(), JsError> {
 fn update_game_info_from_edit_screen(game_info: &mut core::EGameInfo) -> Result<(), JsError> {
     game_info.set_title(document().get_typed_element_by_id::<HtmlInputElement>("game_edit_title").to_jserr()?.value().as_str());
 
-    let date_str = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_release_date").to_jserr()?.value();
-    if let Err(_) = game_info.set_release_date_str(date_str.as_str()) {
-        return Err(JsError::new("Could not parse date from game_edit_release_date element."));
+    let date_str = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_release_date_date").to_jserr()?.value();
+    let type_value = document().get_typed_element_by_id::<HtmlSelectElement>("game_edit_release_date_type").to_jserr()?.value();
+
+    match type_value.as_str() {
+        "unknown_unreleased" => game_info.set_release_date(core::EReleaseDate::UnknownUnreleased),
+        "unknown_released" => game_info.set_release_date(core::EReleaseDate::UnknownReleased),
+        "known" => {
+            if let Err(_) = game_info.set_release_date_known_str(date_str.as_str()) {
+                return Err(JsError::new("Could not parse date from game_edit_release_date element."));
+            }
+        },
+        _ => {
+            return Err(JsError::new("Release date type select widget had invalid value"));
+        }
     }
 
     Ok(())
@@ -720,6 +767,32 @@ async fn edit_screen_submit_add_helper(mut game: core::SAddCollectionGame) -> Re
     if let Err(e) = server_api::add_game(game.clone()).await {
         show_error(e)?;
     }
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn release_date_type_changed(caller: Element) -> Result<(), JsError> {
+
+    weblog!("Caller was {:?} (id \"{}\")", caller, caller.id());
+
+    let date_id = format!("{}date", &caller.id()[0.. (caller.id().len() - 4)]); // slice off "type"
+
+    let date_type_elem = document().get_typed_element_by_id::<HtmlSelectElement>(caller.id().as_str()).to_jserr()?;
+    let date_date_elem = document().get_typed_element_by_id::<HtmlInputElement>(date_id.as_str()).to_jserr()?;
+
+    match date_type_elem.value().as_str() {
+        "unknown_unreleased" => {
+            date_date_elem.style().set_property("display", "none").to_jserr()?;
+        },
+        "unknown_released" => {
+            date_date_elem.style().set_property("display", "none").to_jserr()?;
+        },
+        "known" => {
+            date_date_elem.style().set_property("display", "block").to_jserr()?;
+        },
+        _ => {},
+    };
+
     Ok(())
 }
 

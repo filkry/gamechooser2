@@ -312,16 +312,23 @@ impl EGameInfo {
         }
     }
 
-    pub fn set_release_date(&mut self, date: chrono::naive::NaiveDate) {
+    pub fn set_release_date(&mut self, date: EReleaseDate) {
+        match self {
+            Self::Custom(inner) => inner.release_date = date,
+            Self::IGDB(inner) => inner.cached_release_date = date,
+        }
+    }
+
+    pub fn set_release_date_known(&mut self, date: chrono::naive::NaiveDate) {
         match self {
             Self::Custom(inner) => inner.release_date = EReleaseDate::Known(date),
             Self::IGDB(inner) => inner.cached_release_date = EReleaseDate::Known(date),
         }
     }
 
-    pub fn set_release_date_str(&mut self, date_str: &str) -> Result<(), ()> {
+    pub fn set_release_date_known_str(&mut self, date_str: &str) -> Result<(), ()> {
         if let Ok(date) = chrono::naive::NaiveDate::parse_from_str(date_str, "%Y-%m-%d") {
-            self.set_release_date(date);
+            self.set_release_date_known(date);
             Ok(())
         }
         else {

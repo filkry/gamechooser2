@@ -196,7 +196,7 @@ impl SGameCard {
 
         // game_info elements
         if self.show_release_date {
-            if let Some(d) = self.game.game_info().release_date() {
+            if let core::EReleaseDate::Known(d) = self.game.game_info().release_date() {
                 let release_date_p = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
                 release_date_p.set_inner_text(format!("Release date: {:?}", d).as_str());
                 self.generated_info_div.append_child(&release_date_p).to_jserr()?;

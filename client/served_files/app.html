@@ -143,8 +143,13 @@
                 <label for="game_edit_title">Title: </label>
                 <input type="text" id="game_edit_title">
                 <br>
-                <label for="game_edit_release_date">Release date: </label>
-                <input type="date" id="game_edit_release_date">
+                <label for="game_edit_release_date_type">Release date: </label>
+                <select id="game_edit_release_date_type" onchange="release_date_type_changed(this)">
+                    <option value="unknown_unreleased">Unknown (unreleased)</option>
+                    <option value="unknown_released">Unknown (released)</option>
+                    <option value="known">Known</option>
+                </select>
+                <input type="date" id="game_edit_release_date_date" display:none>
 
                 <h2>Custom info</h2>
                 <div id="game_edit_custom_info">
@@ -223,6 +228,7 @@
             add_screen_search_igdb,
             add_screen_add_result,
             add_screen_add_custom,
+            release_date_type_changed,
             edit_screen_submit,
             collection_screen_search,
             update_igdb_games,
@@ -254,6 +260,7 @@
             window.add_screen_search_igdb = add_screen_search_igdb;
             window.add_screen_add_result = add_screen_add_result;
             window.add_screen_add_custom = add_screen_add_custom;
+            window.release_date_type_changed = release_date_type_changed;
             window.edit_screen_submit = edit_screen_submit;
             window.collection_screen_search = collection_screen_search;
             window.update_igdb_games = update_igdb_games;

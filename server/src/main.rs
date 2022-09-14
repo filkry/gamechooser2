@@ -381,10 +381,14 @@ async fn update_igdb_games() -> Result<(), EErrorResponse> {
                 continue;
             }
 
-            if let Some(d) = igdb_game_info.cached_release_date {
-                if d >= six_months_ago {
-                    games_to_update.push(i);
-                }
+            let update = match igdb_game_info.cached_release_date {
+                core::EReleaseDate::UnknownUnreleased => true,
+                core::EReleaseDate::UnknownReleased => false,
+                core::EReleaseDate::Known(d) => d >= six_months_ago,
+            };
+
+            if update {
+                games_to_update.push(i);
             }
         }
     }

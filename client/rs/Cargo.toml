@@ -23,6 +23,7 @@ features = [
   'console',
   'CssStyleDeclaration',
   'Document',
+  'Element',
   'Headers',
   'HtmlAnchorElement',
   'HtmlButtonElement',

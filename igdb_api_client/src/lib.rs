@@ -76,6 +76,13 @@ impl STwitchAPIRequestBuilder {
     }
 }
 
+fn timestamp_to_release_date(ts: Option<i64>) -> core::EReleaseDate {
+    match ts {
+        None => core::EReleaseDate::UnknownUnreleased,
+        Some(ts) => core::EReleaseDate::Known(chrono::naive::NaiveDateTime::from_timestamp(ts, 0).date())
+    }
+}
+
 impl SReqwestTwitchAPIClient {
     pub async fn new_session() -> Result<SReqwestTwitchAPISession, String> {
         let cfg : SConfigFile = confy::load("gamechooser2_igdb_api_client").unwrap();
@@ -179,16 +186,12 @@ impl SReqwestTwitchAPIClient {
         assert!(query_results.len() == 1);
         let query_result = query_results.pop().expect("assert");
 
-        fn timestamp_to_chrono(ts: i64) -> chrono::naive::NaiveDate {
-            chrono::naive::NaiveDateTime::from_timestamp(ts, 0).date()
-        }
-
         let result = core::EGameInfo::new_igdb(
             query_result.id,
             query_result.slug.as_str(),
             query_result.cover.map(|c| c.image_id),
             query_result.name.as_str(),
-            query_result.first_release_date.map(timestamp_to_chrono),
+            timestamp_to_release_date(query_result.first_release_date),
         );
 
         Ok(result)
@@ -238,10 +241,6 @@ impl SReqwestTwitchAPIClient {
             }
         }?;
 
-        fn timestamp_to_chrono(ts: i64) -> chrono::naive::NaiveDate {
-            chrono::naive::NaiveDateTime::from_timestamp(ts, 0).date()
-        }
-
         let mut results = Vec::with_capacity(search_results.len());
         for search_res in search_results {
             results.push(core::EGameInfo::new_igdb(
@@ -249,7 +248,7 @@ impl SReqwestTwitchAPIClient {
                 search_res.slug.as_str(),
                 search_res.cover.map(|c| c.image_id),
                 search_res.name.as_str(),
-                search_res.first_release_date.map(timestamp_to_chrono),
+                timestamp_to_release_date(search_res.first_release_date),
             ));
         }
 
@@ -374,9 +373,6 @@ query games \"r{}\" {{
             }
         }?;
 
-        fn timestamp_to_chrono(ts: i64) -> chrono::naive::NaiveDate {
-            chrono::naive::NaiveDateTime::from_timestamp(ts, 0).date()
-        }
         fn extract_cover_url(cover: SIGDBSearchResultCover) -> String {
             cover.image_id
         }
@@ -392,7 +388,7 @@ query games \"r{}\" {{
                     igdb_game.slug.as_str(),
                     igdb_game.cover.map(extract_cover_url),
                     igdb_game.name.as_str(),
-                    igdb_game.first_release_date.map(timestamp_to_chrono),
+                    timestamp_to_release_date(igdb_game.first_release_date),
                 ));
             }
             results.push(name_result);
