@@ -3,7 +3,14 @@
 ## Post-import TODO
 
 Must have:
-+ popup edit game menu
++ versioning solution is not tenable - version bumps cascade up the tree
+    Option 1: switch to versioning each data item, but the JSON will get very ugly
+    Option 2: Some kind of automated system for cascading up the tree - without creating new versions of structs just to hold bumped children
+
++ separate "no release date" option into:
+    + no release date (unreleased)
+    + no release date (released)
+    + and fix data
 + session star reviews
 + separate pass options:
     + pass (wait for sale) -> auto longer wait period
@@ -11,10 +18,7 @@ Must have:
 + separate UI presentation for tags and ownership
 + retro tag, new tag update screen
 + zip/otherwise compress old version of the database.json (since it gets quite large)
-+ separate "no release date" option into:
-    + no release date (unreleased)
-    + no release date (released)
-    + and fix data
++ popup edit game menu
 
 Nice to have:
 + details screen show session history
