@@ -332,11 +332,11 @@ fn create_igdb_link(igdb: &core::SGameInfoIGDB) -> Result<HtmlAnchorElement, JsE
     Ok(a)
 }
 
-fn create_check_span(val: bool, name: &str, output_div: &HtmlDivElement) -> Result<(), JsError> {
+fn create_check_span(val: bool, name: &str, class_name: &str, output_div: &HtmlDivElement) -> Result<(), JsError> {
     if val {
         let span = document().create_element_typed::<HtmlSpanElement>().to_jserr()?;
         span.set_inner_text(format!("✓ {}", name).as_str());
-        span.set_class_name("game_check");
+        span.set_class_name(class_name);
         output_div.append_child(&span).to_jserr()?;
     }
 
@@ -351,7 +351,7 @@ fn create_tag_checks(tags: &core::SGameTags, output_div: &HtmlDivElement) -> Res
             return;
         }
 
-        if let Err(e) = create_check_span(owned, name, &output_div) {
+        if let Err(e) = create_check_span(owned, name, "tag_check", &output_div) {
             stored_err = Some(e);
         }
     };
@@ -374,7 +374,7 @@ fn create_own_checks(own: &core::SOwn, output_div: &HtmlDivElement) -> Result<()
             return;
         }
 
-        if let Err(e) = create_check_span(owned, name, &output_div) {
+        if let Err(e) = create_check_span(owned, name, "own_check", &output_div) {
             stored_err = Some(e);
         }
     };
