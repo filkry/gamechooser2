@@ -614,12 +614,14 @@ async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Re
 
 #[post("/update_choose_state", data = "<games>")]
 async fn update_choose_state(games: RocketJson<Vec<core::SCollectionGame>>, _user: AuthenticatedUser) -> Result<(), EErrorResponse> {
-    let games_inner = games.into_inner();
+    let mut games_inner = games.into_inner();
     let mut db_guard = MEMORY_DB.write().await;
     let db = db_guard.deref_mut().as_mut().map_err(|_| EErrorResponse::DBError)?;
 
     let mut input_idx = 0;
     let mut output_idx = 0;
+
+    games_inner.sort_unstable_by(|a, b| a.internal_id.cmp(&b.internal_id));
 
     while input_idx < games_inner.len() && output_idx < db.serialized_db.games.len() {
         if games_inner[input_idx].internal_id == db.serialized_db.games[output_idx].internal_id {
