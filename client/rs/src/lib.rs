@@ -1398,9 +1398,10 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
         let mut app = APP.try_write().expect("Should never actually have contention.");
 
         let mut internal_id_list = Vec::with_capacity(randomizer_list.games.len());
-        for game in randomizer_list.games {
+        for idx in randomizer_list.shuffled_indices {
+            let game = &randomizer_list.games[idx];
             let internal_id = game.internal_id;
-            app.collection_game_cache.insert(internal_id, game);
+            app.collection_game_cache.insert(internal_id, game.clone());
             internal_id_list.push(internal_id);
         }
 

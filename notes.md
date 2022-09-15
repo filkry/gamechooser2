@@ -4,10 +4,6 @@
 
 Must have:
 + session star reviews
-+ separate pass options:
-    + pass (wait for sale) -> auto longer wait period
-    + pass (unreleased) -> auto longer wait period
-+ separate UI presentation for tags and ownership
 + zip/otherwise compress old version of the database.json (since it gets quite large)
 + popup edit game menu
 
