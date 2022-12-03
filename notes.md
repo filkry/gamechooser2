@@ -20,6 +20,7 @@ Way later:
 + even better error handling in the client
 + details screen embed additional stuff from IGDB
 + edit screen new own add/remove UI
++ calendar view of upcoming releases
 
 ## Next step
 Next step is probably to proof of concept using google docs or sheets as a storage backend...

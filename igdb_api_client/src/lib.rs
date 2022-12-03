@@ -1,8 +1,8 @@
-use std::error::{Error};
-use std::result::{Result};
+use std::error::Error;
+use std::result::Result;
 
-use serde::{Serialize, Deserialize};
-use serde::de::{DeserializeOwned};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 
 use gamechooser_core as core;
 
@@ -41,8 +41,7 @@ pub struct SReqwestTwitchAPISession {
     token_info: Option<STwitchOauthTokenResponse>,
 }
 
-pub struct SReqwestTwitchAPIClient {
-}
+pub struct SReqwestTwitchAPIClient {}
 
 impl SConfigFile {
     pub fn set_twitch_client(&mut self, id: &str, secret: &str) {
@@ -79,15 +78,17 @@ impl STwitchAPIRequestBuilder {
 fn timestamp_to_release_date(ts: Option<i64>) -> core::EReleaseDate {
     match ts {
         None => core::EReleaseDate::UnknownUnreleased,
-        Some(ts) => core::EReleaseDate::Known(chrono::naive::NaiveDateTime::from_timestamp(ts, 0).date())
+        Some(ts) => {
+            core::EReleaseDate::Known(chrono::naive::NaiveDateTime::from_timestamp(ts, 0).date())
+        }
     }
 }
 
 impl SReqwestTwitchAPIClient {
     pub async fn new_session() -> Result<SReqwestTwitchAPISession, String> {
-        let cfg : SConfigFile = confy::load("gamechooser2_igdb_api_client").unwrap();
+        let cfg: SConfigFile = confy::load("gamechooser2_igdb_api_client").unwrap();
 
-        let params = STwitchOauthTokenRequest{
+        let params = STwitchOauthTokenRequest {
             client_id: cfg.twitch_client_id,
             client_secret: cfg.twitch_client_secret,
             grant_type: "client_credentials",
@@ -96,7 +97,10 @@ impl SReqwestTwitchAPIClient {
         Self::init(params).await
     }
 
-    fn prepare_request(session: &SReqwestTwitchAPISession, rb: STwitchAPIRequestBuilder) -> reqwest::RequestBuilder {
+    fn prepare_request(
+        session: &SReqwestTwitchAPISession,
+        rb: STwitchAPIRequestBuilder,
+    ) -> reqwest::RequestBuilder {
         let mut request = session.client.post(rb.url);
 
         if let Some(b) = rb.body {
@@ -113,33 +117,40 @@ impl SReqwestTwitchAPIClient {
     async fn init(params: STwitchOauthTokenRequest) -> Result<SReqwestTwitchAPISession, String> {
         let client = reqwest::Client::new();
 
-        let res = client.post("https://id.twitch.tv/oauth2/token")
+        let res = client
+            .post("https://id.twitch.tv/oauth2/token")
             .form(&params)
             .send()
             .await;
 
         match res {
             Ok(res_) => {
-                let resp : STwitchOauthTokenResponse = res_.json().await.unwrap();
+                let resp: STwitchOauthTokenResponse = res_.json().await.unwrap();
                 println!("{:?}", resp);
-                Ok(SReqwestTwitchAPISession{
+                Ok(SReqwestTwitchAPISession {
                     client,
                     twitch_client_id: params.client_id,
                     token_info: Some(resp),
                 })
-            },
+            }
             Err(e_) => Err(e_.to_string()),
         }
     }
 
-    async fn post_interp_json<T: DeserializeOwned>(session: SReqwestTwitchAPISession, rb: STwitchAPIRequestBuilder) -> Result<T, Box<dyn Error>> {
+    async fn post_interp_json<T: DeserializeOwned>(
+        session: SReqwestTwitchAPISession,
+        rb: STwitchAPIRequestBuilder,
+    ) -> Result<T, Box<dyn Error>> {
         let req = Self::prepare_request(&session, rb);
         let resp = req.send().await?;
         Ok(resp.json().await?)
     }
 
     #[allow(dead_code)]
-    async fn post_text(session: SReqwestTwitchAPISession, rb: STwitchAPIRequestBuilder) -> Result<String, String> {
+    async fn post_text(
+        session: SReqwestTwitchAPISession,
+        rb: STwitchAPIRequestBuilder,
+    ) -> Result<String, String> {
         let req = Self::prepare_request(&session, rb);
         let resp = req.send().await.unwrap();
         Ok(resp.text().await.unwrap())
@@ -149,15 +160,17 @@ impl SReqwestTwitchAPIClient {
         session.token_info.as_ref().unwrap().access_token.as_str()
     }
 
-    pub async fn get_game_info(session: &SReqwestTwitchAPISession, igdb_id: u32) -> Result<core::EGameInfo, String> {
-
-        #[derive(Deserialize)]
+    pub async fn get_game_info(
+        session: &SReqwestTwitchAPISession,
+        igdb_id: u32,
+    ) -> Result<core::EGameInfo, String> {
+        #[derive(Deserialize, Debug)]
         #[allow(dead_code)]
         struct SIGDBInfoResultCover {
             id: u32,
             image_id: String,
         }
-        #[derive(Deserialize)]
+        #[derive(Deserialize, Debug)]
         struct SIGDBInfoResult {
             id: u32,
             name: String,
@@ -166,22 +179,44 @@ impl SReqwestTwitchAPIClient {
             cover: Option<SIGDBInfoResultCover>,
         }
 
-        let mut query_results : Vec<SIGDBInfoResult> = {
+        let mut query_results: Vec<SIGDBInfoResult> = {
             let where_clause = format!("where id = {};", igdb_id);
-            let body = format!("{}fields name,slug,first_release_date,cover.image_id;", where_clause);
+            let body = format!(
+                "{}fields name,slug,first_release_date,cover.image_id;",
+                where_clause
+            );
 
             let request = STwitchAPIRequestBuilder::new()
                 .url("https://api.igdb.com/v4/games/")
                 .header("Client-ID", session.twitch_client_id.as_str())
-                .header("Authorization", format!("Bearer {}", SReqwestTwitchAPIClient::access_token(&session)).as_str())
+                .header(
+                    "Authorization",
+                    format!("Bearer {}", SReqwestTwitchAPIClient::access_token(&session)).as_str(),
+                )
                 .header("Accept", "application/json")
                 .body(body.as_str());
 
-            match SReqwestTwitchAPIClient::post_interp_json::<Vec<SIGDBInfoResult>>(session.clone(), request).await {
+            match SReqwestTwitchAPIClient::post_interp_json::<Vec<SIGDBInfoResult>>(
+                session.clone(),
+                request,
+            )
+            .await
+            {
                 Ok(res) => Ok(res),
                 Err(e) => Err(format!("Failed with error {:?}", e)),
             }
         }?;
+
+        if query_results.len() < 1 {
+            return Err(format!("Got no results for IGDB game with ID {}", igdb_id));
+        }
+
+        if query_results.len() > 1 {
+            return Err(format!(
+                "Got more than one result for IGDB game with ID {}\n {:?}",
+                igdb_id, query_results
+            ));
+        }
 
         assert!(query_results.len() == 1);
         let query_result = query_results.pop().expect("assert");
@@ -197,8 +232,11 @@ impl SReqwestTwitchAPIClient {
         Ok(result)
     }
 
-    pub async fn search(session: &SReqwestTwitchAPISession, name: &str, games_only: bool) -> Result<Vec<core::EGameInfo>, String> {
-
+    pub async fn search(
+        session: &SReqwestTwitchAPISession,
+        name: &str,
+        games_only: bool,
+    ) -> Result<Vec<core::EGameInfo>, String> {
         #[derive(Deserialize)]
         #[allow(dead_code)]
         struct SIGDBSearchResultCover {
@@ -214,14 +252,16 @@ impl SReqwestTwitchAPIClient {
             cover: Option<SIGDBSearchResultCover>,
         }
 
-        let search_results : Vec<SIGDBSearchResult> = {
+        let search_results: Vec<SIGDBSearchResult> = {
             let where_clause = if games_only {
                 "where category = 0 & version_parent = null;"
-            }
-            else {
+            } else {
                 "where version_parent = null;"
             };
-            let body = format!("search \"{}\"; {}fields name,slug,first_release_date,cover.image_id;", name, where_clause);
+            let body = format!(
+                "search \"{}\"; {}fields name,slug,first_release_date,cover.image_id;",
+                name, where_clause
+            );
 
             /*
             Should be equivalent to:
@@ -231,11 +271,19 @@ impl SReqwestTwitchAPIClient {
             let request = STwitchAPIRequestBuilder::new()
                 .url("https://api.igdb.com/v4/games/")
                 .header("Client-ID", session.twitch_client_id.as_str())
-                .header("Authorization", format!("Bearer {}", SReqwestTwitchAPIClient::access_token(&session)).as_str())
+                .header(
+                    "Authorization",
+                    format!("Bearer {}", SReqwestTwitchAPIClient::access_token(&session)).as_str(),
+                )
                 .header("Accept", "application/json")
                 .body(body.as_str());
 
-            match SReqwestTwitchAPIClient::post_interp_json::<Vec<SIGDBSearchResult>>(session.clone(), request).await {
+            match SReqwestTwitchAPIClient::post_interp_json::<Vec<SIGDBSearchResult>>(
+                session.clone(),
+                request,
+            )
+            .await
+            {
                 Ok(res) => Ok(res),
                 Err(e) => Err(format!("Failed with error {:?}", e)),
             }
@@ -257,8 +305,10 @@ impl SReqwestTwitchAPIClient {
 
     // -- not pub because the API doesn't seem to work when you have 'search' in the queries
     #[allow(dead_code)]
-    async fn multi_search(session: &SReqwestTwitchAPISession, names: &[&str]) -> Result<Vec<Vec<core::EGameInfo>>, String> {
-
+    async fn multi_search(
+        session: &SReqwestTwitchAPISession,
+        names: &[&str],
+    ) -> Result<Vec<Vec<core::EGameInfo>>, String> {
         if names.len() > 10 {
             return Err(String::from("Cannot multi-search for more than 10 games"));
         }
@@ -331,16 +381,18 @@ impl SReqwestTwitchAPIClient {
             }
         }
 
-        let mq_results : SIGDBMultiSearchResults = {
+        let mq_results: SIGDBMultiSearchResults = {
             let mut body = String::new();
 
             for (idx, name) in names.iter().enumerate() {
-                let name_query = format!("
+                let name_query = format!(
+                    "
 query games \"r{}\" {{
     search \"{}\";
     fields name,slug,first_release_date,cover.image_id;
 }};\n",
-                idx, name);
+                    idx, name
+                );
 
                 body.push_str(name_query.as_str());
             }
@@ -350,7 +402,10 @@ query games \"r{}\" {{
             let request = STwitchAPIRequestBuilder::new()
                 .url("https://api.igdb.com/v4/multiquery/")
                 .header("Client-ID", session.twitch_client_id.as_str())
-                .header("Authorization", format!("Bearer {}", SReqwestTwitchAPIClient::access_token(&session)).as_str())
+                .header(
+                    "Authorization",
+                    format!("Bearer {}", SReqwestTwitchAPIClient::access_token(&session)).as_str(),
+                )
                 .header("Accept", "application/json")
                 .body(body.as_str());
 
@@ -359,15 +414,20 @@ query games \"r{}\" {{
             match SReqwestTwitchAPIClient::post_text(session.clone(), request.clone()).await {
                 Ok(res) => {
                     println!("{:?}", res);
-                },
+                }
                 Err(e) => {
                     return Err(format!("Failed with error {:?}", e));
-                },
+                }
             }
 
             println!("\n\n\nJSON\n\n\n");
 
-            match SReqwestTwitchAPIClient::post_interp_json::<SIGDBMultiSearchResults>(session.clone(), request).await {
+            match SReqwestTwitchAPIClient::post_interp_json::<SIGDBMultiSearchResults>(
+                session.clone(),
+                request,
+            )
+            .await
+            {
                 Ok(res) => Ok(res),
                 Err(e) => Err(format!("Failed with error {:?}", e)),
             }
@@ -399,7 +459,6 @@ query games \"r{}\" {{
         Ok(results)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
