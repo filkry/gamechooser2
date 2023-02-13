@@ -398,6 +398,8 @@ async fn update_igdb_games() -> Result<(), EErrorResponse> {
     for i in games_to_update {
         let game = &mut db.serialized_db.games[i];
 
+        println!("Updating game \"{}\"", game.game_info.title());
+
         let mut new_game_info = None;
         if let core::EGameInfo::IGDB(igdb_info) = &mut game.game_info {
             let igdb_game_info = SReqwestTwitchAPIClient::get_game_info(&session, igdb_info.id).await.map_err(|e| EErrorResponse::ExternalAPIError(e))?;
@@ -405,7 +407,7 @@ async fn update_igdb_games() -> Result<(), EErrorResponse> {
         }
 
         if let Some(gi) = new_game_info {
-            println!("Updated game \"{}\"", game.game_info.title());
+            println!("Updated as \"{}\"", gi.title());
             game.game_info = gi;
         }
 
