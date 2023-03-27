@@ -13,6 +13,7 @@ Nice to have:
 + stats screen burndown chart
 + handle back button
 + Progress bar for IGDB updates
++ show games owned but never played
 
 Way later:
 + release webasm is like 1/4 the size, make some easy way to build/deploy as release instead

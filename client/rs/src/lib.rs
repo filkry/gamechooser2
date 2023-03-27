@@ -1340,46 +1340,64 @@ async fn populate_randomizer_choose_screen() -> Result<(), JsError> {
 }
 
 #[wasm_bindgen]
+pub async fn randomizer_pick_up_and_play_mode_changed() -> Result<(), JsError> {
+    if checkbox_value("randomizer_pick_up_and_play_mode")? {
+        div("randomizer_options_filter_div")?.style().set_property("display", "none").to_jserr()?;
+    }
+    else {
+        div("randomizer_options_filter_div")?.style().set_property("display", "block").to_jserr()?;
+    }
+
+    Ok(())
+}
+
+#[wasm_bindgen]
 pub async fn randomizer_screen_start() -> Result<(), JsError> {
-    let couch = if checkbox_value("randomizer_screen_couch")? {
-        Some(true)
+    let filter = if checkbox_value("randomizer_pick_up_and_play_mode")? {
+        core::ERandomizerFilter::PickUpAndPlay
     }
     else {
-        None
-    };
-    let portable = if checkbox_value("randomizer_screen_portable")? {
-        Some(true)
-    }
-    else {
-        None
-    };
-
-    let jp_practice = match document()
-        .get_typed_element_by_id::<HtmlSelectElement>("randomizer_screen_jp_practice")
-        .to_jserr()?
-        .value()
-        .as_str()
-    {
-        "any" => None,
-        "require_true" => Some(true),
-        "require_false" => Some(false),
-        _ => {
-            show_error(String::from("Invalid value from randomizer_screen_jp_practice select."))?;
+        let couch = if checkbox_value("randomizer_screen_couch")? {
+            Some(true)
+        }
+        else {
             None
-        },
-    };
+        };
+        let portable = if checkbox_value("randomizer_screen_portable")? {
+            Some(true)
+        }
+        else {
+            None
+        };
 
-    let max_passes = 2;
+        let jp_practice = match document()
+            .get_typed_element_by_id::<HtmlSelectElement>("randomizer_screen_jp_practice")
+            .to_jserr()?
+            .value()
+            .as_str()
+        {
+            "any" => None,
+            "require_true" => Some(true),
+            "require_false" => Some(false),
+            _ => {
+                show_error(String::from("Invalid value from randomizer_screen_jp_practice select."))?;
+                None
+            },
+        };
 
-    let filter = core::SRandomizerFilter {
-        tags: core::SGameTagsFilter{
-            couch_playable: couch,
-            portable_playable: portable,
-            japanese_practice: jp_practice,
-        },
-        allow_unowned: checkbox_value("randomizer_screen_allow_unowned")?,
-        only_firsts: checkbox_value("randomizer_screen_only_firsts")?,
-        max_passes,
+        let max_passes = 2;
+
+        core::ERandomizerFilter::GameChooseAlgFilter(core::SGameChooseAlgFilter{
+            tags: core::SGameTagsFilter{
+                couch_playable: couch,
+                portable_playable: portable,
+                japanese_practice: jp_practice,
+            },
+            allow_unowned: checkbox_value("randomizer_screen_allow_unowned")?,
+            only_firsts: checkbox_value("randomizer_screen_only_firsts")?,
+            allow_retro: checkbox_value("randomizer_screen_allow_retro")?,
+            max_passes,
+        })
     };
 
     let sl = SShowLoadingHelper::new();

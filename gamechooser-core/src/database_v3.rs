@@ -18,6 +18,12 @@ pub struct SGameTags {
     pub couch_playable: bool,
     pub portable_playable: bool,
     pub japanese_practice: bool,
+
+    #[serde(default)]
+    pub retro: bool,
+
+    #[serde(default)]
+    pub pick_up_and_play: bool,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -153,6 +159,8 @@ impl SGameTags {
         f(self.couch_playable, "couch");
         f(self.portable_playable, "portable");
         f(self.japanese_practice, "jp practice");
+        f(self.retro, "retro");
+        f(self.pick_up_and_play, "pick up and play");
     }
 
     pub fn each_mut<F>(&mut self, mut f: F) where
@@ -161,6 +169,8 @@ impl SGameTags {
         f(&mut self.couch_playable, "couch");
         f(&mut self.portable_playable, "portable");
         f(&mut self.japanese_practice, "jp practice");
+        f(&mut self.retro, "retro");
+        f(&mut self.pick_up_and_play, "pick up and play");
     }
 }
 

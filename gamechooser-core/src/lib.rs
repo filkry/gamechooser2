@@ -42,10 +42,17 @@ pub struct SSessionFilter {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SRandomizerFilter {
+pub enum ERandomizerFilter {
+    GameChooseAlgFilter(SGameChooseAlgFilter),
+    PickUpAndPlay,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SGameChooseAlgFilter {
     pub tags: SGameTagsFilter,
     pub allow_unowned: bool,
     pub only_firsts: bool,
+    pub allow_retro: bool,
     pub max_passes: u16,
 }
 
@@ -174,18 +181,34 @@ impl SSessionFilter {
     }
 }
 
-impl Default for SRandomizerFilter {
+impl Default for ERandomizerFilter {
+    fn default() -> Self {
+        Self::GameChooseAlgFilter(Default::default())
+    }
+}
+
+impl ERandomizerFilter {
+    pub fn game_passes(&self, game: &SCollectionGame, has_any_sessions: bool) -> bool {
+        match self {
+            Self::PickUpAndPlay => game.custom_info.tags.pick_up_and_play,
+            Self::GameChooseAlgFilter(f) => f.game_passes(game, has_any_sessions),
+        }
+    }
+}
+
+impl Default for SGameChooseAlgFilter {
     fn default() -> Self {
         Self {
             tags: SGameTagsFilter::default(),
             allow_unowned: true,
+            allow_retro: false,
             only_firsts: true,
             max_passes: Self::max_passes(),
         }
     }
 }
 
-impl SRandomizerFilter {
+impl SGameChooseAlgFilter {
     pub fn max_passes() -> u16 {
         2
     }
@@ -214,6 +237,8 @@ impl SRandomizerFilter {
         let has_any_sessions_proxy = has_any_sessions || game.choose_state.ignore_passes;
         result = result && !(self.only_firsts && has_any_sessions_proxy);
 
+        result = result && (self.allow_retro || game.custom_info.tags.retro == false);
+
         result = result && (game.choose_state.ignore_passes || game.choose_state.passes <= self.max_passes);
         result = result && !game.choose_state.retired;
         result = result && game.choose_state.next_valid_proposal_date <= today;
@@ -226,7 +251,7 @@ impl SGameChooseState {
     // -- returns whether the game could ever conceivably be selectable
     pub fn alive(&self) -> bool {
         !self.retired
-            && (self.ignore_passes || self.passes <= SRandomizerFilter::max_passes())
+            && (self.ignore_passes || self.passes <= SGameChooseAlgFilter::max_passes())
     }
 }
 

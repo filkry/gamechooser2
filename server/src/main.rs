@@ -576,7 +576,7 @@ async fn get_sessions_no_auth(filter: RocketJson<core::SSessionFilter>) -> Resul
 }
 
 #[post("/get_randomizer_games", data = "<filter>")]
-async fn get_randomizer_games(filter: RocketJson<core::SRandomizerFilter>) -> Result<RocketJson<core::SRandomizerList>, EErrorResponse> {
+async fn get_randomizer_games(filter: RocketJson<core::ERandomizerFilter>) -> Result<RocketJson<core::SRandomizerList>, EErrorResponse> {
     let filter_inner = filter.into_inner();
 
     let db_guard = MEMORY_DB.read().await;
@@ -708,7 +708,7 @@ async fn simple_stats() -> Result<RocketJson<core::SSimpleStats>, EErrorResponse
         *stat = *stat + 1;
     }
 
-    let filter = core::SRandomizerFilter::default();
+    let filter = core::ERandomizerFilter::default();
 
     for game in &data.serialized_db.games {
         inc(&mut stats.total_collection_size);
@@ -726,7 +726,7 @@ async fn simple_stats() -> Result<RocketJson<core::SSimpleStats>, EErrorResponse
         if game.choose_state.retired {
             inc(&mut stats.collection_retired);
         }
-        else if game.choose_state.passes > core::SRandomizerFilter::max_passes() {
+        else if game.choose_state.passes > core::SGameChooseAlgFilter::max_passes() {
             inc(&mut stats.collection_passed_many_times);
         }
         else if game.choose_state.next_valid_proposal_date > today {

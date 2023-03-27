@@ -91,33 +91,44 @@
         <div id="randomizer_div" style="display:none">
             <h1 class="page_header">Randomizer</h1>
             <div id="randomizer_options_div" class="filter_div">
-                <h2>Filter</h2>
-                <ul class="checkbox_list">
-                    <li>
-                        <input type="checkbox" id="randomizer_screen_couch">
-                        <label for="randomizer_screen_couch">Couch playable</label>
-                    </li>
-                    <li>
-                        <input type="checkbox" id="randomizer_screen_portable">
-                        <label for="randomizer_screen_portable">Portable playable</label>
-                    </li>
-                    <li>
-                        <input type="checkbox" id="randomizer_screen_allow_unowned">
-                        <label for="randomizer_screen_allow_unowned">Allow unowned games</label>
-                    </li>
-                    <li>
-                        <input type="checkbox" id="randomizer_screen_only_firsts" checked>
-                        <label for="randomizer_screen_only_firsts">Only games never played before</label>
-                    </li>
-                </ul>
-                <p>
-                    <label for="randomizer_screen_jp_practice">Japanese practice: </label>
-                    <select id="randomizer_screen_jp_practice">
-                        <option value="any">Any</option>
-                        <option value="require_true">Require tag</option>
-                        <option value="require_false">Require no tag</option>
-                    </select>
-                </p>
+                <div style="padding-bottom:1vh">
+                    <input type="checkbox" id="randomizer_pick_up_and_play_mode"
+                        onchange="randomizer_pick_up_and_play_mode_changed()">
+                    <label for="randomizer_pick_up_and_play_mode">Pick up and play mode</label>
+                </div>
+                <div id="randomizer_options_filter_div">
+                    <h2>Filter</h2>
+                    <ul class="checkbox_list">
+                        <li>
+                            <input type="checkbox" id="randomizer_screen_couch">
+                            <label for="randomizer_screen_couch">Couch playable</label>
+                        </li>
+                        <li>
+                            <input type="checkbox" id="randomizer_screen_portable">
+                            <label for="randomizer_screen_portable">Portable playable</label>
+                        </li>
+                        <li>
+                            <input type="checkbox" id="randomizer_screen_allow_unowned">
+                            <label for="randomizer_screen_allow_unowned">Allow unowned games</label>
+                        </li>
+                        <li>
+                            <input type="checkbox" id="randomizer_screen_only_firsts" checked>
+                            <label for="randomizer_screen_only_firsts">Only games never played before</label>
+                        </li>
+                        <li>
+                            <input type="checkbox" id="randomizer_screen_allow_retro">
+                            <label for="randomizer_screen_allow_retro">Allow retro</label>
+                        </li>
+                    </ul>
+                    <p>
+                        <label for="randomizer_screen_jp_practice">Japanese practice: </label>
+                        <select id="randomizer_screen_jp_practice">
+                            <option value="any">Any</option>
+                            <option value="require_true">Require tag</option>
+                            <option value="require_false">Require no tag</option>
+                        </select>
+                    </p>
+                </div>
                 <button onclick="randomizer_screen_start()">Start choosin'</button>
             </div>
             <div id="randomizer_game_div">
@@ -237,6 +248,7 @@
             start_session,
             session_screen_finish_session,
             session_screen_apply_filter,
+            randomizer_pick_up_and_play_mode_changed,
             randomizer_screen_start,
             randomizer_pick_current_game,
             randomizer_pass_current_game,
@@ -269,6 +281,7 @@
             window.start_session = start_session;
             window.session_screen_finish_session = session_screen_finish_session;
             window.session_screen_apply_filter = session_screen_apply_filter;
+            window.randomizer_pick_up_and_play_mode_changed = randomizer_pick_up_and_play_mode_changed;
             window.randomizer_screen_start = randomizer_screen_start;
             window.randomizer_pick_current_game = randomizer_pick_current_game;
             window.randomizer_pass_current_game = randomizer_pass_current_game;
