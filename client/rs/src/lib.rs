@@ -43,7 +43,13 @@ enum EGameEdit {
     Edit(u32),
 }
 
+enum ERandomizerMode {
+    GameChooseAlg,
+    PickUpAndPlay,
+}
+
 struct SGameRandomizerSession {
+    mode: ERandomizerMode,
     shuffled_internal_ids: Vec<u32>,
     cur_idx: usize,
 }
@@ -1293,36 +1299,50 @@ async fn populate_randomizer_choose_screen() -> Result<(), JsError> {
 
             let doc = document();
 
-            {
-                let button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
-                let onclick = Function::new_no_args("randomizer_pick_current_game()");
-                button_elem.set_onclick(Some(&onclick));
-                button_elem.set_inner_text("Start this game!");
-                customizable_div.append_child(&button_elem).to_jserr()?;
-            }
+            // -- populate action buttons
+            match session.mode {
+                ERandomizerMode::GameChooseAlg => {
+                    {
+                        let button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+                        let onclick = Function::new_no_args("randomizer_pick_current_game()");
+                        button_elem.set_onclick(Some(&onclick));
+                        button_elem.set_inner_text("Start this game!");
+                        customizable_div.append_child(&button_elem).to_jserr()?;
+                    }
 
-            {
-                let button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
-                let onclick = Function::new_no_args("randomizer_pass_current_game()");
-                button_elem.set_onclick(Some(&onclick));
-                button_elem.set_inner_text("Pass this game");
-                customizable_div.append_child(&button_elem).to_jserr()?;
-            }
+                    {
+                        let button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+                        let onclick = Function::new_no_args("randomizer_pass_current_game()");
+                        button_elem.set_onclick(Some(&onclick));
+                        button_elem.set_inner_text("Pass this game");
+                        customizable_div.append_child(&button_elem).to_jserr()?;
+                    }
 
-            {
-                let button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
-                let onclick = Function::new_no_args("randomizer_push_current_game()");
-                button_elem.set_onclick(Some(&onclick));
-                button_elem.set_inner_text("Push to later");
-                customizable_div.append_child(&button_elem).to_jserr()?;
-            }
+                    {
+                        let button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+                        let onclick = Function::new_no_args("randomizer_push_current_game()");
+                        button_elem.set_onclick(Some(&onclick));
+                        button_elem.set_inner_text("Push to later");
+                        customizable_div.append_child(&button_elem).to_jserr()?;
+                    }
 
-            {
-                let button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
-                let onclick = Function::new_no_args("randomizer_retire_current_game()");
-                button_elem.set_onclick(Some(&onclick));
-                button_elem.set_inner_text("Retire");
-                customizable_div.append_child(&button_elem).to_jserr()?;
+                    {
+                        let button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+                        let onclick = Function::new_no_args("randomizer_retire_current_game()");
+                        button_elem.set_onclick(Some(&onclick));
+                        button_elem.set_inner_text("Retire");
+                        customizable_div.append_child(&button_elem).to_jserr()?;
+                    }
+                },
+                ERandomizerMode::PickUpAndPlay => {
+                    {
+                        let button_elem = doc.create_element_typed::<HtmlButtonElement>().to_jserr()?;
+                        let onclick = Function::new_no_args("randomizer_next_game_no_state_change()");
+                        button_elem.set_onclick(Some(&onclick));
+                        button_elem.set_inner_text("Next");
+                        customizable_div.append_child(&button_elem).to_jserr()?;
+                    }
+                }
             }
 
             div("randomizer_game_div")?.style().set_property("display", "block").to_jserr()?;
@@ -1353,51 +1373,58 @@ pub async fn randomizer_pick_up_and_play_mode_changed() -> Result<(), JsError> {
 
 #[wasm_bindgen]
 pub async fn randomizer_screen_start() -> Result<(), JsError> {
-    let filter = if checkbox_value("randomizer_pick_up_and_play_mode")? {
-        core::ERandomizerFilter::PickUpAndPlay
+    let mode = if checkbox_value("randomizer_pick_up_and_play_mode")? {
+        ERandomizerMode::PickUpAndPlay
     }
     else {
-        let couch = if checkbox_value("randomizer_screen_couch")? {
-            Some(true)
-        }
-        else {
-            None
-        };
-        let portable = if checkbox_value("randomizer_screen_portable")? {
-            Some(true)
-        }
-        else {
-            None
-        };
+        ERandomizerMode::GameChooseAlg
+    };
 
-        let jp_practice = match document()
-            .get_typed_element_by_id::<HtmlSelectElement>("randomizer_screen_jp_practice")
-            .to_jserr()?
-            .value()
-            .as_str()
-        {
-            "any" => None,
-            "require_true" => Some(true),
-            "require_false" => Some(false),
-            _ => {
-                show_error(String::from("Invalid value from randomizer_screen_jp_practice select."))?;
+    let filter = match mode {
+        ERandomizerMode::PickUpAndPlay => core::ERandomizerFilter::PickUpAndPlay,
+        ERandomizerMode::GameChooseAlg => {
+            let couch = if checkbox_value("randomizer_screen_couch")? {
+                Some(true)
+            }
+            else {
                 None
-            },
-        };
+            };
+            let portable = if checkbox_value("randomizer_screen_portable")? {
+                Some(true)
+            }
+            else {
+                None
+            };
 
-        let max_passes = 2;
+            let jp_practice = match document()
+                .get_typed_element_by_id::<HtmlSelectElement>("randomizer_screen_jp_practice")
+                .to_jserr()?
+                .value()
+                .as_str()
+            {
+                "any" => None,
+                "require_true" => Some(true),
+                "require_false" => Some(false),
+                _ => {
+                    show_error(String::from("Invalid value from randomizer_screen_jp_practice select."))?;
+                    None
+                },
+            };
 
-        core::ERandomizerFilter::GameChooseAlgFilter(core::SGameChooseAlgFilter{
-            tags: core::SGameTagsFilter{
-                couch_playable: couch,
-                portable_playable: portable,
-                japanese_practice: jp_practice,
-            },
-            allow_unowned: checkbox_value("randomizer_screen_allow_unowned")?,
-            only_firsts: checkbox_value("randomizer_screen_only_firsts")?,
-            allow_retro: checkbox_value("randomizer_screen_allow_retro")?,
-            max_passes,
-        })
+            let max_passes = 2;
+
+            core::ERandomizerFilter::GameChooseAlgFilter(core::SGameChooseAlgFilter{
+                tags: core::SGameTagsFilter{
+                    couch_playable: couch,
+                    portable_playable: portable,
+                    japanese_practice: jp_practice,
+                },
+                allow_unowned: checkbox_value("randomizer_screen_allow_unowned")?,
+                only_firsts: checkbox_value("randomizer_screen_only_firsts")?,
+                allow_retro: checkbox_value("randomizer_screen_allow_retro")?,
+                max_passes,
+            })
+        }
     };
 
     let sl = SShowLoadingHelper::new();
@@ -1424,6 +1451,7 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
         }
 
         app.game_randomizer = EGameRandomizer::Choosing(SGameRandomizerSession{
+            mode,
             shuffled_internal_ids: internal_id_list,
             cur_idx: 0,
         });
@@ -1539,6 +1567,31 @@ pub async fn randomizer_retire_current_game() -> Result<(), JsError> {
         }
         else {
             show_error(String::from("randomizer_retire_current_game was called without any data."))?;
+        }
+
+        Ok(())
+    }
+
+    mut_wrapper(&mut app)?;
+
+    drop(app);
+
+    populate_randomizer_choose_screen().await?;
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn randomizer_next_game_no_state_change() -> Result<(), JsError> {
+    let mut app = APP.try_write().expect("Should never actually have contention.");
+
+    // -- wraps the use of &mut app so the borrow checker knows we're looking at separate fields
+    fn mut_wrapper(app: &mut SAppState) -> Result<(), JsError> {
+        if let EGameRandomizer::Choosing(session) = &mut app.game_randomizer {
+            session.cur_idx = session.cur_idx + 1;
+        }
+        else {
+            show_error(String::from("randomizer_next_game_no_state_change was called without any data."))?;
         }
 
         Ok(())
