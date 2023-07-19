@@ -1532,7 +1532,7 @@ pub async fn randomizer_push_current_game() -> Result<(), JsError> {
         if let EGameRandomizer::Choosing(session) = &mut app.game_randomizer {
             let internal_id = session.shuffled_internal_ids[session.cur_idx];
             let game = cached_collection_game_by_id_mut(&mut app.collection_game_cache, internal_id).expect("Randomizer game not in cache.");
-            game.choose_state.push(45);
+            game.choose_state.push();
 
             session.cur_idx = session.cur_idx + 1;
         }

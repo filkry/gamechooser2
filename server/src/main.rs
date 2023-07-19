@@ -520,7 +520,7 @@ async fn finish_session(session_internal_id: u32, memorable: bool, retire: bool,
             if set_ignore_passes {
                 game.choose_state.set_ignore_passes();
             }
-            game.choose_state.push(90);
+            game.choose_state.push();
 
             break;
         }

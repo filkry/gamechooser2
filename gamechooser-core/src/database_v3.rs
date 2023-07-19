@@ -1,5 +1,5 @@
 use chrono;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /* How to version bump
 
@@ -69,7 +69,10 @@ pub struct SOwn {
 impl SGameInfoIGDB {
     pub fn cover_url(&self) -> Option<String> {
         if let Some(cover_id) = &self.cached_cover_id {
-            return Some(format!("https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg", cover_id));
+            return Some(format!(
+                "https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg",
+                cover_id
+            ));
         }
 
         None
@@ -119,6 +122,9 @@ pub struct SGameChooseState {
     pub retired: bool,
     pub passes: u16,
     pub ignore_passes: bool,
+
+    #[serde(default)]
+    pub pushes: u16,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -153,8 +159,9 @@ pub struct SDatabase {
 }
 
 impl SGameTags {
-    pub fn each<F>(&self, mut f: F) where
-        F: std::ops::FnMut(bool, &str)
+    pub fn each<F>(&self, mut f: F)
+    where
+        F: std::ops::FnMut(bool, &str),
     {
         f(self.couch_playable, "couch");
         f(self.portable_playable, "portable");
@@ -163,8 +170,9 @@ impl SGameTags {
         f(self.pick_up_and_play, "pick up and play");
     }
 
-    pub fn each_mut<F>(&mut self, mut f: F) where
-        F: std::ops::FnMut(&mut bool, &str)
+    pub fn each_mut<F>(&mut self, mut f: F)
+    where
+        F: std::ops::FnMut(&mut bool, &str),
     {
         f(&mut self.couch_playable, "couch");
         f(&mut self.portable_playable, "portable");
@@ -185,8 +193,9 @@ impl SOwn {
         owned
     }
 
-    pub fn each<F>(&self, mut f: F) where
-        F: std::ops::FnMut(bool, &str)
+    pub fn each<F>(&self, mut f: F)
+    where
+        F: std::ops::FnMut(bool, &str),
     {
         f(self.free, "free");
         f(self.steam, "steam");
@@ -219,8 +228,9 @@ impl SOwn {
         f(self.ban_owned, "ban owns");
     }
 
-    pub fn each_mut<F>(&mut self, mut f: F) where
-        F: std::ops::FnMut(&mut bool, &str)
+    pub fn each_mut<F>(&mut self, mut f: F)
+    where
+        F: std::ops::FnMut(&mut bool, &str),
     {
         f(&mut self.free, "free");
         f(&mut self.steam, "steam");
@@ -255,25 +265,27 @@ impl SOwn {
 }
 
 impl EGameInfo {
-    pub fn new_igdb(igdb_id: u32, slug: &str, cover_id: Option<String>, title: &str, release_date: EReleaseDate) -> Self {
-        Self::IGDB(
-            SGameInfoIGDB{
-                id: igdb_id,
-                slug: String::from(slug),
-                cached_title: String::from(title),
-                cached_cover_id: cover_id,
-                cached_release_date: release_date,
-            }
-        )
+    pub fn new_igdb(
+        igdb_id: u32,
+        slug: &str,
+        cover_id: Option<String>,
+        title: &str,
+        release_date: EReleaseDate,
+    ) -> Self {
+        Self::IGDB(SGameInfoIGDB {
+            id: igdb_id,
+            slug: String::from(slug),
+            cached_title: String::from(title),
+            cached_cover_id: cover_id,
+            cached_release_date: release_date,
+        })
     }
 
     pub fn new_custom(title: String, release_date: EReleaseDate) -> Self {
-        Self::Custom(
-            SGameInfoCustom {
-                title,
-                release_date,
-            }
-        )
+        Self::Custom(SGameInfoCustom {
+            title,
+            release_date,
+        })
     }
 
     pub fn title(&self) -> &str {
@@ -340,8 +352,7 @@ impl EGameInfo {
         if let Ok(date) = chrono::naive::NaiveDate::parse_from_str(date_str, "%Y-%m-%d") {
             self.set_release_date_known(date);
             Ok(())
-        }
-        else {
+        } else {
             Err(())
         }
     }
@@ -364,6 +375,7 @@ impl Default for SGameChooseState {
             retired: false,
             passes: 0,
             ignore_passes: false,
+            pushes: 0,
         }
     }
 }
@@ -375,13 +387,23 @@ impl SGameChooseState {
 
     pub fn pass(&mut self) {
         self.passes = self.passes + 1;
-        self.push(45);
+        self.update_next_valid_date();
     }
 
-    pub fn push(&mut self, min_days: u16) {
+    pub fn push(&mut self) {
+        self.pushes = self.pushes + 1;
+        self.update_next_valid_date();
+    }
+
+    pub fn update_next_valid_date(&mut self) {
         let today = chrono::offset::Local::now().naive_local().date();
-        let pass_days = std::cmp::max(min_days, (self.passes + 1) * 45);
-        self.next_valid_proposal_date = today.checked_add_signed(chrono::Duration::days(pass_days as i64)).unwrap();
+        let delay_count = self.passes
+            + std::cmp::min(self.pushes, 8) // max 1 year from pushes
+            + 1; // always at least one so we can't get 0 delay
+        let pass_days = delay_count * 30;
+        self.next_valid_proposal_date = today
+            .checked_add_signed(chrono::Duration::days(pass_days as i64))
+            .unwrap();
     }
 
     pub fn retire(&mut self) {
@@ -428,11 +450,11 @@ impl SDatabase {
             };
 
             let new_game_info = match game.game_info {
-                database_v2::EGameInfo::Custom(c) => EGameInfo::Custom(SGameInfoCustom{
+                database_v2::EGameInfo::Custom(c) => EGameInfo::Custom(SGameInfoCustom {
                     title: c.title,
                     release_date: new_date,
                 }),
-                database_v2::EGameInfo::IGDB(igdb) => EGameInfo::IGDB(SGameInfoIGDB{
+                database_v2::EGameInfo::IGDB(igdb) => EGameInfo::IGDB(SGameInfoIGDB {
                     id: igdb.id,
                     slug: igdb.slug,
                     cached_title: igdb.cached_title,
@@ -441,7 +463,7 @@ impl SDatabase {
                 }),
             };
 
-            new_games.push(SCollectionGame{
+            new_games.push(SCollectionGame {
                 internal_id: game.internal_id,
                 game_info: new_game_info,
                 custom_info: game.custom_info,
@@ -449,11 +471,9 @@ impl SDatabase {
             });
         }
 
-        Self{
+        Self {
             games: new_games,
             sessions: v2.sessions,
         }
     }
 }
-
-
