@@ -75,13 +75,25 @@ impl STwitchAPIRequestBuilder {
     }
 }
 
-fn timestamp_to_release_date(ts: Option<i64>) -> core::EReleaseDate {
-    match ts {
-        None => core::EReleaseDate::UnknownUnreleased,
-        Some(ts) => {
-            core::EReleaseDate::Known(chrono::naive::NaiveDateTime::from_timestamp(ts, 0).date())
+#[derive(Deserialize, Debug)]
+struct SIGDBInfoResultReleaseDate {
+    date: i64, // unix timestamp
+    status: u32,
+}
+
+fn best_release_date(dates: Vec<SIGDBInfoResultReleaseDate>) -> core::EReleaseDate {
+    let mut best_date = core::EReleaseDate::UnknownUnreleased;
+    let mut earliest = i64::MAX;
+
+    for date in dates {
+        // 6 should be full release - for 100% confidence should use API endpoint to look up status
+        if date.status == 6 && date.date < earliest {
+            best_date = core::EReleaseDate::Known(chrono::naive::NaiveDateTime::from_timestamp(date.date, 0).date());
+            earliest = date.date;
         }
     }
+
+    best_date
 }
 
 impl SReqwestTwitchAPIClient {
@@ -175,14 +187,14 @@ impl SReqwestTwitchAPIClient {
             id: u32,
             name: String,
             slug: String,
-            first_release_date: Option<i64>,
+            release_dates: Vec<SIGDBInfoResultReleaseDate>,
             cover: Option<SIGDBInfoResultCover>,
         }
 
         let mut query_results: Vec<SIGDBInfoResult> = {
             let where_clause = format!("where id = {};", igdb_id);
             let body = format!(
-                "{}fields name,slug,first_release_date,cover.image_id;",
+                "{}fields name,slug,release_dates.*,cover.image_id;",
                 where_clause
             );
 
@@ -226,7 +238,7 @@ impl SReqwestTwitchAPIClient {
             query_result.slug.as_str(),
             query_result.cover.map(|c| c.image_id),
             query_result.name.as_str(),
-            timestamp_to_release_date(query_result.first_release_date),
+            best_release_date(query_result.release_dates),
         );
 
         Ok(result)
@@ -237,18 +249,18 @@ impl SReqwestTwitchAPIClient {
         name: &str,
         games_only: bool,
     ) -> Result<Vec<core::EGameInfo>, String> {
-        #[derive(Deserialize)]
+        #[derive(Deserialize, Debug)]
         #[allow(dead_code)]
         struct SIGDBSearchResultCover {
             id: u32,
             image_id: String,
         }
-        #[derive(Deserialize)]
+        #[derive(Deserialize, Debug)]
         struct SIGDBSearchResult {
             id: u32,
             name: String,
             slug: String,
-            first_release_date: Option<i64>,
+            release_dates: Vec<SIGDBInfoResultReleaseDate>,
             cover: Option<SIGDBSearchResultCover>,
         }
 
@@ -259,13 +271,13 @@ impl SReqwestTwitchAPIClient {
                 "where version_parent = null;"
             };
             let body = format!(
-                "search \"{}\"; {}fields name,slug,first_release_date,cover.image_id;",
+                "search \"{}\"; {}fields name,slug,release_dates.*,cover.image_id;",
                 name, where_clause
             );
 
             /*
             Should be equivalent to:
-            curl -d "search \"halo\"; fields name,first_release_date,cover.url;" -H 'Client-ID: <ID>' -H 'Authorization: Bearer <BEARER>' -H 'Accept: application/json' https://api.igdb.com/v4/games
+            curl -d "search \"halo\"; fields name,release_dates,cover.url;" -H 'Client-ID: <ID>' -H 'Authorization: Bearer <BEARER>' -H 'Accept: application/json' https://api.igdb.com/v4/games
             */
 
             let request = STwitchAPIRequestBuilder::new()
@@ -296,7 +308,7 @@ impl SReqwestTwitchAPIClient {
                 search_res.slug.as_str(),
                 search_res.cover.map(|c| c.image_id),
                 search_res.name.as_str(),
-                timestamp_to_release_date(search_res.first_release_date),
+                best_release_date(search_res.release_dates),
             ));
         }
 
@@ -324,7 +336,7 @@ impl SReqwestTwitchAPIClient {
             id: u32,
             slug: String,
             name: String,
-            first_release_date: Option<i64>,
+            release_dates: Vec<SIGDBInfoResultReleaseDate>,
             cover: Option<SIGDBSearchResultCover>,
         }
 
@@ -389,7 +401,7 @@ impl SReqwestTwitchAPIClient {
                     "
 query games \"r{}\" {{
     search \"{}\";
-    fields name,slug,first_release_date,cover.image_id;
+    fields name,slug,release_dates.*,cover.image_id;
 }};\n",
                     idx, name
                 );
@@ -448,7 +460,7 @@ query games \"r{}\" {{
                     igdb_game.slug.as_str(),
                     igdb_game.cover.map(extract_cover_url),
                     igdb_game.name.as_str(),
-                    timestamp_to_release_date(igdb_game.first_release_date),
+                    best_release_date(igdb_game.release_dates),
                 ));
             }
             results.push(name_result);
