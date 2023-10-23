@@ -77,19 +77,29 @@ impl STwitchAPIRequestBuilder {
 
 #[derive(Deserialize, Debug)]
 struct SIGDBInfoResultReleaseDate {
-    date: i64, // unix timestamp
-    status: u32,
+    date: Option<i64>, // unix timestamp
+    status: Option<u32>,
 }
 
-fn best_release_date(dates: Vec<SIGDBInfoResultReleaseDate>) -> core::EReleaseDate {
+fn best_release_date(dates: Option<Vec<SIGDBInfoResultReleaseDate>>) -> core::EReleaseDate {
     let mut best_date = core::EReleaseDate::UnknownUnreleased;
     let mut earliest = i64::MAX;
 
-    for date in dates {
-        // 6 should be full release - for 100% confidence should use API endpoint to look up status
-        if date.status == 6 && date.date < earliest {
-            best_date = core::EReleaseDate::Known(chrono::naive::NaiveDateTime::from_timestamp(date.date, 0).date());
-            earliest = date.date;
+    let dates_inner = match dates {
+        Some(a) => a,
+        None => return best_date,
+    };
+
+    for date in dates_inner {
+        match (date.date, date.status) {
+            (Some(date_inner), Some(status_inner)) => {
+                // 6 should be full release - for 100% confidence should use API endpoint to look up status
+                if status_inner == 6 && date_inner < earliest {
+                    best_date = core::EReleaseDate::Known(chrono::naive::NaiveDateTime::from_timestamp(date_inner, 0).date());
+                    earliest = date_inner;
+                }
+            },
+            _ => {},
         }
     }
 
@@ -187,7 +197,7 @@ impl SReqwestTwitchAPIClient {
             id: u32,
             name: String,
             slug: String,
-            release_dates: Vec<SIGDBInfoResultReleaseDate>,
+            release_dates: Option<Vec<SIGDBInfoResultReleaseDate>>,
             cover: Option<SIGDBInfoResultCover>,
         }
 
@@ -260,7 +270,7 @@ impl SReqwestTwitchAPIClient {
             id: u32,
             name: String,
             slug: String,
-            release_dates: Vec<SIGDBInfoResultReleaseDate>,
+            release_dates: Option<Vec<SIGDBInfoResultReleaseDate>>,
             cover: Option<SIGDBSearchResultCover>,
         }
 
@@ -336,7 +346,7 @@ impl SReqwestTwitchAPIClient {
             id: u32,
             slug: String,
             name: String,
-            release_dates: Vec<SIGDBInfoResultReleaseDate>,
+            release_dates: Option<Vec<SIGDBInfoResultReleaseDate>>,
             cover: Option<SIGDBSearchResultCover>,
         }
 

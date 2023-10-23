@@ -161,6 +161,8 @@ fn load_db() -> Result<SData, ()> {
     path.push(cfg.db_path);
     path.push("database.json");
 
+    println!("Loading DB from '{:?}'", path);
+
     // -- read existing collection
     let db : core::EDatabase = {
         if path.exists() {
