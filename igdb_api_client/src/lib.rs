@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::println;
 use std::result::Result;
 
 use serde::de::DeserializeOwned;
@@ -76,12 +77,17 @@ impl STwitchAPIRequestBuilder {
 }
 
 #[derive(Deserialize, Debug)]
-struct SIGDBInfoResultReleaseDate {
-    date: Option<i64>, // unix timestamp
-    status: Option<u32>,
+struct SIGDBInfoResultReleaseDateStatus {
+    name: String,
 }
 
-fn best_release_date(dates: Option<Vec<SIGDBInfoResultReleaseDate>>) -> core::EReleaseDate {
+#[derive(Deserialize, Debug)]
+struct SIGDBInfoResultReleaseDate {
+    date: Option<i64>, // unix timestamp
+    status: Option<SIGDBInfoResultReleaseDateStatus>,
+}
+
+fn best_release_date(game_status: Option<u8>, dates: Option<Vec<SIGDBInfoResultReleaseDate>>) -> core::EReleaseDate {
     let mut best_date = core::EReleaseDate::UnknownUnreleased;
     let mut earliest = i64::MAX;
 
@@ -90,16 +96,30 @@ fn best_release_date(dates: Option<Vec<SIGDBInfoResultReleaseDate>>) -> core::ER
         None => return best_date,
     };
 
-    for date in dates_inner {
-        match (date.date, date.status) {
+    for date in &dates_inner {
+        match (date.date, &date.status) {
             (Some(date_inner), Some(status_inner)) => {
-                // 6 should be full release - for 100% confidence should use API endpoint to look up status
-                if status_inner == 6 && date_inner < earliest {
+                if status_inner.name == "Full Release" && date_inner < earliest {
                     best_date = core::EReleaseDate::Known(chrono::naive::NaiveDateTime::from_timestamp(date_inner, 0).date());
                     earliest = date_inner;
                 }
             },
             _ => {},
+        }
+    }
+
+    // -- fall back to supporting dates with unknown status if no Full Release was found, and status is 'released'
+    if earliest == i64::MAX  && game_status.unwrap_or(0) == 0 /* 0 means 'released' */ {
+        for date in &dates_inner {
+            match (date.date, &date.status) {
+                (Some(date_inner), None) => {
+                    if date_inner < earliest {
+                        best_date = core::EReleaseDate::Known(chrono::naive::NaiveDateTime::from_timestamp(date_inner, 0).date());
+                        earliest = date_inner;
+                    }
+                },
+                _ => {},
+            }
         }
     }
 
@@ -198,13 +218,14 @@ impl SReqwestTwitchAPIClient {
             name: String,
             slug: String,
             release_dates: Option<Vec<SIGDBInfoResultReleaseDate>>,
+            status: Option<u8>,
             cover: Option<SIGDBInfoResultCover>,
         }
 
         let mut query_results: Vec<SIGDBInfoResult> = {
             let where_clause = format!("where id = {};", igdb_id);
             let body = format!(
-                "{}fields name,slug,release_dates.*,cover.image_id;",
+                "{}fields name,slug,release_dates.date,release_dates.status.name,status,cover.image_id;",
                 where_clause
             );
 
@@ -248,7 +269,7 @@ impl SReqwestTwitchAPIClient {
             query_result.slug.as_str(),
             query_result.cover.map(|c| c.image_id),
             query_result.name.as_str(),
-            best_release_date(query_result.release_dates),
+            best_release_date(query_result.status, query_result.release_dates),
         );
 
         Ok(result)
@@ -271,6 +292,7 @@ impl SReqwestTwitchAPIClient {
             name: String,
             slug: String,
             release_dates: Option<Vec<SIGDBInfoResultReleaseDate>>,
+            status: Option<u8>,
             cover: Option<SIGDBSearchResultCover>,
         }
 
@@ -281,7 +303,7 @@ impl SReqwestTwitchAPIClient {
                 "where version_parent = null;"
             };
             let body = format!(
-                "search \"{}\"; {}fields name,slug,release_dates.*,cover.image_id;",
+                "search \"{}\"; {}fields name,slug,release_dates.date,release_dates.status.name,status,cover.image_id;",
                 name, where_clause
             );
 
@@ -318,7 +340,7 @@ impl SReqwestTwitchAPIClient {
                 search_res.slug.as_str(),
                 search_res.cover.map(|c| c.image_id),
                 search_res.name.as_str(),
-                best_release_date(search_res.release_dates),
+                best_release_date(search_res.status, search_res.release_dates),
             ));
         }
 
@@ -347,6 +369,7 @@ impl SReqwestTwitchAPIClient {
             slug: String,
             name: String,
             release_dates: Option<Vec<SIGDBInfoResultReleaseDate>>,
+            status: Option<u8>,
             cover: Option<SIGDBSearchResultCover>,
         }
 
@@ -411,7 +434,7 @@ impl SReqwestTwitchAPIClient {
                     "
 query games \"r{}\" {{
     search \"{}\";
-    fields name,slug,release_dates.*,cover.image_id;
+    fields name,slug,release_dates.date,release_dates.status.name,status,cover.image_id;
 }};\n",
                     idx, name
                 );
@@ -470,7 +493,7 @@ query games \"r{}\" {{
                     igdb_game.slug.as_str(),
                     igdb_game.cover.map(extract_cover_url),
                     igdb_game.name.as_str(),
-                    best_release_date(igdb_game.release_dates),
+                    best_release_date(igdb_game.status, igdb_game.release_dates),
                 ));
             }
             results.push(name_result);
