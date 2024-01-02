@@ -1,4 +1,5 @@
 mod game_card;
+mod session_card;
 mod stats;
 mod web;
 mod server_api;
@@ -19,8 +20,8 @@ use web_sys::{
     HtmlElement,
     HtmlImageElement,
     HtmlInputElement,
-    HtmlLabelElement,
-    HtmlLiElement,
+    //HtmlLabelElement,
+    //HtmlLiElement,
     HtmlParagraphElement,
     HtmlSelectElement,
     //HtmlSpanElement,
@@ -29,7 +30,8 @@ use web_sys::{
 
 use gamechooser_core as core;
 use game_card::{SGameCard, SCompactGameCard};
-use web::{document, TToJsError, TErgonomicDocument};
+use session_card::{SSessionCard};
+use web::{document, TToJsError, TErgonomicDocument, create_checkbox};
 
 macro_rules! weblog {
     ( $( $t:tt )* ) => {
@@ -487,8 +489,12 @@ async fn view_details(game: core::SCollectionGame) -> Result<(), JsError> {
         }
     };
 
-    for _session in sessions {
-        div("game_details_sessions")?.set_inner_text("At least one session exists, but session details list has not yet been implemented.");
+    let card_custom = card.customizable_div()?;
+
+    for (i, session) in sessions.iter().enumerate() {
+        let title = format!("Session {}", i + 1);
+        let session_card = SSessionCard::new(session.session, false, Some(title.as_str()))?;
+        card_custom.append_child(&session_card.main_div).to_jserr()?;
     }
 
     {
@@ -860,48 +866,8 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndCollectionGame>)
 
         let card_custom = game_card.customizable_div()?;
 
-        let header_elem = document.create_element("h4").to_jserr()?;
-        header_elem.set_text_content(Some("Session"));
-        card_custom.append_child(&header_elem).to_jserr()?;
-
-        // populate session_div with session-specific info
-        let start_date_elem = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
-        start_date_elem.set_inner_text(format!("Start date: {}", session.session.start_date).as_str());
-        card_custom.append_child(&start_date_elem).to_jserr()?;
-
-        match session.session.state {
-            core::ESessionState::Ongoing => {
-                let checkbox_list = document.create_element_typed::<HtmlUListElement>().to_jserr()?;
-                checkbox_list.set_class_name("checkbox_list");
-                card_custom.append_child(&checkbox_list).to_jserr()?;
-
-                let memorable_elem_id = format!("session_screen_memorable_{}", session.session.internal_id);
-                create_checkbox(false, memorable_elem_id.as_str(), "Memorable", &checkbox_list, true)?;
-
-                let retire_elem_id = format!("session_screen_retire_{}", session.session.internal_id);
-                create_checkbox(false, retire_elem_id.as_str(), "Retire", &checkbox_list, true)?;
-
-                let ignore_passes_id = format!("session_screen_ignore_passes_{}", session.session.internal_id);
-                create_checkbox(false, ignore_passes_id.as_str(), "Allow infinite passes", &checkbox_list, true)?;
-
-                let button_elem = document.create_element_typed::<HtmlButtonElement>().to_jserr()?;
-                let onclick_body = format!("session_screen_finish_session({});", session.session.internal_id);
-                let onclick = Function::new_no_args(onclick_body.as_str());
-                button_elem.set_onclick(Some(&onclick));
-                button_elem.set_inner_text("Finish session");
-                card_custom.append_child(&button_elem).to_jserr()?;
-            },
-            core::ESessionState::Finished{end_date, memorable} => {
-                let end_date_elem = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
-                end_date_elem.set_inner_text(format!("End date: {}", end_date).as_str());
-                card_custom.append_child(&end_date_elem).to_jserr()?;
-
-                let memorable_elem = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
-                memorable_elem.set_inner_text(format!("Memorable: {}", memorable).as_str());
-                card_custom.append_child(&memorable_elem).to_jserr()?;
-            }
-        }
-
+        let session_card = SSessionCard::new(session.session, true, None)?;
+        card_custom.append_child(&session_card.main_div).to_jserr()?;
     }
 
     // -- cache results for later use
@@ -913,30 +879,6 @@ fn populate_sessions_screen_list(sessions: Vec<core::SSessionAndCollectionGame>)
             let internal_id = session_and_game.collection_game.internal_id;
             app.collection_game_cache.insert(internal_id, session_and_game.collection_game);
         }
-    }
-
-    Ok(())
-}
-
-fn create_checkbox(initial_val: bool, elem_id: &str, label_text: &str, output_elem: &HtmlElement, in_li: bool) -> Result<(), JsError> {
-    let checkbox = document().create_element_typed::<HtmlInputElement>().to_jserr()?;
-    checkbox.set_type("checkbox");
-    checkbox.set_default_checked(initial_val);
-    checkbox.set_id(elem_id);
-
-    let label = document().create_element_typed::<HtmlLabelElement>().to_jserr()?;
-    label.set_html_for(elem_id);
-    label.set_inner_text(label_text);
-
-    if in_li {
-        let li = document().create_element_typed::<HtmlLiElement>().to_jserr()?;
-        output_elem.append_child(&li).to_jserr()?;
-        li.append_child(&checkbox).to_jserr()?;
-        li.append_child(&label).to_jserr()?;
-    }
-    else {
-        output_elem.append_child(&checkbox).to_jserr()?;
-        output_elem.append_child(&label).to_jserr()?;
     }
 
     Ok(())

@@ -3,6 +3,7 @@ use web_sys::{
     HtmlAnchorElement,
     HtmlButtonElement,
     HtmlDivElement,
+    HtmlElement,
     HtmlImageElement,
     HtmlInputElement,
     HtmlLabelElement,
@@ -165,6 +166,30 @@ pub fn document() -> web_sys::Document {
     let document = window.document().expect("should have a document on window");
 
     document
+}
+
+pub fn create_checkbox(initial_val: bool, elem_id: &str, label_text: &str, output_elem: &HtmlElement, in_li: bool) -> Result<(), JsError> {
+    let checkbox = document().create_element_typed::<HtmlInputElement>().to_jserr()?;
+    checkbox.set_type("checkbox");
+    checkbox.set_default_checked(initial_val);
+    checkbox.set_id(elem_id);
+
+    let label = document().create_element_typed::<HtmlLabelElement>().to_jserr()?;
+    label.set_html_for(elem_id);
+    label.set_inner_text(label_text);
+
+    if in_li {
+        let li = document().create_element_typed::<HtmlLiElement>().to_jserr()?;
+        output_elem.append_child(&li).to_jserr()?;
+        li.append_child(&checkbox).to_jserr()?;
+        li.append_child(&label).to_jserr()?;
+    }
+    else {
+        output_elem.append_child(&checkbox).to_jserr()?;
+        output_elem.append_child(&label).to_jserr()?;
+    }
+
+    Ok(())
 }
 
 
