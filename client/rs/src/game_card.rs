@@ -33,6 +33,7 @@ pub struct SGameCard {
     pub customizable_info_div: Option<HtmlDivElement>,
 
     show_release_date: bool,
+    show_how_long_to_beat: bool,
     show_igdb_link: bool,
     show_via: bool,
     show_own_info: bool,
@@ -50,6 +51,13 @@ impl EGame {
         match self {
             Self::GameInfo(gi) => &gi,
             Self::CollectionGame(cg) => &cg.game_info,
+        }
+    }
+
+    fn hours_to_beat(&self) -> Option<u16> {
+        match self {
+            Self::GameInfo(_) => None,
+            Self::CollectionGame(cg) => cg.how_long_to_beat.hours_to_beat(),
         }
     }
 
@@ -129,6 +137,7 @@ impl SGameCard {
             generated_info_div,
             customizable_info_div: None,
             show_release_date: false,
+            show_how_long_to_beat: false,
             show_igdb_link: false,
             show_own_info: false,
             show_tag_info: false,
@@ -146,6 +155,7 @@ impl SGameCard {
 
     pub fn show_all(&mut self) -> &mut Self {
         self.show_release_date = true;
+        self.show_how_long_to_beat = true;
         self.show_igdb_link = true;
         self.show_own_info = true;
         self.show_tag_info = true;
@@ -155,6 +165,12 @@ impl SGameCard {
 
     pub fn show_release_date(&mut self) -> &mut Self{
         self.show_release_date = true;
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn show_how_long_to_beat(&mut self) -> &mut Self{
+        self.show_how_long_to_beat = true;
         self
     }
 
@@ -200,6 +216,14 @@ impl SGameCard {
                 let release_date_p = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
                 release_date_p.set_inner_text(format!("Release date: {:?}", d).as_str());
                 self.generated_info_div.append_child(&release_date_p).to_jserr()?;
+            }
+        }
+
+        if self.show_how_long_to_beat {
+            if let Some(hours) = self.game.hours_to_beat() {
+                let how_long_to_beat_p = document.create_element_typed::<HtmlParagraphElement>().to_jserr()?;
+                how_long_to_beat_p.set_inner_text(format!("How long to beat: Approx {:?} hours", hours).as_str());
+                self.generated_info_div.append_child(&how_long_to_beat_p).to_jserr()?;
             }
         }
 

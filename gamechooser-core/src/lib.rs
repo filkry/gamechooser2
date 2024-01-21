@@ -24,6 +24,7 @@ pub struct SSearchIGDBResult {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SAddCollectionGame {
     pub game_info: EGameInfo,
+    pub how_long_to_beat: EHowLongToBeat,
     pub custom_info: SGameCustomInfo,
 }
 
@@ -54,6 +55,7 @@ pub struct SGameChooseAlgFilter {
     pub only_firsts: bool,
     pub allow_retro: bool,
     pub max_passes: u16,
+    pub max_length: Option<u16>,
 }
 
 // -- $$$FRK(TODO): need to guarantee that internal_ids are always in order after loading from JSON, for this to be reliable
@@ -118,6 +120,7 @@ impl SAddCollectionGame {
     pub fn new(game_info: EGameInfo) -> Self {
         Self {
             game_info,
+            how_long_to_beat: EHowLongToBeat::Unknown,
             custom_info: SGameCustomInfo::new(),
         }
     }
@@ -128,6 +131,7 @@ impl SCollectionGame {
         Self {
             internal_id: id,
             game_info: add.game_info,
+            how_long_to_beat: EHowLongToBeat::Unknown,
             custom_info: add.custom_info,
             choose_state: Default::default(),
         }
@@ -204,6 +208,7 @@ impl Default for SGameChooseAlgFilter {
             allow_retro: false,
             only_firsts: true,
             max_passes: Self::max_passes(),
+            max_length: None,
         }
     }
 }
@@ -229,6 +234,12 @@ impl SGameChooseAlgFilter {
         }
         if let Some(jp) = self.tags.japanese_practice {
             result = result && jp == game.custom_info.tags.japanese_practice;
+        }
+        if let Some(max_hours) = self.max_length {
+            result = result && match game.how_long_to_beat {
+                EHowLongToBeat::Unknown => false,
+                EHowLongToBeat::Manual(game_hours) => game_hours <= max_hours,
+            };
         }
 
         result = result && (self.allow_unowned || game.custom_info.own.owned());

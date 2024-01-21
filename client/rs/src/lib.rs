@@ -442,7 +442,29 @@ fn populate_release_date_input(id: &str, value: core::EReleaseDate) -> Result<()
     Ok(())
 }
 
-fn populate_checkox_input(id: &str, value: bool) -> Result<(), JsError> {
+fn populate_how_long_to_beat_input(id: &str, value: core::EHowLongToBeat) -> Result<(), JsError> {
+    let type_id = format!("{}_type", id);
+    let hours_id = format!("{}_hours", id);
+
+    let hltb_type_elem = document().get_typed_element_by_id::<HtmlSelectElement>(type_id.as_str()).to_jserr()?;
+    let hltb_hours_elem = document().get_typed_element_by_id::<HtmlInputElement>(hours_id.as_str()).to_jserr()?;
+
+    match value {
+        core::EHowLongToBeat::Unknown => {
+            hltb_type_elem.set_value("unknown");
+            hltb_hours_elem.style().set_property("display", "none").to_jserr()?;
+            hltb_hours_elem.set_value_as_number(0.0);
+        },
+        core::EHowLongToBeat::Manual(hours) => {
+            hltb_type_elem.set_value("manual");
+            hltb_hours_elem.style().set_property("display", "block").to_jserr()?;
+            hltb_hours_elem.set_value_as_number(hours as f64);
+        },
+    };
+    Ok(())
+}
+
+fn populate_checkbox_input(id: &str, value: bool) -> Result<(), JsError> {
     let elem = document().get_typed_element_by_id::<HtmlInputElement>(id).to_jserr()?;
     elem.set_checked(value);
     Ok(())
@@ -518,6 +540,12 @@ fn edit_screen_populate_game_info(game_info: &core::EGameInfo) -> Result<(), JsE
     Ok(())
 }
 
+fn edit_screen_populate_how_long_to_beat(how_long_to_beat: &core::EHowLongToBeat) -> Result<(), JsError> {
+    populate_how_long_to_beat_input("game_edit_how_long_to_beat", how_long_to_beat.clone())?;
+
+    Ok(())
+}
+
 fn edit_screen_populate_custom_info(custom_info: &core::SGameCustomInfo) -> Result<(), JsError> {
 
     populate_text_input("game_edit_via", custom_info.via.as_str())?;
@@ -579,9 +607,9 @@ fn edit_screen_populate_custom_info(custom_info: &core::SGameCustomInfo) -> Resu
 
 fn edit_screen_populate_choose_state(choose_state: &core::SGameChooseState) -> Result<(), JsError> {
     populate_date_input("game_edit_next_valid_proposal_date", Some(choose_state.next_valid_proposal_date))?;
-    populate_checkox_input("game_edit_retired", choose_state.retired)?;
+    populate_checkbox_input("game_edit_retired", choose_state.retired)?;
     populate_number_input("game_edit_passes", choose_state.passes as f64)?;
-    populate_checkox_input("game_edit_ignore_passes", choose_state.ignore_passes)?;
+    populate_checkbox_input("game_edit_ignore_passes", choose_state.ignore_passes)?;
 
     Ok(())
 }
@@ -599,6 +627,7 @@ fn edit_screen_update_text() -> Result<(), JsError> {
 }
 fn edit_game(game: core::SCollectionGame) -> Result<(), JsError> {
     edit_screen_populate_game_info(&game.game_info)?;
+    edit_screen_populate_how_long_to_beat(&game.how_long_to_beat)?;
     edit_screen_populate_custom_info(&game.custom_info)?;
     edit_screen_populate_choose_state(&game.choose_state)?;
 
@@ -619,6 +648,7 @@ fn edit_game(game: core::SCollectionGame) -> Result<(), JsError> {
 
 fn add_game(game: core::SAddCollectionGame) -> Result<(), JsError> {
     edit_screen_populate_game_info(&game.game_info)?;
+    edit_screen_populate_how_long_to_beat(&game.how_long_to_beat)?;
     edit_screen_populate_custom_info(&game.custom_info)?;
 
     document().get_typed_element_by_id::<HtmlDivElement>("game_edit_choose_state").to_jserr()?
@@ -678,9 +708,8 @@ fn update_game_info_from_edit_screen(game_info: &mut core::EGameInfo) -> Result<
     game_info.set_title(document().get_typed_element_by_id::<HtmlInputElement>("game_edit_title").to_jserr()?.value().as_str());
 
     let date_str = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_release_date_date").to_jserr()?.value();
-    let type_value = document().get_typed_element_by_id::<HtmlSelectElement>("game_edit_release_date_type").to_jserr()?.value();
-
-    match type_value.as_str() {
+    let date_type_value = document().get_typed_element_by_id::<HtmlSelectElement>("game_edit_release_date_type").to_jserr()?.value();
+    match date_type_value.as_str() {
         "unknown_unreleased" => game_info.set_release_date(core::EReleaseDate::UnknownUnreleased),
         "unknown_released" => game_info.set_release_date(core::EReleaseDate::UnknownReleased),
         "known" => {
@@ -690,6 +719,20 @@ fn update_game_info_from_edit_screen(game_info: &mut core::EGameInfo) -> Result<
         },
         _ => {
             return Err(JsError::new("Release date type select widget had invalid value"));
+        }
+    }
+
+    Ok(())
+}
+
+fn update_how_long_to_beat_from_edit_screen(how_long_to_beat: &mut core::EHowLongToBeat) -> Result<(), JsError> {
+    let hltb_type_value = document().get_typed_element_by_id::<HtmlSelectElement>("game_edit_how_long_to_beat_type").to_jserr()?.value();
+    let hltb_hours = document().get_typed_element_by_id::<HtmlInputElement>("game_edit_how_long_to_beat_hours").to_jserr()?.value_as_number() as u16;
+    match hltb_type_value.as_str() {
+        "unknown" => *how_long_to_beat = core::EHowLongToBeat::Unknown,
+        "manual" => *how_long_to_beat = core::EHowLongToBeat::Manual(hltb_hours),
+        _ => {
+            return Err(JsError::new("How long to beat type select widget had invalid value"));
         }
     }
 
@@ -761,6 +804,7 @@ fn update_choose_state_from_edit_screen(choose_state: &mut core::SGameChooseStat
 
 async fn edit_screen_submit_edit_helper(game: &mut core::SCollectionGame) -> Result<(), JsError> {
     update_game_info_from_edit_screen(&mut game.game_info)?;
+    update_how_long_to_beat_from_edit_screen(&mut game.how_long_to_beat)?;
     update_custom_info_from_edit_screen(&mut game.custom_info)?;
     update_choose_state_from_edit_screen(&mut game.choose_state)?;
 
@@ -773,6 +817,7 @@ async fn edit_screen_submit_edit_helper(game: &mut core::SCollectionGame) -> Res
 
 async fn edit_screen_submit_add_helper(mut game: core::SAddCollectionGame) -> Result<(), JsError> {
     update_game_info_from_edit_screen(&mut game.game_info)?;
+    update_how_long_to_beat_from_edit_screen(&mut game.how_long_to_beat)?;
     update_custom_info_from_edit_screen(&mut game.custom_info)?;
 
     let _sl = SShowLoadingHelper::new();
@@ -801,6 +846,29 @@ pub async fn release_date_type_changed(caller: Element) -> Result<(), JsError> {
         },
         "known" => {
             date_date_elem.style().set_property("display", "block").to_jserr()?;
+        },
+        _ => {},
+    };
+
+    Ok(())
+}
+
+#[wasm_bindgen]
+pub async fn how_long_to_beat_type_changed(caller: Element) -> Result<(), JsError> {
+
+    weblog!("Caller was {:?} (id \"{}\")", caller, caller.id());
+
+    let hours_id = format!("{}hours", &caller.id()[0.. (caller.id().len() - 4)]); // slice off "type"
+
+    let hltb_type_elem = document().get_typed_element_by_id::<HtmlSelectElement>(caller.id().as_str()).to_jserr()?;
+    let hltb_hours_elem = document().get_typed_element_by_id::<HtmlInputElement>(hours_id.as_str()).to_jserr()?;
+
+    match hltb_type_elem.value().as_str() {
+        "unknown" => {
+            hltb_hours_elem.style().set_property("display", "none").to_jserr()?;
+        },
+        "manual" => {
+            hltb_hours_elem.style().set_property("display", "block").to_jserr()?;
         },
         _ => {},
     };
@@ -1353,6 +1421,23 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
                 },
             };
 
+            let max_length : Option<u16> = match document()
+                .get_typed_element_by_id::<HtmlSelectElement>("randomizer_screen_game_length")
+                .to_jserr()?
+                .value()
+                .as_str()
+            {
+                "any" => None,
+                "8" => Some(8),
+                "12" => Some(12),
+                "20" => Some(20),
+                _ => {
+                    show_error(String::from("Invalid value from randomizer_screen_game_length select."))?;
+                    None
+                },
+            };
+            weblog!("randomizer max length: {:?}", max_length);
+
             let max_passes = 2;
 
             core::ERandomizerFilter::GameChooseAlgFilter(core::SGameChooseAlgFilter{
@@ -1365,6 +1450,7 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
                 only_firsts: checkbox_value("randomizer_screen_only_firsts")?,
                 allow_retro: checkbox_value("randomizer_screen_allow_retro")?,
                 max_passes,
+                max_length,
             })
         }
     };

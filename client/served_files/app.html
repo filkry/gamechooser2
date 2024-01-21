@@ -128,6 +128,15 @@
                             <option value="require_false">Require no tag</option>
                         </select>
                     </p>
+                    <p>
+                        <label for="randomizer_screen_game_length">Game length: </label>
+                        <select id="randomizer_screen_game_length">
+                            <option value="any">Any</option>
+                            <option value="8">~8 hours</option>
+                            <option value="12">~12 hours</option>
+                            <option value="20">~20 hours</option>
+                        </select>
+                    </p>
                 </div>
                 <button onclick="randomizer_screen_start()">Start choosin'</button>
             </div>
@@ -161,6 +170,13 @@
                     <option value="known">Known</option>
                 </select>
                 <input type="date" id="game_edit_release_date_date" display:none>
+
+                <label for="game_edit_how_long_to_beat_type">How long to beat: </label>
+                <select id="game_edit_how_long_to_beat_type" onchange="how_long_to_beat_type_changed(this)">
+                    <option value="unknown">Unknown</option>
+                    <option value="manual">Manual (hours)</option>
+                </select>
+                <input type="number" min=0 max=9999 id="game_edit_how_long_to_beat_hours" display:none>
 
                 <h2>Custom info</h2>
                 <div id="game_edit_custom_info">
@@ -240,6 +256,7 @@
             add_screen_add_result,
             add_screen_add_custom,
             release_date_type_changed,
+            how_long_to_beat_type_changed,
             edit_screen_submit,
             collection_screen_search,
             update_igdb_games,
@@ -274,6 +291,7 @@
             window.add_screen_add_result = add_screen_add_result;
             window.add_screen_add_custom = add_screen_add_custom;
             window.release_date_type_changed = release_date_type_changed;
+            window.how_long_to_beat_type_changed = how_long_to_beat_type_changed ;
             window.edit_screen_submit = edit_screen_submit;
             window.collection_screen_search = collection_screen_search;
             window.update_igdb_games = update_igdb_games;

@@ -107,6 +107,12 @@ pub enum EGameInfo {
     IGDB(SGameInfoIGDB),
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum EHowLongToBeat {
+    Unknown,
+    Manual(u16),
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SGameCustomInfo {
     pub via: String,
@@ -131,6 +137,10 @@ pub struct SGameChooseState {
 pub struct SCollectionGame {
     pub internal_id: u32, // $$$FRK(TODO): These internal IDs should have a type for type validation, but I'm lazy right now
     pub game_info: EGameInfo,
+
+    #[serde(default)]
+    pub how_long_to_beat: EHowLongToBeat,
+
     pub custom_info: SGameCustomInfo,
     pub choose_state: SGameChooseState,
 }
@@ -358,6 +368,22 @@ impl EGameInfo {
     }
 }
 
+impl EHowLongToBeat {
+    pub fn hours_to_beat(&self) -> Option<u16> {
+        match self {
+            Self::Unknown => None,
+            Self::Manual(hours) => Some(hours.clone()),
+        }
+    }
+}
+
+
+impl Default for EHowLongToBeat {
+    fn default() -> Self {
+        EHowLongToBeat::Unknown
+    }
+}
+
 impl SGameCustomInfo {
     pub fn new() -> Self {
         Self {
@@ -465,6 +491,7 @@ impl SDatabase {
 
             new_games.push(SCollectionGame {
                 internal_id: game.internal_id,
+                how_long_to_beat: EHowLongToBeat::Unknown,
                 game_info: new_game_info,
                 custom_info: game.custom_info,
                 choose_state: game.choose_state,
