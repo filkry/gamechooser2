@@ -131,7 +131,7 @@ impl SCollectionGame {
         Self {
             internal_id: id,
             game_info: add.game_info,
-            how_long_to_beat: EHowLongToBeat::Unknown,
+            how_long_to_beat: add.how_long_to_beat,
             custom_info: add.custom_info,
             choose_state: Default::default(),
         }
