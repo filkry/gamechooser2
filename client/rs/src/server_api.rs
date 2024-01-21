@@ -164,6 +164,10 @@ async fn post(route: &str, url_data: Option<&str>) -> Result<(), String> {
     Ok(())
 }
 
+pub(super) async fn get_config() -> Result<core::SConfig, String> {
+    post_return_data("get_config", None).await
+}
+
 pub(super) async fn add_game(game: core::SAddCollectionGame) -> Result<(), String> {
     post_data("add_game", game).await?;
     Ok(())

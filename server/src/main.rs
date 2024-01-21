@@ -6,6 +6,7 @@ use std::result::{Result};
 
 //use reqwest;
 use serde::{Serialize, Deserialize};
+use serde::de::{DeserializeOwned};
 use serde_json;
 use sublime_fuzzy;
 use rocket::response::{Responder, Response};
@@ -17,6 +18,7 @@ use gamechooser_core as core;
 use igdb_api_client::SReqwestTwitchAPIClient;
 
 struct SData {
+    app_config: core::SConfig,
     serialized_db: core::EDatabase,
     game_igdb_id_to_internal_id: HashMap<u32, u32>,
     game_sessions_reverse_lookup: HashMap<u32, Vec<u32>>,
@@ -157,41 +159,47 @@ fn refresh_db_acceleration(data: &mut SData) -> Result<(), ()> {
 
 fn load_db() -> Result<SData, ()> {
     let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
-    let mut path = std::path::PathBuf::new();
-    path.push(cfg.db_path);
-    path.push("database.json");
 
-    println!("Loading DB from '{:?}'", path);
+    fn load_file<T: DeserializeOwned>(cfg: &SConfigFile, file_name: &str, default_value: T) -> Result<T, ()> {
+        let mut path = std::path::PathBuf::new();
+        path.push(&cfg.db_path);
+        path.push(file_name);
+        path.set_extension("json");
 
-    // -- read existing collection
-    let db : core::EDatabase = {
+        // -- read existing file
         if path.exists() {
             let file = match std::fs::File::open(path.clone()) {
                 Ok(f) => f,
                 Err(e) => {
-                    eprintln!("Failed to open {:?} with: {:?}", path, e);
+                    eprintln!("Failed to open {} with: {:?}", path.display(), e);
                     return Err(());
                 }
             };
             let reader = std::io::BufReader::new(file);
 
             // Read the JSON contents of the file as an instance of `User`.
-            match serde_json::from_reader(reader) {
+            let value : T = match serde_json::from_reader(reader) {
                 Ok(g) => g,
                 Err(e) => {
-                    eprintln!("Failed to deserialize {:?} with: {:?}", path, e);
+                    eprintln!("Failed to deserialize {} with: {:?}", path.display(), e);
                     return Err(());
                 }
-            }
+            };
+
+            Ok(value)
         }
         else {
-            core::EDatabase::new()
+            Ok(default_value)
         }
-    };
+    }
+
+    let app_config : core::SConfig = load_file(&cfg, "app_config", core::SConfig::default())?;
+    let db : core::EDatabase = load_file(&cfg, "database", core::EDatabase::new())?;
 
     let updated_db = db.to_latest_version();
 
     let mut data = SData {
+        app_config,
         serialized_db: updated_db,
         game_igdb_id_to_internal_id: HashMap::new(),
         game_sessions_reverse_lookup: HashMap::new(),
@@ -204,58 +212,83 @@ fn load_db() -> Result<SData, ()> {
 
 fn save_db(data: &mut SData) -> Result<(), ()> {
     let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
-    let mut path = std::path::PathBuf::new();
 
     refresh_db_acceleration(data)?;
 
-    path.push(cfg.db_path.clone());
-    path.push("database.json");
+    fn save_file<T: serde::Serialize>(cfg: &SConfigFile, file_name: &str, data: &T, backup: bool) -> Result<(), ()> {
+        let mut path = std::path::PathBuf::new();
+        path.push(&cfg.db_path);
+        path.push(file_name);
+        path.set_extension("json");
 
-    if path.exists() {
-        let mut backup_path = std::path::PathBuf::new();
-        backup_path.push(cfg.db_path);
-        backup_path.push("bak");
+        if path.exists() {
+            if backup {
+                let mut backup_path = std::path::PathBuf::new();
+                backup_path.push(&cfg.db_path);
+                backup_path.push("bak");
 
-        if !backup_path.exists() {
-            if let Err(_) = std::fs::create_dir(backup_path.clone()) {
-                eprintln!("Failed to back up DB before overwriting, aborted.");
-                return Err(());
+                if !backup_path.exists() {
+                    if let Err(_) = std::fs::create_dir(backup_path.clone()) {
+                        eprintln!("Failed to back up DB before overwriting, aborted.");
+                        return Err(());
+                    }
+                }
+
+                let bak_file_name = format!("{}_{}.json", file_name, chrono::offset::Utc::now().timestamp());
+                backup_path.push(bak_file_name);
+
+                if let Err(e) = std::fs::rename(path.clone(), backup_path) {
+                    eprintln!("Failed to delete {}.json with: {:?}", file_name, e);
+                    return Err(());
+                }
+            }
+            else {
+                if let Err(e) = std::fs::remove_file(path.clone()){
+                    eprintln!("Failed to delete {}.json with: {:?}", file_name, e);
+                    return Err(());
+                }
             }
         }
 
-        let bak_file_name = format!("database_{}.json", chrono::offset::Utc::now().timestamp());
-        backup_path.push(bak_file_name);
+        let open_options = std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .append(true)
+            .open(&path);
 
-        if let Err(e) = std::fs::rename(path.clone(), backup_path) {
-            eprintln!("Failed to delete database.json with: {:?}", e);
-            return Err(());
-        }
+        let file = match open_options {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("Failed to open {} with: {:?}", path.display(), e);
+                return Err(());
+            }
+        };
+        let writer = std::io::BufWriter::new(file);
+
+        match serde_json::to_writer_pretty(writer, data) {
+            Ok(_) => {},
+            Err(e) => {
+                eprintln!("Failed to serialize {}.json with: {:?}", file_name, e);
+                return Err(());
+            }
+        };
+
+        Ok(())
     }
 
-    let open_options = std::fs::OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .append(true)
-        .open(path);
+    save_file(&cfg, "database", &data.serialized_db, true)?;
+    save_file(&cfg, "app_config", &data.app_config, false)?;
 
-    let file = match open_options {
-        Ok(f) => f,
-        Err(e) => {
-            eprintln!("Failed to open database.json with: {:?}", e);
-            return Err(());
-        }
-    };
-    let writer = std::io::BufWriter::new(file);
-
-    match serde_json::to_writer_pretty(writer, &data.serialized_db) {
-        Ok(_) => {},
-        Err(e) => {
-            eprintln!("Failed to serialize database.json with: {:?}", e);
-            return Err(());
-        }
-    };
 
     Ok(())
+}
+
+#[post("/get_config")]
+async fn get_config() -> Result<RocketJson<core::SConfig>, EErrorResponse> {
+    let db_guard = MEMORY_DB.read().await;
+    let config = &db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?.app_config;
+
+    Ok(RocketJson(config.clone()))
 }
 
 #[post("/search_igdb/<name>/<games_only>")]
@@ -710,7 +743,7 @@ async fn simple_stats() -> Result<RocketJson<core::SSimpleStats>, EErrorResponse
         *stat = *stat + 1;
     }
 
-    let filter = core::ERandomizerFilter::default();
+    let filter = core::ERandomizerFilter::new(&data.app_config);
 
     for game in &data.serialized_db.games {
         inc(&mut stats.total_collection_size);
@@ -728,7 +761,7 @@ async fn simple_stats() -> Result<RocketJson<core::SSimpleStats>, EErrorResponse
         if game.choose_state.retired {
             inc(&mut stats.collection_retired);
         }
-        else if game.choose_state.passes > core::SGameChooseAlgFilter::max_passes() {
+        else if game.choose_state.passes > data.app_config.live_max_passes {
             inc(&mut stats.collection_passed_many_times);
         }
         else if game.choose_state.next_valid_proposal_date > today {
@@ -819,6 +852,7 @@ fn rocket() -> _ {
             check_logged_in,
             check_logged_in_no_auth,
             login,
+            get_config,
             search_igdb,
             add_game,
             add_game_no_auth,

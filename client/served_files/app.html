@@ -18,6 +18,7 @@
             <button class="main_nav_button" onclick="show_add()">Add</button>
             <button class="main_nav_button" onclick="show_randomizer()">Randomizer</button>
             <button class="main_nav_button" onclick="show_stats()">Stats</button>
+            <button class="main_nav_button" onclick="show_config()">Config</button>
         </div>
     </header>
     <body>
@@ -149,6 +150,10 @@
             <div id="stats_container">
             </div>
         </div>
+        <div id="config_div" style="display:none">
+            <label for="config_live_max_passes" title="Max passes for game to be considered 'live' and selectable by the randomizer algorithm.">Live Max Passes:</label>
+            <input type="number" min=0, max=100 id="config_live_max_passes">
+        </div>
         <div id="game_details_div" style="display:none">
             <div id="game_details_card"></div>
             <div id="game_details_sessions">
@@ -252,6 +257,7 @@
             show_add,
             show_randomizer,
             show_stats,
+            show_config,
             add_screen_search_igdb,
             add_screen_add_result,
             add_screen_add_custom,
@@ -287,6 +293,7 @@
             window.show_add = show_add;
             window.show_randomizer = show_randomizer;
             window.show_stats = show_stats;
+            window.show_config = show_config;
             window.add_screen_search_igdb = add_screen_search_igdb;
             window.add_screen_add_result = add_screen_add_result;
             window.add_screen_add_custom = add_screen_add_custom;

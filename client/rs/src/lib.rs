@@ -61,7 +61,14 @@ enum EGameRandomizer {
     Choosing(SGameRandomizerSession),
 }
 
+enum EConfig {
+    Uninit,
+    Valid(core::SConfig),
+}
+
 struct SAppState {
+    config: EConfig,
+
     collection_game_cache: HashMap<u32, core::SCollectionGame>,
 
     session_screen_sessions: Vec<core::SSession>,
@@ -87,12 +94,20 @@ static APP: Lazy<RwLock<SAppState>> = Lazy::new(|| RwLock::new(SAppState::new())
 impl SAppState {
     pub fn new() -> Self {
         Self {
+            config: EConfig::Uninit,
             collection_game_cache: HashMap::new(),
             session_screen_sessions: Vec::new(),
             last_search_igdb_results: None,
             details_screen_game: None,
             game_edit: EGameEdit::None,
             game_randomizer: EGameRandomizer::Uninit,
+        }
+    }
+
+    pub fn config(&self) -> Result<core::SConfig, String> {
+        match &self.config {
+            EConfig::Uninit => Err(String::from("app config needed but not valid.")),
+            EConfig::Valid(inner) => Ok(inner.clone()),
         }
     }
 }
@@ -151,6 +166,7 @@ fn swap_section_div(tgt_id: &str) -> Result<(), JsError> {
     div("game_edit_div")?.style().set_property("display", "none").to_jserr()?;
     div("result_div")?.style().set_property("display", "none").to_jserr()?;
     div("login_div")?.style().set_property("display", "none").to_jserr()?;
+    div("config_div")?.style().set_property("display", "none").to_jserr()?;
 
     div(tgt_id)?.style().set_property("display", "block").to_jserr()?;
 
@@ -174,6 +190,9 @@ pub async fn initial_load() -> Result<(), JsError> {
     else {
         show_login().await?;
     }
+
+    let mut app = APP.try_write().expect("Should never actually have contention.");
+    app.config = EConfig::Valid(server_api::get_config().await.to_jserr()?);
 
     Ok(())
 }
@@ -270,6 +289,16 @@ pub async fn show_stats() -> Result<(), JsError> {
     stats::create_binary_percentage_chart(&stats_div, stats.selectable_portable_playable_tag, stats.collection_selectable)?;
 
     swap_section_div("stats_div")
+}
+
+#[wasm_bindgen]
+pub fn show_config() -> Result<(), JsError> {
+    let app = APP.try_read().expect("Should never actually have contention");
+
+    let config = app.config().to_jserr()?;
+
+    populate_number_input("config_live_max_passes", config.live_max_passes as f64)?;
+    swap_section_div("config_div")
 }
 
 fn show_loading(show: bool) -> Result<(), JsError> {
@@ -994,8 +1023,10 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
     Ok(())
 }
 
-fn populate_full_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Result<(), JsError> {
+fn populate_full_collection_screen_game_list(app: &mut SAppState, games: Vec<core::SCollectionGame>) -> Result<(), JsError> {
     let doc = document();
+
+    let config = app.config().to_jserr()?;
 
     let output_elem = doc.get_typed_element_by_id::<HtmlDivElement>("full_collection_screen_game_list").to_jserr()?;
     output_elem.set_inner_html("");
@@ -1004,7 +1035,7 @@ fn populate_full_collection_screen_game_list(games: Vec<core::SCollectionGame>) 
 
     for game in &games {
 
-        if live_only && !game.choose_state.alive() {
+        if live_only && !game.choose_state.alive(&config) {
             continue;
         }
 
@@ -1014,7 +1045,6 @@ fn populate_full_collection_screen_game_list(games: Vec<core::SCollectionGame>) 
 
     // -- cache results for later use
     {
-        let mut app = APP.try_write().expect("Should never actually have contention.");
         for game in games {
             app.collection_game_cache.insert(game.internal_id, game);
         }
@@ -1129,6 +1159,8 @@ pub async fn update_igdb_games() -> Result<(), JsError> {
 }
 
 async fn enter_full_collection_screen() -> Result<(), JsError> {
+    let mut app = APP.try_write().expect("Should never actually have contention");
+
     let sl = SShowLoadingHelper::new();
     let games = match server_api::get_full_collection().await {
         Ok(g) => g,
@@ -1139,7 +1171,7 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
     };
     drop(sl);
 
-    populate_full_collection_screen_game_list(games)?;
+    populate_full_collection_screen_game_list(&mut app, games)?;
 
     swap_section_div("full_collection_div")?;
 
@@ -1383,6 +1415,10 @@ pub async fn randomizer_pick_up_and_play_mode_changed() -> Result<(), JsError> {
 
 #[wasm_bindgen]
 pub async fn randomizer_screen_start() -> Result<(), JsError> {
+    let app = APP.try_read().expect("Should never actually have contention.");
+
+    let config = app.config().to_jserr()?;
+
     let mode = if checkbox_value("randomizer_pick_up_and_play_mode")? {
         ERandomizerMode::PickUpAndPlay
     }
@@ -1438,8 +1474,6 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
             };
             weblog!("randomizer max length: {:?}", max_length);
 
-            let max_passes = 2;
-
             core::ERandomizerFilter::GameChooseAlgFilter(core::SGameChooseAlgFilter{
                 tags: core::SGameTagsFilter{
                     couch_playable: couch,
@@ -1449,7 +1483,7 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
                 allow_unowned: checkbox_value("randomizer_screen_allow_unowned")?,
                 only_firsts: checkbox_value("randomizer_screen_only_firsts")?,
                 allow_retro: checkbox_value("randomizer_screen_allow_retro")?,
-                max_passes,
+                config,
                 max_length,
             })
         }

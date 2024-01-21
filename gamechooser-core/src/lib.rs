@@ -2,8 +2,11 @@ use chrono;
 use chrono::{Datelike};
 use serde::{Serialize, Deserialize};
 
+mod config;
 mod database_v2;
 mod database_v3;
+
+pub use config::SConfig;
 
 // -- latest database version is exported via pub
 pub use database_v3::*;
@@ -54,7 +57,7 @@ pub struct SGameChooseAlgFilter {
     pub allow_unowned: bool,
     pub only_firsts: bool,
     pub allow_retro: bool,
-    pub max_passes: u16,
+    pub config: SConfig,
     pub max_length: Option<u16>,
 }
 
@@ -185,13 +188,11 @@ impl SSessionFilter {
     }
 }
 
-impl Default for ERandomizerFilter {
-    fn default() -> Self {
-        Self::GameChooseAlgFilter(Default::default())
-    }
-}
-
 impl ERandomizerFilter {
+    pub fn new(config: &SConfig) -> Self {
+        Self::GameChooseAlgFilter(SGameChooseAlgFilter::new(config))
+    }
+
     pub fn game_passes(&self, game: &SCollectionGame, has_any_sessions: bool) -> bool {
         match self {
             Self::PickUpAndPlay => game.custom_info.tags.pick_up_and_play,
@@ -200,22 +201,20 @@ impl ERandomizerFilter {
     }
 }
 
-impl Default for SGameChooseAlgFilter {
-    fn default() -> Self {
+impl SGameChooseAlgFilter {
+    pub fn new(config: &SConfig) -> Self {
         Self {
             tags: SGameTagsFilter::default(),
             allow_unowned: true,
             allow_retro: false,
             only_firsts: true,
-            max_passes: Self::max_passes(),
+            config: config.clone(),
             max_length: None,
         }
     }
-}
 
-impl SGameChooseAlgFilter {
-    pub fn max_passes() -> u16 {
-        2
+    pub fn max_passes(&self) -> u16 {
+        self.config.live_max_passes
     }
 
     // -- $$$FRK(TODO): having to do the has_any_sessions check outside is kinda busto
@@ -250,7 +249,7 @@ impl SGameChooseAlgFilter {
 
         result = result && (self.allow_retro || game.custom_info.tags.retro == false);
 
-        result = result && (game.choose_state.ignore_passes || game.choose_state.passes <= self.max_passes);
+        result = result && (game.choose_state.ignore_passes || game.choose_state.passes <= self.max_passes());
         result = result && !game.choose_state.retired;
         result = result && game.choose_state.next_valid_proposal_date <= today;
 
@@ -260,9 +259,9 @@ impl SGameChooseAlgFilter {
 
 impl SGameChooseState {
     // -- returns whether the game could ever conceivably be selectable
-    pub fn alive(&self) -> bool {
+    pub fn alive(&self, config: &SConfig) -> bool {
         !self.retired
-            && (self.ignore_passes || self.passes <= SGameChooseAlgFilter::max_passes())
+            && (self.ignore_passes || self.passes <= config.live_max_passes)
     }
 }
 
