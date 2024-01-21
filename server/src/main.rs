@@ -615,21 +615,21 @@ async fn get_randomizer_games(filter: RocketJson<core::ERandomizerFilter>) -> Re
     let filter_inner = filter.into_inner();
 
     let db_guard = MEMORY_DB.read().await;
-    let db = &db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?.serialized_db;
+    let data = &db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
 
     let mut active_session_game_ids = std::collections::HashSet::new();
     let mut all_session_game_ids = std::collections::HashSet::new();
-    for session in &db.sessions {
+    for session in &data.serialized_db.sessions {
         all_session_game_ids.insert(session.game_internal_id);
         if let core::ESessionState::Ongoing = session.state {
             active_session_game_ids.insert(session.game_internal_id);
         }
     }
 
-    let mut result = Vec::with_capacity(db.games.len());
+    let mut result = Vec::with_capacity(data.serialized_db.games.len());
 
-    for game in &db.games {
-        if !active_session_game_ids.contains(&game.internal_id) && filter_inner.game_passes(&game, all_session_game_ids.contains(&game.internal_id)) {
+    for game in &data.serialized_db.games {
+        if !active_session_game_ids.contains(&game.internal_id) && filter_inner.game_passes(&data.app_config, &game, all_session_game_ids.contains(&game.internal_id)) {
             //println!("Passed game with: {:?}", game.choose_state);
             result.push(game.clone());
         }
@@ -743,12 +743,12 @@ async fn simple_stats() -> Result<RocketJson<core::SSimpleStats>, EErrorResponse
         *stat = *stat + 1;
     }
 
-    let filter = core::ERandomizerFilter::new(&data.app_config);
+    let filter = core::ERandomizerFilter::new();
 
     for game in &data.serialized_db.games {
         inc(&mut stats.total_collection_size);
 
-        let selectable = filter.game_passes(&game, false);
+        let selectable = filter.game_passes(&data.app_config, &game, false);
 
         if selectable {
             inc(&mut stats.collection_selectable);

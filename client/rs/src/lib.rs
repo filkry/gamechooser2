@@ -1415,10 +1415,6 @@ pub async fn randomizer_pick_up_and_play_mode_changed() -> Result<(), JsError> {
 
 #[wasm_bindgen]
 pub async fn randomizer_screen_start() -> Result<(), JsError> {
-    let app = APP.try_read().expect("Should never actually have contention.");
-
-    let config = app.config().to_jserr()?;
-
     let mode = if checkbox_value("randomizer_pick_up_and_play_mode")? {
         ERandomizerMode::PickUpAndPlay
     }
@@ -1474,17 +1470,33 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
             };
             weblog!("randomizer max length: {:?}", max_length);
 
-            core::ERandomizerFilter::GameChooseAlgFilter(core::SGameChooseAlgFilter{
+            let retro_filter = if checkbox_value("randomizer_screen_allow_retro")? {
+                None
+            }
+            else {
+                Some(false)
+            };
+
+            let required_ownership_state = if checkbox_value("randomizer_screen_allow_unowned")? {
+                None
+            }
+            else {
+                Some(true)
+            };
+
+            core::ERandomizerFilter::GameChooseAlgFilter(core::SCollectionGameFilter{
                 tags: core::SGameTagsFilter{
                     couch_playable: couch,
                     portable_playable: portable,
                     japanese_practice: jp_practice,
+                    retro: retro_filter,
                 },
-                allow_unowned: checkbox_value("randomizer_screen_allow_unowned")?,
-                only_firsts: checkbox_value("randomizer_screen_only_firsts")?,
-                allow_retro: checkbox_value("randomizer_screen_allow_retro")?,
-                config,
-                max_length,
+                require_released: Some(true),
+                required_alive_state: Some(true),
+                require_is_after_valid_date: true,
+                required_ownership_state,
+                require_zero_sessions: checkbox_value("randomizer_screen_only_firsts")?,
+                max_hltb_hours: max_length,
             })
         }
     };

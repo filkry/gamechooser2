@@ -2,21 +2,16 @@ use chrono;
 use chrono::{Datelike};
 use serde::{Serialize, Deserialize};
 
+mod collection_game_filter;
 mod config;
 mod database_v2;
 mod database_v3;
 
 pub use config::SConfig;
+pub use collection_game_filter::{SCollectionGameFilter, SGameTagsFilter};
 
 // -- latest database version is exported via pub
 pub use database_v3::*;
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct SGameTagsFilter {
-    pub couch_playable: Option<bool>,
-    pub portable_playable: Option<bool>,
-    pub japanese_practice: Option<bool>,
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SSearchIGDBResult {
@@ -47,18 +42,8 @@ pub struct SSessionFilter {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ERandomizerFilter {
-    GameChooseAlgFilter(SGameChooseAlgFilter),
+    GameChooseAlgFilter(SCollectionGameFilter),
     PickUpAndPlay,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SGameChooseAlgFilter {
-    pub tags: SGameTagsFilter,
-    pub allow_unowned: bool,
-    pub only_firsts: bool,
-    pub allow_retro: bool,
-    pub config: SConfig,
-    pub max_length: Option<u16>,
 }
 
 // -- $$$FRK(TODO): need to guarantee that internal_ids are always in order after loading from JSON, for this to be reliable
@@ -189,71 +174,15 @@ impl SSessionFilter {
 }
 
 impl ERandomizerFilter {
-    pub fn new(config: &SConfig) -> Self {
-        Self::GameChooseAlgFilter(SGameChooseAlgFilter::new(config))
+    pub fn new() -> Self {
+        Self::GameChooseAlgFilter(SCollectionGameFilter::default())
     }
 
-    pub fn game_passes(&self, game: &SCollectionGame, has_any_sessions: bool) -> bool {
+    pub fn game_passes(&self, cfg: &SConfig, game: &SCollectionGame, has_any_sessions: bool) -> bool {
         match self {
             Self::PickUpAndPlay => game.custom_info.tags.pick_up_and_play,
-            Self::GameChooseAlgFilter(f) => f.game_passes(game, has_any_sessions),
+            Self::GameChooseAlgFilter(f) => f.game_passes(cfg, game, has_any_sessions),
         }
-    }
-}
-
-impl SGameChooseAlgFilter {
-    pub fn new(config: &SConfig) -> Self {
-        Self {
-            tags: SGameTagsFilter::default(),
-            allow_unowned: true,
-            allow_retro: false,
-            only_firsts: true,
-            config: config.clone(),
-            max_length: None,
-        }
-    }
-
-    pub fn max_passes(&self) -> u16 {
-        self.config.live_max_passes
-    }
-
-    // -- $$$FRK(TODO): having to do the has_any_sessions check outside is kinda busto
-    pub fn game_passes(&self, game: &SCollectionGame, has_any_sessions: bool) -> bool {
-        let mut result = true;
-
-        let today = chrono::offset::Local::now().naive_local().date();
-
-        result = result && game.game_info.released();
-
-        if let Some(couch) = self.tags.couch_playable {
-            result = result && couch == game.custom_info.tags.couch_playable;
-        }
-        if let Some(portable) = self.tags.portable_playable {
-            result = result && portable == game.custom_info.tags.portable_playable;
-        }
-        if let Some(jp) = self.tags.japanese_practice {
-            result = result && jp == game.custom_info.tags.japanese_practice;
-        }
-        if let Some(max_hours) = self.max_length {
-            result = result && match game.how_long_to_beat {
-                EHowLongToBeat::Unknown => false,
-                EHowLongToBeat::Manual(game_hours) => game_hours <= max_hours,
-            };
-        }
-
-        result = result && (self.allow_unowned || game.custom_info.own.owned());
-        // -- some games I've played before were added but have no sessions, usually they have the
-        // -- ignore_passes flag so we use that one too
-        let has_any_sessions_proxy = has_any_sessions || game.choose_state.ignore_passes;
-        result = result && !(self.only_firsts && has_any_sessions_proxy);
-
-        result = result && (self.allow_retro || game.custom_info.tags.retro == false);
-
-        result = result && (game.choose_state.ignore_passes || game.choose_state.passes <= self.max_passes());
-        result = result && !game.choose_state.retired;
-        result = result && game.choose_state.next_valid_proposal_date <= today;
-
-        result
     }
 }
 
