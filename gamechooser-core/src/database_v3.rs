@@ -119,6 +119,12 @@ pub struct SGameCustomInfo {
 
     pub tags: SGameTags,
     pub own: SOwn,
+
+    #[serde(default)]
+    pub phantom_session: bool,
+
+    #[serde(default)]
+    pub archived: bool,
 }
 
 #[allow(dead_code)]
@@ -390,6 +396,8 @@ impl SGameCustomInfo {
             via: String::new(),
             tags: Default::default(),
             own: Default::default(),
+            archived: false,
+            phantom_session: false,
         }
     }
 }

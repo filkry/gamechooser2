@@ -603,7 +603,7 @@ async fn get_sessions_no_auth(filter: RocketJson<core::SSessionFilter>) -> Resul
 }
 
 #[post("/get_games", data = "<filter>")]
-async fn get_games(filter: RocketJson<core::SCollectionGameFilter>) -> Result<RocketJson<Vec<core::SCollectionGame>>, EErrorResponse> {
+async fn get_games(filter: RocketJson<core::SCollectionGameFilter>) -> Result<RocketJson<(Vec<core::SCollectionGame>, Vec<bool>)>, EErrorResponse> {
     let filter_inner = filter.into_inner();
 
     let db_guard = MEMORY_DB.read().await;
@@ -618,17 +618,26 @@ async fn get_games(filter: RocketJson<core::SCollectionGameFilter>) -> Result<Ro
         }
     }
 
-    let mut result = Vec::with_capacity(data.serialized_db.games.len());
+    let mut games = Vec::with_capacity(data.serialized_db.games.len());
 
     for game in &data.serialized_db.games {
+        // TODO: this active_session_game_ids filter is specifically for the randomizer and shouldn't be here!
         if !active_session_game_ids.contains(&game.internal_id) && filter_inner.game_passes(&data.app_config, &game, all_session_game_ids.contains(&game.internal_id)) {
             //println!("Passed game with: {:?}", game.choose_state);
-            result.push(game.clone());
+            games.push(game.clone());
         }
     }
 
+    let mut has_sessions = Vec::with_capacity(games.len());
+    for game in &games {
+        let mut has = false;
+        if let Some(session_list) = data.game_sessions_reverse_lookup.get(&game.internal_id) {
+            has = session_list.len() > 0;
+        }
+        has_sessions.push(has);
+    }
 
-    Ok(RocketJson(result))
+    Ok(RocketJson((games, has_sessions)))
 }
 
 #[post("/update_choose_state", data = "<games>")]

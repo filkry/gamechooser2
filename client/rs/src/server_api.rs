@@ -218,7 +218,7 @@ pub(super) async fn finish_session(internal_id: u32, memorable: bool, retire: bo
     post("finish_session", Some(data_str.as_str())).await
 }
 
-pub(super) async fn get_games(filter: core::SCollectionGameFilter) -> Result<Vec<core::SCollectionGame>, String> {
+pub(super) async fn get_games(filter: core::SCollectionGameFilter) -> Result<(Vec<core::SCollectionGame>, Vec<bool>), String> {
     post_data_return_data("get_games", filter).await
 }
 

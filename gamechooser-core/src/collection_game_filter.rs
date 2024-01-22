@@ -22,7 +22,10 @@ pub struct SCollectionGameFilter {
     pub required_ownership_state: Option<bool>,
     pub require_zero_sessions: bool,
 
+    pub require_no_hltb_data: bool,
     pub max_hltb_hours: Option<u16>,
+
+    pub require_not_archived: bool,
 }
 
 // opinionated defaults based on my usual interests
@@ -47,7 +50,9 @@ impl Default for SCollectionGameFilter {
             require_is_after_valid_date: true,
             required_ownership_state: None,
             require_zero_sessions: true,
+            require_no_hltb_data: false,
             max_hltb_hours: None,
+            require_not_archived: true,
         }
     }
 }
@@ -95,7 +100,9 @@ impl SCollectionGameFilter {
             require_is_after_valid_date: false,
             required_ownership_state: None,
             require_zero_sessions: false,
+            require_no_hltb_data: false,
             max_hltb_hours: None,
+            require_not_archived: true,
         }
     }
 
@@ -149,8 +156,18 @@ impl SCollectionGameFilter {
         self
     }
 
+    pub fn require_no_hltb_data(mut self) -> Self {
+        self.require_no_hltb_data = true;
+        self
+    }
+
     pub fn require_max_hltb_hours(mut self, val: u16) -> Self {
         self.max_hltb_hours = Some(val);
+        self
+    }
+
+    pub fn allow_archived(mut self) -> Self {
+        self.require_not_archived = false;
         self
     }
 
@@ -189,8 +206,16 @@ impl SCollectionGameFilter {
         // NOTE/HACK: some games I've played before were added but have no sessions, usually they
         // have the ignore_passes flag so we use that one too
         if self.require_zero_sessions {
-            let has_any_sessions_proxy = has_any_sessions || game.choose_state.ignore_passes;
+            let has_any_sessions_proxy = has_any_sessions || game.choose_state.ignore_passes || game.custom_info.phantom_session;
             result = result && !has_any_sessions_proxy;
+        }
+
+        // test games that have no hltb data
+        if self.require_no_hltb_data {
+            result = result && match game.how_long_to_beat {
+                EHowLongToBeat::Unknown => true,
+                EHowLongToBeat::Manual(_) => false,
+            };
         }
 
         // test max time to beat
@@ -199,6 +224,10 @@ impl SCollectionGameFilter {
                 EHowLongToBeat::Unknown => false,
                 EHowLongToBeat::Manual(game_hours) => game_hours <= max_hours,
             };
+        }
+
+        if self.require_not_archived {
+            result = result && !game.custom_info.archived;
         }
 
         result

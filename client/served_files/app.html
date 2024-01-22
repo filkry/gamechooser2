@@ -64,12 +64,16 @@
         <div id="full_collection_div" style="display:none">
             <h1 id="full_collection_header" class="page_header">Full collection</h1>
             <div class="filter_div">
-                <ul class="checkbox_list">
-                    <li>
-                        <input type="checkbox" id="live_games_only" onchange="show_full_collection()" checked>
-                        <label for="live_games_only">Live games only (no retired, passed)</label>
-                    </li>
-                </ul>
+                <p>
+                    <label for="full_collection_filter">Filter: </label>
+                    <select id="full_collection_filter" onchange="show_full_collection()">
+                        <option value="live">Only Alive</option>
+                        <option value="all">All</option>
+                        <option value="owned_dead_unplayed">Owned But Abandoned</option>
+                        <option value="live_released_no_hltb">Needs HLTB Data</option>
+                        <option value="not_released">Not Released</option>
+                    </select>
+                </p>
             </div>
             <div id="full_collection_screen_game_list"></div>
         </div>
@@ -194,6 +198,18 @@
                     <h3>Owned on</h3>
                     <div id="game_edit_own">
                     </div>
+
+                    <h3>Advanced</h3>
+                    <ul class="checkbox_list">
+                        <li>
+                            <input type="checkbox" id="game_edit_phantom_session">
+                            <label for="game_edit_phantom_session" title="Always treat this game as having at least one session even if there's no record (likely due to past lost data)">Phantom session</label>
+                        </li>
+                        <li class="danger">
+                            <input type="checkbox" id="game_edit_archive">
+                            <label for="game_edit_archive">Archive (!GAME WILL NO LONGER APPEAR IN UI!)</label>
+                        </li>
+                    </ul>
                 </div>
 
                 <h2>Choose state</h2>

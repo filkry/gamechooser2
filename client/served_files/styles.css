@@ -72,6 +72,10 @@ label {
     padding: 2vh;
 }
 
+.danger {
+    color: lightcoral;
+}
+
 .game_card {
     background-color: whitesmoke;
     margin-top: 2.5vh;
