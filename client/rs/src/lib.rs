@@ -489,6 +489,11 @@ fn populate_how_long_to_beat_input(id: &str, value: core::EHowLongToBeat) -> Res
             hltb_hours_elem.style().set_property("display", "block").to_jserr()?;
             hltb_hours_elem.set_value_as_number(hours as f64);
         },
+        core::EHowLongToBeat::CannotBeBeaten => {
+            hltb_type_elem.set_value("cannot_be_beaten");
+            hltb_hours_elem.style().set_property("display", "none").to_jserr()?;
+            hltb_hours_elem.set_value_as_number(0.0);
+        },
     };
     Ok(())
 }
@@ -763,6 +768,7 @@ fn update_how_long_to_beat_from_edit_screen(how_long_to_beat: &mut core::EHowLon
     match hltb_type_value.as_str() {
         "unknown" => *how_long_to_beat = core::EHowLongToBeat::Unknown,
         "manual" => *how_long_to_beat = core::EHowLongToBeat::Manual(hltb_hours),
+        "cannot_be_beaten" => *how_long_to_beat = core::EHowLongToBeat::CannotBeBeaten,
         _ => {
             return Err(JsError::new("How long to beat type select widget had invalid value"));
         }
@@ -912,6 +918,9 @@ pub async fn how_long_to_beat_type_changed(caller: Element) -> Result<(), JsErro
         },
         "manual" => {
             hltb_hours_elem.style().set_property("display", "block").to_jserr()?;
+        },
+        "cannot_be_beaten" => {
+            hltb_hours_elem.style().set_property("display", "none").to_jserr()?;
         },
         _ => {},
     };

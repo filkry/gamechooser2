@@ -215,6 +215,7 @@ impl SCollectionGameFilter {
             result = result && match game.how_long_to_beat {
                 EHowLongToBeat::Unknown => true,
                 EHowLongToBeat::Manual(_) => false,
+                EHowLongToBeat::CannotBeBeaten => false,
             };
         }
 
@@ -223,6 +224,7 @@ impl SCollectionGameFilter {
             result = result && match game.how_long_to_beat {
                 EHowLongToBeat::Unknown => false,
                 EHowLongToBeat::Manual(game_hours) => game_hours <= max_hours,
+                EHowLongToBeat::CannotBeBeaten => false,
             };
         }
 

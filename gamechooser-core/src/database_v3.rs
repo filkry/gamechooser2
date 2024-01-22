@@ -111,6 +111,7 @@ pub enum EGameInfo {
 pub enum EHowLongToBeat {
     Unknown,
     Manual(u16),
+    CannotBeBeaten,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -379,6 +380,7 @@ impl EHowLongToBeat {
         match self {
             Self::Unknown => None,
             Self::Manual(hours) => Some(hours.clone()),
+            Self::CannotBeBeaten => None,
         }
     }
 }
