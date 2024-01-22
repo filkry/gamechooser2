@@ -734,12 +734,15 @@ async fn simple_stats() -> Result<RocketJson<core::SSimpleStats>, EErrorResponse
         *stat = *stat + 1;
     }
 
-    let filter = core::SCollectionGameFilter::default();
+    let selectable_filter = core::SCollectionGameFilter::new()
+        .require_released(true)
+        .require_alive(true)
+        .require_is_after_valid_date();
 
     for game in &data.serialized_db.games {
         inc(&mut stats.total_collection_size);
 
-        let selectable = filter.game_passes(&data.app_config, &game, false);
+        let selectable = selectable_filter.game_passes(&data.app_config, &game, false);
 
         if selectable {
             inc(&mut stats.collection_selectable);
