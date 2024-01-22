@@ -382,14 +382,6 @@ async fn get_recent_collection_games() -> Result<RocketJson<Vec<core::SCollectio
     Ok(RocketJson(result))
 }
 
-#[post("/get_full_collection")]
-async fn get_full_collection() -> Result<RocketJson<Vec<core::SCollectionGame>>, EErrorResponse> {
-    let db_guard = MEMORY_DB.read().await;
-    let db = &db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?.serialized_db;
-
-    Ok(RocketJson(db.games.clone()))
-}
-
 #[post("/update_igdb_games")]
 async fn update_igdb_games() -> Result<(), EErrorResponse> {
     let mut db_guard = MEMORY_DB.write().await;
@@ -610,8 +602,8 @@ async fn get_sessions_no_auth(filter: RocketJson<core::SSessionFilter>) -> Resul
     return Err(EErrorResponse::NotAuthenticated);
 }
 
-#[post("/get_randomizer_games", data = "<filter>")]
-async fn get_randomizer_games(filter: RocketJson<core::ERandomizerFilter>) -> Result<RocketJson<core::SRandomizerList>, EErrorResponse> {
+#[post("/get_games", data = "<filter>")]
+async fn get_games(filter: RocketJson<core::SCollectionGameFilter>) -> Result<RocketJson<Vec<core::SCollectionGame>>, EErrorResponse> {
     let filter_inner = filter.into_inner();
 
     let db_guard = MEMORY_DB.read().await;
@@ -635,18 +627,8 @@ async fn get_randomizer_games(filter: RocketJson<core::ERandomizerFilter>) -> Re
         }
     }
 
-    let mut indices = Vec::with_capacity(result.len());
-    for i in 0..result.len() {
-        indices.push(i);
-    }
 
-    use rand::seq::SliceRandom;
-    indices.shuffle(&mut rand::thread_rng());
-
-    Ok(RocketJson(core::SRandomizerList{
-        games: result,
-        shuffled_indices: indices,
-    }))
+    Ok(RocketJson(result))
 }
 
 #[post("/update_choose_state", data = "<games>")]
@@ -743,7 +725,7 @@ async fn simple_stats() -> Result<RocketJson<core::SSimpleStats>, EErrorResponse
         *stat = *stat + 1;
     }
 
-    let filter = core::ERandomizerFilter::new();
+    let filter = core::SCollectionGameFilter::default();
 
     for game in &data.serialized_db.games {
         inc(&mut stats.total_collection_size);
@@ -859,7 +841,6 @@ fn rocket() -> _ {
             edit_game,
             edit_game_no_auth,
             get_recent_collection_games,
-            get_full_collection,
             update_igdb_games,
             search_collection,
             start_session,
@@ -868,7 +849,7 @@ fn rocket() -> _ {
             finish_session_no_auth,
             get_sessions,
             get_sessions_no_auth,
-            get_randomizer_games,
+            get_games,
             update_choose_state,
             update_choose_state_no_auth,
             reset_choose_state,

@@ -1162,7 +1162,7 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
     let mut app = APP.try_write().expect("Should never actually have contention");
 
     let sl = SShowLoadingHelper::new();
-    let games = match server_api::get_full_collection().await {
+    let games = match server_api::get_games(core::SCollectionGameFilter::new()).await {
         Ok(g) => g,
         Err(e) => {
             show_error(e)?;
@@ -1423,7 +1423,9 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
     };
 
     let filter = match mode {
-        ERandomizerMode::PickUpAndPlay => core::ERandomizerFilter::PickUpAndPlay,
+        ERandomizerMode::PickUpAndPlay => {
+            core::SCollectionGameFilter::new().require_tag_pick_up_and_play(true)
+        }
         ERandomizerMode::GameChooseAlg => {
             let couch = if checkbox_value("randomizer_screen_couch")? {
                 Some(true)
@@ -1484,12 +1486,13 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
                 Some(true)
             };
 
-            core::ERandomizerFilter::GameChooseAlgFilter(core::SCollectionGameFilter{
+            core::SCollectionGameFilter{
                 tags: core::SGameTagsFilter{
                     couch_playable: couch,
                     portable_playable: portable,
                     japanese_practice: jp_practice,
                     retro: retro_filter,
+                    pick_up_and_play: None,
                 },
                 require_released: Some(true),
                 required_alive_state: Some(true),
@@ -1497,13 +1500,13 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
                 required_ownership_state,
                 require_zero_sessions: checkbox_value("randomizer_screen_only_firsts")?,
                 max_hltb_hours: max_length,
-            })
+            }
         }
     };
 
     let sl = SShowLoadingHelper::new();
-    let randomizer_list = match server_api::get_randomizer_games(filter).await {
-        Ok(l) => l,
+    let games = match server_api::get_games(filter).await {
+        Ok(gs) => gs,
         Err(e) => {
             show_error(e)?;
             return Ok(());
@@ -1511,14 +1514,23 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
     };
     drop(sl);
 
-    weblog!("Valid game count: {:?}", randomizer_list.games.len());
+    weblog!("Valid game count: {:?}", games.len());
 
     {
         let mut app = APP.try_write().expect("Should never actually have contention.");
 
-        let mut internal_id_list = Vec::with_capacity(randomizer_list.games.len());
-        for idx in randomizer_list.shuffled_indices {
-            let game = &randomizer_list.games[idx];
+        let mut internal_id_list = Vec::with_capacity(games.len());
+
+        let mut shuffled_indices = Vec::with_capacity(games.len());
+        for i in 0..games.len() {
+            shuffled_indices.push(i);
+        }
+
+        use rand::seq::SliceRandom;
+        shuffled_indices.shuffle(&mut rand::thread_rng());
+
+        for idx in shuffled_indices {
+            let game = &games[idx];
             let internal_id = game.internal_id;
             app.collection_game_cache.insert(internal_id, game.clone());
             internal_id_list.push(internal_id);

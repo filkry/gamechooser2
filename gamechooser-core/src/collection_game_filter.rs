@@ -8,6 +8,7 @@ pub struct SGameTagsFilter {
     pub portable_playable: Option<bool>,
     pub japanese_practice: Option<bool>,
     pub retro: Option<bool>,
+    pub pick_up_and_play: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -32,6 +33,7 @@ impl Default for SGameTagsFilter {
             portable_playable: None,
             japanese_practice: Some(false),
             retro: Some(false),
+            pick_up_and_play: None,
         }
     }
 }
@@ -51,6 +53,15 @@ impl Default for SCollectionGameFilter {
 }
 
 impl SGameTagsFilter {
+    pub fn new() -> Self {
+        Self {
+            couch_playable: None,
+            portable_playable: None,
+            japanese_practice: None,
+            retro: None,
+            pick_up_and_play: None,
+        }
+    }
 
     pub fn tags_pass(&self, game_tags: &SGameTags) -> bool {
         let mut result = true;
@@ -67,12 +78,82 @@ impl SGameTagsFilter {
         if let Some(retro) = self.retro {
             result = result && retro == game_tags.retro;
         }
+        if let Some(puap) = self.pick_up_and_play {
+            result = result && puap == game_tags.pick_up_and_play;
+        }
 
         return result;
     }
 }
 
 impl SCollectionGameFilter {
+    pub fn new() -> Self {
+        Self {
+            tags: SGameTagsFilter::new(),
+            require_released: None,
+            required_alive_state: None,
+            require_is_after_valid_date: false,
+            required_ownership_state: None,
+            require_zero_sessions: false,
+            max_hltb_hours: None,
+        }
+    }
+
+    pub fn require_tag_couch_playable(mut self, val: bool) -> Self {
+        self.tags.couch_playable = Some(val);
+        self
+    }
+
+    pub fn require_tag_portable_playable(mut self, val: bool) -> Self {
+        self.tags.portable_playable = Some(val);
+        self
+    }
+
+    pub fn require_tag_japanese_practice(mut self, val: bool) -> Self {
+        self.tags.japanese_practice = Some(val);
+        self
+    }
+
+    pub fn require_tag_retro(mut self, val: bool) -> Self {
+        self.tags.retro = Some(val);
+        self
+    }
+
+    pub fn require_tag_pick_up_and_play(mut self, val: bool) -> Self {
+        self.tags.pick_up_and_play = Some(val);
+        self
+    }
+
+    pub fn require_released(mut self, val: bool) -> Self {
+        self.require_released = Some(val);
+        self
+    }
+
+    pub fn require_alive(mut self, val: bool) -> Self {
+        self.required_alive_state = Some(val);
+        self
+    }
+
+    pub fn require_is_after_valid_date(mut self) -> Self {
+        self.require_is_after_valid_date = true;
+        self
+    }
+
+    pub fn require_ownership(mut self, val: bool) -> Self {
+        self.required_ownership_state = Some(val);
+        self
+    }
+
+    pub fn require_zero_sessions(mut self) -> Self {
+        self.require_zero_sessions = true;
+        self
+    }
+
+    pub fn require_max_hltb_hours(mut self, val: u16) -> Self {
+        self.max_hltb_hours = Some(val);
+        self
+    }
+
     // $$$FRK(TODO): having to do the has_any_sessions check outside is kinda busto
     pub fn game_passes(&self, cfg: &SConfig, game: &SCollectionGame, has_any_sessions: bool) -> bool {
         let mut result = true;

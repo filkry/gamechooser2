@@ -1335,7 +1335,6 @@ dependencies = [
  "gamechooser-core",
  "igdb_api_client",
  "once_cell",
- "rand",
  "reqwest",
  "rocket",
  "serde",

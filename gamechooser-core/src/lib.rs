@@ -40,19 +40,6 @@ pub struct SSessionFilter {
     pub year: Option<u32>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum ERandomizerFilter {
-    GameChooseAlgFilter(SCollectionGameFilter),
-    PickUpAndPlay,
-}
-
-// -- $$$FRK(TODO): need to guarantee that internal_ids are always in order after loading from JSON, for this to be reliable
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SRandomizerList {
-    pub games: Vec<SCollectionGame>,
-    pub shuffled_indices: Vec<usize>,
-}
-
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct SSimpleStats {
     pub total_collection_size: u32,
@@ -170,19 +157,6 @@ impl SSessionFilter {
         }
 
         return true;
-    }
-}
-
-impl ERandomizerFilter {
-    pub fn new() -> Self {
-        Self::GameChooseAlgFilter(SCollectionGameFilter::default())
-    }
-
-    pub fn game_passes(&self, cfg: &SConfig, game: &SCollectionGame, has_any_sessions: bool) -> bool {
-        match self {
-            Self::PickUpAndPlay => game.custom_info.tags.pick_up_and_play,
-            Self::GameChooseAlgFilter(f) => f.game_passes(cfg, game, has_any_sessions),
-        }
     }
 }
 

@@ -191,10 +191,6 @@ pub(super) async fn search_collection(query: &str) -> Result<Vec<core::SCollecti
     post_return_data("search_collection", Some(query)).await
 }
 
-pub(super) async fn get_full_collection() -> Result<Vec<core::SCollectionGame>, String> {
-    post_return_data("get_full_collection", None).await
-}
-
 pub(super) async fn get_sessions(
     game_id: Option<u32>,
     active_only: bool,
@@ -222,8 +218,8 @@ pub(super) async fn finish_session(internal_id: u32, memorable: bool, retire: bo
     post("finish_session", Some(data_str.as_str())).await
 }
 
-pub(super) async fn get_randomizer_games(filter: core::ERandomizerFilter) -> Result<core::SRandomizerList, String> {
-    post_data_return_data("get_randomizer_games", filter).await
+pub(super) async fn get_games(filter: core::SCollectionGameFilter) -> Result<Vec<core::SCollectionGame>, String> {
+    post_data_return_data("get_games", filter).await
 }
 
 pub(super) async fn update_choose_state(games: &Vec<core::SCollectionGame>) -> Result<(), String> {
