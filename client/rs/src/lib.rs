@@ -1510,7 +1510,8 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
                 },
             }
 
-            let mut session_state_filter = core::SCollectionGameSessionStateFilter::new();
+            let mut session_state_filter = core::SCollectionGameSessionStateFilter::new()
+                .required_active_session(false);
             if checkbox_value("randomizer_screen_only_firsts")? {
                 session_state_filter = session_state_filter.max_sessions(0);
             }
