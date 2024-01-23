@@ -603,41 +603,49 @@ async fn get_sessions_no_auth(filter: RocketJson<core::SSessionFilter>) -> Resul
 }
 
 #[post("/get_games", data = "<filter>")]
-async fn get_games(filter: RocketJson<core::SCollectionGameFilter>) -> Result<RocketJson<(Vec<core::SCollectionGame>, Vec<bool>)>, EErrorResponse> {
+async fn get_games(
+    filter: RocketJson<core::SCollectionGameAndSessionStateFilter>,
+) -> Result<RocketJson<Vec<core::SCollectionGame>>, EErrorResponse> {
+
     let filter_inner = filter.into_inner();
 
     let db_guard = MEMORY_DB.read().await;
     let data = &db_guard.deref().as_ref().map_err(|_| EErrorResponse::DBError)?;
 
-    let mut active_session_game_ids = std::collections::HashSet::new();
-    let mut all_session_game_ids = std::collections::HashSet::new();
-    for session in &data.serialized_db.sessions {
-        all_session_game_ids.insert(session.game_internal_id);
-        if let core::ESessionState::Ongoing = session.state {
-            active_session_game_ids.insert(session.game_internal_id);
-        }
-    }
 
     let mut games = Vec::with_capacity(data.serialized_db.games.len());
 
     for game in &data.serialized_db.games {
-        // TODO: this active_session_game_ids filter is specifically for the randomizer and shouldn't be here!
-        if !active_session_game_ids.contains(&game.internal_id) && filter_inner.game_passes(&data.app_config, &game, all_session_game_ids.contains(&game.internal_id)) {
+        if filter_inner.game_filter.game_passes(&data.app_config, &game) {
             //println!("Passed game with: {:?}", game.choose_state);
             games.push(game.clone());
         }
     }
 
-    let mut has_sessions = Vec::with_capacity(games.len());
-    for game in &games {
-        let mut has = false;
-        if let Some(session_list) = data.game_sessions_reverse_lookup.get(&game.internal_id) {
-            has = session_list.len() > 0;
+    if let Some(session_state_filter) = filter_inner.session_state_filter {
+
+        // build session table
+        let mut active_session_game_ids = std::collections::HashSet::new();
+        let mut session_counts : std::collections::HashMap<u32, u16> = std::collections::HashMap::new();
+        for session in &data.serialized_db.sessions {
+            session_counts.entry(session.game_internal_id).and_modify(|count| *count += 1).or_insert(1);
+
+            if let core::ESessionState::Ongoing = session.state {
+                active_session_game_ids.insert(session.game_internal_id);
+            }
         }
-        has_sessions.push(has);
+
+        games.retain(|game| {
+            session_state_filter.game_passes(
+                &game,
+                session_counts.get(&game.internal_id)
+                    .unwrap_or(&0).clone(),
+                active_session_game_ids.contains(&game.internal_id),
+            )
+        });
     }
 
-    Ok(RocketJson((games, has_sessions)))
+    Ok(RocketJson(games))
 }
 
 #[post("/update_choose_state", data = "<games>")]
@@ -742,7 +750,7 @@ async fn simple_stats() -> Result<RocketJson<core::SSimpleStats>, EErrorResponse
     for game in &data.serialized_db.games {
         inc(&mut stats.total_collection_size);
 
-        let selectable = selectable_filter.game_passes(&data.app_config, &game, false);
+        let selectable = selectable_filter.game_passes(&data.app_config, &game);
 
         if selectable {
             inc(&mut stats.collection_selectable);

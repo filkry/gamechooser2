@@ -1046,40 +1046,11 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
     Ok(())
 }
 
-fn populate_full_collection_screen_game_list(app: &mut SAppState, mut games: Vec<core::SCollectionGame>, has_sessions: Vec<bool>) -> Result<(), JsError> {
+fn populate_full_collection_screen_game_list(app: &mut SAppState, games: Vec<core::SCollectionGame>) -> Result<(), JsError> {
     let doc = document();
-
-    let config = app.config().to_jserr()?;
 
     let output_elem = doc.get_typed_element_by_id::<HtmlDivElement>("full_collection_screen_game_list").to_jserr()?;
     output_elem.set_inner_html("");
-
-    let filter = match select_value("full_collection_filter")?.as_str() {
-        "all" => core::SCollectionGameFilter::new(),
-        "live" => core::SCollectionGameFilter::new().require_alive(true),
-        "owned_dead_unplayed" => core::SCollectionGameFilter::new()
-            .require_tag_pick_up_and_play(false)
-            .require_ownership(true)
-            .require_alive(false)
-            .require_zero_sessions(),
-        "live_released_no_hltb" => core::SCollectionGameFilter::new()
-            .require_alive(true)
-            .require_released(true)
-            .require_no_hltb_data(),
-        "not_released" => core::SCollectionGameFilter::new()
-            .require_released(false),
-        _ => {
-            show_error(String::from("Invalid value from full_collection_filter select."))?;
-            return Ok(());
-        },
-    };
-
-    let mut index = 0;
-    games.retain(|game| {
-        let pass = filter.game_passes(&config, &game, has_sessions[index]);
-        index += 1;
-        pass
-    });
 
     for game in &games {
         let game_card = SCompactGameCard::new_from_collection_game(&game)?;
@@ -1204,8 +1175,36 @@ pub async fn update_igdb_games() -> Result<(), JsError> {
 async fn enter_full_collection_screen() -> Result<(), JsError> {
     let mut app = APP.try_write().expect("Should never actually have contention");
 
+    use gamechooser_core::{SCollectionGameFilter, SCollectionGameSessionStateFilter, SCollectionGameAndSessionStateFilter};
+
+    let filter : SCollectionGameAndSessionStateFilter = match select_value("full_collection_filter")?.as_str() {
+        "all" => SCollectionGameFilter::new().into(),
+        "live" => SCollectionGameFilter::new().require_alive(true).into(),
+        "owned_dead_unplayed" =>
+            SCollectionGameAndSessionStateFilter::with_session_filter(
+                SCollectionGameFilter::new()
+                    .require_tag_pick_up_and_play(false)
+                    .require_ownership(true)
+                    .require_alive(false),
+                SCollectionGameSessionStateFilter::new()
+                    .max_sessions(0),
+            ),
+        "live_released_no_hltb" =>
+            SCollectionGameFilter::new()
+                .require_alive(true)
+                .require_released(true)
+                .require_no_hltb_data().into(),
+        "not_released" =>
+            SCollectionGameFilter::new()
+                .require_released(false).into(),
+        _ => {
+            show_error(String::from("Invalid value from full_collection_filter select."))?;
+            return Ok(());
+        },
+    };
+
     let sl = SShowLoadingHelper::new();
-    let (games, has_sessions) = match server_api::get_games(core::SCollectionGameFilter::new()).await {
+    let games = match server_api::get_games(filter).await {
         Ok(g) => g,
         Err(e) => {
             show_error(e)?;
@@ -1214,7 +1213,7 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
     };
     drop(sl);
 
-    populate_full_collection_screen_game_list(&mut app, games, has_sessions)?;
+    populate_full_collection_screen_game_list(&mut app, games)?;
 
     swap_section_div("full_collection_div")?;
 
@@ -1467,82 +1466,60 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
 
     let filter = match mode {
         ERandomizerMode::PickUpAndPlay => {
-            core::SCollectionGameFilter::new().require_tag_pick_up_and_play(true)
+            core::SCollectionGameFilter::new().require_tag_pick_up_and_play(true).into()
         }
         ERandomizerMode::GameChooseAlg => {
-            let couch = if checkbox_value("randomizer_screen_couch")? {
-                Some(true)
-            }
-            else {
-                None
-            };
-            let portable = if checkbox_value("randomizer_screen_portable")? {
-                Some(true)
-            }
-            else {
-                None
-            };
+            let mut game_filter = core::SCollectionGameFilter::new()
+                .require_is_after_valid_date();
 
-            let jp_practice = match select_value("randomizer_screen_jp_practice")?.as_str()
+            if checkbox_value("randomizer_screen_couch")? {
+                game_filter = game_filter.require_tag_couch_playable(true);
+            }
+
+            if checkbox_value("randomizer_screen_portable")? {
+                game_filter = game_filter.require_tag_portable_playable(true);
+            }
+
+            if !checkbox_value("randomizer_screen_allow_retro")? {
+                game_filter = game_filter.require_tag_retro(false);
+            }
+
+            if !checkbox_value("randomizer_screen_allow_unowned")? {
+                game_filter = game_filter.require_ownership(true);
+            }
+
+            match select_value("randomizer_screen_jp_practice")?.as_str()
             {
-                "any" => None,
-                "require_true" => Some(true),
-                "require_false" => Some(false),
+                "any" => (),
+                "require_true" => game_filter = game_filter.require_tag_japanese_practice(true),
+                "require_false" => game_filter = game_filter.require_tag_japanese_practice(false),
                 _ => {
                     show_error(String::from("Invalid value from randomizer_screen_jp_practice select."))?;
-                    None
                 },
-            };
+            }
 
-            let max_length : Option<u16> = match select_value("randomizer_screen_game_length")?.as_str()
+            match select_value("randomizer_screen_game_length")?.as_str()
             {
-                "any" => None,
-                "8" => Some(8),
-                "12" => Some(12),
-                "20" => Some(20),
+                "any" => (),
+                "8" => game_filter = game_filter.require_max_hltb_hours(8),
+                "12" => game_filter = game_filter.require_max_hltb_hours(12),
+                "20" => game_filter = game_filter.require_max_hltb_hours(20),
                 _ => {
                     show_error(String::from("Invalid value from randomizer_screen_game_length select."))?;
-                    None
                 },
-            };
-            weblog!("randomizer max length: {:?}", max_length);
-
-            let retro_filter = if checkbox_value("randomizer_screen_allow_retro")? {
-                None
             }
-            else {
-                Some(false)
-            };
 
-            let required_ownership_state = if checkbox_value("randomizer_screen_allow_unowned")? {
-                None
+            let mut session_state_filter = core::SCollectionGameSessionStateFilter::new();
+            if checkbox_value("randomizer_screen_only_firsts")? {
+                session_state_filter = session_state_filter.max_sessions(0);
             }
-            else {
-                Some(true)
-            };
 
-            core::SCollectionGameFilter{
-                tags: core::SGameTagsFilter{
-                    couch_playable: couch,
-                    portable_playable: portable,
-                    japanese_practice: jp_practice,
-                    retro: retro_filter,
-                    pick_up_and_play: None,
-                },
-                require_released: Some(true),
-                required_alive_state: Some(true),
-                require_is_after_valid_date: true,
-                required_ownership_state,
-                require_zero_sessions: checkbox_value("randomizer_screen_only_firsts")?,
-                require_no_hltb_data: false,
-                max_hltb_hours: max_length,
-                require_not_archived: true,
-            }
+            core::SCollectionGameAndSessionStateFilter::new(game_filter, Some(session_state_filter))
         }
     };
 
     let sl = SShowLoadingHelper::new();
-    let (games, _) = match server_api::get_games(filter).await {
+    let games = match server_api::get_games(filter).await {
         Ok(gs) => gs,
         Err(e) => {
             show_error(e)?;

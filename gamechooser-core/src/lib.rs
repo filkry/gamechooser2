@@ -8,7 +8,7 @@ mod database_v2;
 mod database_v3;
 
 pub use config::SConfig;
-pub use collection_game_filter::{SCollectionGameFilter, SGameTagsFilter};
+pub use collection_game_filter::{SCollectionGameFilter, SGameTagsFilter, SCollectionGameSessionStateFilter, SCollectionGameAndSessionStateFilter};
 
 // -- latest database version is exported via pub
 pub use database_v3::*;
