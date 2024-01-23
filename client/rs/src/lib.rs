@@ -1470,6 +1470,7 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
         }
         ERandomizerMode::GameChooseAlg => {
             let mut game_filter = core::SCollectionGameFilter::new()
+                .require_alive(true)
                 .require_is_after_valid_date();
 
             if checkbox_value("randomizer_screen_couch")? {
