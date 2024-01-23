@@ -3,17 +3,16 @@
 ## Post-import TODO
 
 Must have:
-+ session star reviews
 + zip/otherwise compress old version of the database.json (since it gets quite large)
-+ popup edit game menu
 
 Nice to have:
-+ details screen show session history
++ session star reviews
 + go through TODOs in code
 + stats screen burndown chart
 + handle back button
 + Progress bar for IGDB updates
-+ show games owned but never played
++ IGDB update single game
++ popup edit game menu
 
 Way later:
 + release webasm is like 1/4 the size, make some easy way to build/deploy as release instead
