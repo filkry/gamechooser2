@@ -176,7 +176,6 @@ impl SCollectionGameFilter {
         self
     }
 
-    // $$$FRK(TODO): having to do the has_any_sessions check outside is kinda busto
     pub fn game_passes(&self, cfg: &SConfig, game: &SCollectionGame) -> bool {
         let mut result = true;
 
