@@ -264,7 +264,7 @@ impl SGameCard {
 }
 
 impl SCompactGameCard {
-    fn new_internal(game: EGame) -> Result<Self, JsError> {
+    fn new_internal(game: EGame, show_release_date: bool) -> Result<Self, JsError> {
         let document = document();
 
         let main_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
@@ -300,6 +300,19 @@ impl SCompactGameCard {
 
         let generated_info_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
         info_column_div.append_child(&generated_info_div).to_jserr()?;
+
+        if show_release_date {
+            if let core::EReleaseDate::Known(date) = game.game_info().release_date() {
+                let div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+                div.set_class_name("compact_game_card_release_date_container");
+                cover_div.append_child(&div).to_jserr()?;
+
+                let span = document.create_element_typed::<HtmlSpanElement>().to_jserr()?;
+                span.set_inner_text(format!("{}", date.format("%Y-%m-%d")).as_str());
+                span.set_class_name("compact_game_card_release_date_tag");
+                div.append_child(&span).to_jserr()?;
+            }
+        }
 
         // custom_info elements
         if let Some(custom_info) = &game.custom_info() {
@@ -339,8 +352,8 @@ impl SCompactGameCard {
         })
     }
 
-    pub fn new_from_collection_game(collection_game: &core::SCollectionGame) -> Result<Self, JsError> {
-        Self::new_internal(EGame::CollectionGame(collection_game.clone()))
+    pub fn new_from_collection_game(collection_game: &core::SCollectionGame, show_release_date: bool) -> Result<Self, JsError> {
+        Self::new_internal(EGame::CollectionGame(collection_game.clone()), show_release_date)
     }
 }
 
