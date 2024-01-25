@@ -281,6 +281,46 @@ impl SOwn {
     }
 }
 
+impl PartialEq for EReleaseDate {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::UnknownUnreleased, Self::UnknownUnreleased) => true,
+            (Self::UnknownReleased, Self::UnknownUnreleased) => true,
+            (Self::Known(a), Self::Known(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for EReleaseDate {}
+
+impl PartialOrd for EReleaseDate {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for EReleaseDate {
+
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        use std::cmp::Ordering::*;
+
+        match (self, other) {
+            (Self::UnknownUnreleased, Self::UnknownUnreleased) => Equal,
+            (Self::UnknownUnreleased, Self::UnknownReleased) => Less,
+            (Self::UnknownUnreleased, Self::Known(_)) => Less,
+
+            (Self::UnknownReleased, Self::UnknownUnreleased) => Greater,
+            (Self::UnknownReleased, Self::UnknownReleased) => Equal,
+            (Self::UnknownReleased, Self::Known(_)) => Less,
+
+            (Self::Known(_), Self::UnknownUnreleased) => Greater,
+            (Self::Known(_), Self::UnknownReleased) => Greater,
+            (Self::Known(a), Self::Known(b)) => a.cmp(b),
+        }
+    }
+}
+
 impl EGameInfo {
     pub fn new_igdb(
         igdb_id: u32,

@@ -1177,6 +1177,8 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
 
     use gamechooser_core::{SCollectionGameFilter, SCollectionGameSessionStateFilter, SCollectionGameAndSessionStateFilter};
 
+    let mut sort_newest_first = false;
+
     let filter : SCollectionGameAndSessionStateFilter = match select_value("full_collection_filter")?.as_str() {
         "all" => SCollectionGameFilter::new().into(),
         "live" => SCollectionGameFilter::new().require_alive(true).into(),
@@ -1197,6 +1199,16 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
         "not_released" =>
             SCollectionGameFilter::new()
                 .require_released(false).into(),
+        "new_releases" => {
+            sort_newest_first = true;
+            SCollectionGameAndSessionStateFilter::with_session_filter(
+                SCollectionGameFilter::new()
+                    .require_alive(true)
+                    .require_released(true).into(),
+                SCollectionGameSessionStateFilter::new()
+                    .max_sessions(0),
+            )
+        },
         _ => {
             show_error(String::from("Invalid value from full_collection_filter select."))?;
             return Ok(());
@@ -1204,7 +1216,7 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
     };
 
     let sl = SShowLoadingHelper::new();
-    let games = match server_api::get_games(filter).await {
+    let mut games = match server_api::get_games(filter).await {
         Ok(g) => g,
         Err(e) => {
             show_error(e)?;
@@ -1212,6 +1224,18 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
         }
     };
     drop(sl);
+
+    if sort_newest_first {
+        use gamechooser_core::EReleaseDate::*;
+
+        games.retain(|g| match g.game_info.release_date() {
+            UnknownUnreleased => false,
+            UnknownReleased => false,
+            Known(_) => true,
+        });
+
+        games.sort_by(|a, b| a.game_info.release_date().cmp(&b.game_info.release_date()).reverse());
+    }
 
     populate_full_collection_screen_game_list(&mut app, games)?;
 
