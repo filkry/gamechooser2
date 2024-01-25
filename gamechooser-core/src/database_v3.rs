@@ -307,16 +307,27 @@ impl Ord for EReleaseDate {
 
         match (self, other) {
             (Self::UnknownUnreleased, Self::UnknownUnreleased) => Equal,
-            (Self::UnknownUnreleased, Self::UnknownReleased) => Less,
-            (Self::UnknownUnreleased, Self::Known(_)) => Less,
+            (Self::UnknownUnreleased, Self::UnknownReleased) => Greater,
+            (Self::UnknownUnreleased, Self::Known(_)) => Greater,
 
-            (Self::UnknownReleased, Self::UnknownUnreleased) => Greater,
+            (Self::UnknownReleased, Self::UnknownUnreleased) => Less,
             (Self::UnknownReleased, Self::UnknownReleased) => Equal,
             (Self::UnknownReleased, Self::Known(_)) => Less,
 
-            (Self::Known(_), Self::UnknownUnreleased) => Greater,
+            (Self::Known(_), Self::UnknownUnreleased) => Less,
             (Self::Known(_), Self::UnknownReleased) => Greater,
             (Self::Known(a), Self::Known(b)) => a.cmp(b),
+        }
+    }
+}
+
+impl EReleaseDate {
+    pub fn released(&self) -> bool {
+        let today = chrono::offset::Local::now().naive_local().date();
+        match self {
+            Self::UnknownUnreleased => false,
+            Self::UnknownReleased => true,
+            Self::Known(d) => d <= &today,
         }
     }
 }
@@ -360,12 +371,7 @@ impl EGameInfo {
     }
 
     pub fn released(&self) -> bool {
-        let today = chrono::offset::Local::now().naive_local().date();
-        match self.release_date() {
-            EReleaseDate::UnknownUnreleased => false,
-            EReleaseDate::UnknownReleased => true,
-            EReleaseDate::Known(d) => d <= today,
-        }
+        self.release_date().released()
     }
 
     pub fn igdb_id(&self) -> Option<u32> {

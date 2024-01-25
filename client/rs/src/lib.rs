@@ -1177,7 +1177,12 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
 
     use gamechooser_core::{SCollectionGameFilter, SCollectionGameSessionStateFilter, SCollectionGameAndSessionStateFilter};
 
-    let mut sort_newest_first = false;
+    enum ESortFor {
+        None,
+        NotReleased,
+        NewestReleases,
+    }
+    let mut sort_for = ESortFor::None;
 
     let filter : SCollectionGameAndSessionStateFilter = match select_value("full_collection_filter")?.as_str() {
         "all" => SCollectionGameFilter::new().into(),
@@ -1196,11 +1201,12 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
                 .require_alive(true)
                 .require_released(true)
                 .require_no_hltb_data().into(),
-        "not_released" =>
-            SCollectionGameFilter::new()
-                .require_released(false).into(),
+        "not_released" => {
+            sort_for = ESortFor::NotReleased;
+            SCollectionGameFilter::new().require_released(false).into()
+        },
         "new_releases" => {
-            sort_newest_first = true;
+            sort_for = ESortFor::NewestReleases;
             SCollectionGameAndSessionStateFilter::with_session_filter(
                 SCollectionGameFilter::new()
                     .require_alive(true)
@@ -1225,16 +1231,22 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
     };
     drop(sl);
 
-    if sort_newest_first {
-        use gamechooser_core::EReleaseDate::*;
+    match sort_for {
+        ESortFor::None => (),
+        ESortFor::NotReleased => {
+            games.sort_by(|a, b| a.game_info.release_date().cmp(&b.game_info.release_date()));
+        },
+        ESortFor::NewestReleases => {
+            use gamechooser_core::EReleaseDate::*;
 
-        games.retain(|g| match g.game_info.release_date() {
-            UnknownUnreleased => false,
-            UnknownReleased => false,
-            Known(_) => true,
-        });
+            games.retain(|g| match g.game_info.release_date() {
+                UnknownUnreleased => false,
+                UnknownReleased => false,
+                Known(_) => true,
+            });
 
-        games.sort_by(|a, b| a.game_info.release_date().cmp(&b.game_info.release_date()).reverse());
+            games.sort_by(|a, b| a.game_info.release_date().cmp(&b.game_info.release_date()).reverse());
+        },
     }
 
     populate_full_collection_screen_game_list(&mut app, games)?;
