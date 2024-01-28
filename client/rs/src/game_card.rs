@@ -264,7 +264,7 @@ impl SGameCard {
 }
 
 impl SCompactGameCard {
-    fn new_internal(game: EGame, show_release_date: bool) -> Result<Self, JsError> {
+    fn new_internal(game: EGame, show_release_date: bool, show_hltb_search: bool) -> Result<Self, JsError> {
         let document = document();
 
         let main_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
@@ -304,14 +304,24 @@ impl SCompactGameCard {
         if show_release_date {
             if let core::EReleaseDate::Known(date) = game.game_info().release_date() {
                 let div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
-                div.set_class_name("compact_game_card_release_date_container");
+                div.set_class_name("compact_game_card_float_over_cover_container");
                 cover_div.append_child(&div).to_jserr()?;
 
                 let span = document.create_element_typed::<HtmlSpanElement>().to_jserr()?;
                 span.set_inner_text(format!("{}", date.format("%Y-%m-%d")).as_str());
-                span.set_class_name("compact_game_card_release_date_tag");
+                span.set_class_name("compact_game_card_float_over_cover_tag");
                 div.append_child(&span).to_jserr()?;
             }
+        }
+
+        if show_hltb_search {
+            let div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+            div.set_class_name("compact_game_card_float_over_cover_container");
+            cover_div.append_child(&div).to_jserr()?;
+
+            let a = create_hltb_search_link(game.game_info())?;
+            a.set_class_name("compact_game_card_float_over_cover_tag");
+            div.append_child(&a).to_jserr()?;
         }
 
         // custom_info elements
@@ -352,8 +362,8 @@ impl SCompactGameCard {
         })
     }
 
-    pub fn new_from_collection_game(collection_game: &core::SCollectionGame, show_release_date: bool) -> Result<Self, JsError> {
-        Self::new_internal(EGame::CollectionGame(collection_game.clone()), show_release_date)
+    pub fn new_from_collection_game(collection_game: &core::SCollectionGame, show_release_date: bool, show_hltb_search: bool) -> Result<Self, JsError> {
+        Self::new_internal(EGame::CollectionGame(collection_game.clone()), show_release_date, show_hltb_search)
     }
 }
 
@@ -363,6 +373,17 @@ fn create_igdb_link(igdb: &core::SGameInfoIGDB) -> Result<HtmlAnchorElement, JsE
     let a = document().create_element_typed::<HtmlAnchorElement>().to_jserr()?;
     let page_url = format!("https://www.igdb.com/games/{}", igdb.slug);
     a.set_inner_text("IGDB page ⧉");
+    a.set_href(page_url.as_str());
+    a.set_target("_blank");
+    a.set_rel("noopener noreferrer");
+    Ok(a)
+}
+
+fn create_hltb_search_link(game_info: &core::EGameInfo) -> Result<HtmlAnchorElement, JsError> {
+    let a = document().create_element_typed::<HtmlAnchorElement>().to_jserr()?;
+    let url_encoded_title = urlencoding::encode(game_info.title());
+    let page_url = format!("https://howlongtobeat.com/?q={}", url_encoded_title);
+    a.set_inner_text("Search HLTB ⧉");
     a.set_href(page_url.as_str());
     a.set_target("_blank");
     a.set_rel("noopener noreferrer");

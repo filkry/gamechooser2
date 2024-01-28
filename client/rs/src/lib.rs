@@ -1046,14 +1046,14 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
     Ok(())
 }
 
-fn populate_full_collection_screen_game_list(app: &mut SAppState, games: Vec<core::SCollectionGame>, show_release_date: bool) -> Result<(), JsError> {
+fn populate_full_collection_screen_game_list(app: &mut SAppState, games: Vec<core::SCollectionGame>, show_release_date: bool, show_hltb_search: bool) -> Result<(), JsError> {
     let doc = document();
 
     let output_elem = doc.get_typed_element_by_id::<HtmlDivElement>("full_collection_screen_game_list").to_jserr()?;
     output_elem.set_inner_html("");
 
     for game in &games {
-        let game_card = SCompactGameCard::new_from_collection_game(&game, show_release_date)?;
+        let game_card = SCompactGameCard::new_from_collection_game(&game, show_release_date, show_hltb_search)?;
         output_elem.append_child(&game_card.main_div).to_jserr()?;
     }
 
@@ -1184,6 +1184,7 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
     }
     let mut sort_for = ESortFor::None;
     let mut show_release_date = false;
+    let mut show_hltb_search = false;
 
     let filter : SCollectionGameAndSessionStateFilter = match select_value("full_collection_filter")?.as_str() {
         "all" => SCollectionGameFilter::new().into(),
@@ -1197,11 +1198,13 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
                 SCollectionGameSessionStateFilter::new()
                     .max_sessions(0),
             ),
-        "live_released_no_hltb" =>
+        "live_released_no_hltb" => {
+            show_hltb_search = true;
             SCollectionGameFilter::new()
                 .require_alive(true)
                 .require_released(true)
-                .require_no_hltb_data().into(),
+                .require_no_hltb_data().into()
+        },
         "not_released" => {
             sort_for = ESortFor::NotReleased;
             show_release_date = true;
@@ -1252,7 +1255,7 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
         },
     }
 
-    populate_full_collection_screen_game_list(&mut app, games, show_release_date)?;
+    populate_full_collection_screen_game_list(&mut app, games, show_release_date, show_hltb_search)?;
 
     swap_section_div("full_collection_div")?;
 

@@ -196,7 +196,7 @@ label {
     font-size: 1.5vh;
 }
 
-.compact_game_card_release_date_container {
+.compact_game_card_float_over_cover_container {
     position:absolute;
     width: 100%;
     bottom: 10px;
@@ -204,7 +204,7 @@ label {
     text-align: center;
 }
 
-.compact_game_card_release_date_tag {
+.compact_game_card_float_over_cover_tag {
     margin-left: auto;
     margin-right: auto;
     background-color: black;
