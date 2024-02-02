@@ -29,7 +29,7 @@ use web_sys::{
 };
 
 use gamechooser_core as core;
-use game_card::{SGameCard, SCompactGameCard};
+use game_card::{SGameCard, SCompactGameCard, ECompactGameCardBadge};
 use session_card::{SSessionCard};
 use web::{document, TToJsError, TErgonomicDocument, create_checkbox};
 
@@ -1046,14 +1046,15 @@ fn populate_collection_screen_game_list(games: Vec<core::SCollectionGame>) -> Re
     Ok(())
 }
 
-fn populate_full_collection_screen_game_list(app: &mut SAppState, games: Vec<core::SCollectionGame>, show_release_date: bool, show_hltb_search: bool) -> Result<(), JsError> {
+fn populate_full_collection_screen_game_list(app: &mut SAppState, games: Vec<core::SCollectionGame>, badge: ECompactGameCardBadge) -> Result<(), JsError> {
     let doc = document();
 
     let output_elem = doc.get_typed_element_by_id::<HtmlDivElement>("full_collection_screen_game_list").to_jserr()?;
     output_elem.set_inner_html("");
 
+    let config = app.config().to_jserr()?;
     for game in &games {
-        let game_card = SCompactGameCard::new_from_collection_game(&game, show_release_date, show_hltb_search)?;
+        let game_card = SCompactGameCard::new_from_collection_game(&config, &game, badge)?;
         output_elem.append_child(&game_card.main_div).to_jserr()?;
     }
 
@@ -1183,11 +1184,13 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
         NewestReleases,
     }
     let mut sort_for = ESortFor::None;
-    let mut show_release_date = false;
-    let mut show_hltb_search = false;
+    let mut badge = ECompactGameCardBadge::None;
 
     let filter : SCollectionGameAndSessionStateFilter = match select_value("full_collection_filter")?.as_str() {
-        "all" => SCollectionGameFilter::new().into(),
+        "all" => {
+            badge = ECompactGameCardBadge::AliveState;
+            SCollectionGameFilter::new().into()
+        },
         "live" => SCollectionGameFilter::new().require_alive(true).into(),
         "owned_dead_unplayed" =>
             SCollectionGameAndSessionStateFilter::with_session_filter(
@@ -1199,7 +1202,7 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
                     .max_sessions(0),
             ),
         "live_released_no_hltb" => {
-            show_hltb_search = true;
+            badge = ECompactGameCardBadge::HLTBSearch;
             SCollectionGameFilter::new()
                 .require_alive(true)
                 .require_released(true)
@@ -1207,12 +1210,12 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
         },
         "not_released" => {
             sort_for = ESortFor::NotReleased;
-            show_release_date = true;
+            badge = ECompactGameCardBadge::ReleaseDate;
             SCollectionGameFilter::new().require_released(false).into()
         },
         "new_releases" => {
             sort_for = ESortFor::NewestReleases;
-            show_release_date = true;
+            badge = ECompactGameCardBadge::ReleaseDate;
             SCollectionGameAndSessionStateFilter::with_session_filter(
                 SCollectionGameFilter::new()
                     .require_alive(true)
@@ -1266,7 +1269,7 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
         },
     }
 
-    populate_full_collection_screen_game_list(&mut app, games, show_release_date, show_hltb_search)?;
+    populate_full_collection_screen_game_list(&mut app, games, badge)?;
 
     swap_section_div("full_collection_div")?;
 
