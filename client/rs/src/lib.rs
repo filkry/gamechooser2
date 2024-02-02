@@ -1221,6 +1221,17 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
                     .max_sessions(0),
             )
         },
+        "to_buy" => {
+            SCollectionGameAndSessionStateFilter::with_session_filter(
+                SCollectionGameFilter::new()
+                    .require_alive(true)
+                    .require_released(true)
+                    .require_ownership(false)
+                    .into(),
+                SCollectionGameSessionStateFilter::new()
+                    .max_sessions(0),
+            )
+        },
         _ => {
             show_error(String::from("Invalid value from full_collection_filter select."))?;
             return Ok(());
