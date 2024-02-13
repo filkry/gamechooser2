@@ -1,8 +1,7 @@
-# Notes
-
-## Post-import TODO
+# TODO
 
 Must have:
++ currently, archives games show up in collection search
 + zip/otherwise compress old version of the database.json (since it gets quite large)
 
 Nice to have:
@@ -21,6 +20,8 @@ Way later:
 + details screen embed additional stuff from IGDB
 + edit screen new own add/remove UI
 + calendar view of upcoming releases
+
+# Old notes
 
 ## Next step
 Next step is probably to proof of concept using google docs or sheets as a storage backend...

@@ -1523,6 +1523,7 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
         }
         ERandomizerMode::GameChooseAlg => {
             let mut game_filter = core::SCollectionGameFilter::new()
+                .require_released(true)
                 .require_alive(true)
                 .require_is_after_valid_date();
 
@@ -1534,12 +1535,18 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
                 game_filter = game_filter.require_tag_portable_playable(true);
             }
 
-            if !checkbox_value("randomizer_screen_allow_retro")? {
-                game_filter = game_filter.require_tag_retro(false);
-            }
-
             if !checkbox_value("randomizer_screen_allow_unowned")? {
                 game_filter = game_filter.require_ownership(true);
+            }
+
+            match select_value("randomizer_screen_retro")?.as_str()
+            {
+                "any" => (),
+                "require_true" => game_filter = game_filter.require_tag_retro(true),
+                "require_false" => game_filter = game_filter.require_tag_retro(false),
+                _ => {
+                    show_error(String::from("Invalid value from randomizer_screen_retro select."))?;
+                },
             }
 
             match select_value("randomizer_screen_jp_practice")?.as_str()

@@ -158,7 +158,8 @@ fn refresh_db_acceleration(data: &mut SData) -> Result<(), ()> {
 }
 
 fn load_db() -> Result<SData, ()> {
-    let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
+    println!("Loading confy config from {}", confy::get_configuration_file_path("gamechooser2_server", None).unwrap().as_path().display());
+    let cfg : SConfigFile = confy::load("gamechooser2_server", None).unwrap();
 
     fn load_file<T: DeserializeOwned>(cfg: &SConfigFile, file_name: &str, default_value: T) -> Result<T, ()> {
         let mut path = std::path::PathBuf::new();
@@ -211,7 +212,7 @@ fn load_db() -> Result<SData, ()> {
 }
 
 fn save_db(data: &mut SData) -> Result<(), ()> {
-    let cfg : SConfigFile = confy::load("gamechooser2_server").unwrap();
+    let cfg : SConfigFile = confy::load("gamechooser2_server", None).unwrap();
 
     refresh_db_acceleration(data)?;
 
@@ -460,6 +461,10 @@ async fn search_collection(query: &str) -> Result<RocketJson<Vec<core::SCollecti
     let mut scores = Vec::with_capacity(db.games.len());
 
     for (idx, game) in db.games.iter().enumerate() {
+        if game.custom_info.archived {
+            continue;
+        }
+
         if let Some(m) = sublime_fuzzy::best_match(query, game.game_info.title()) {
             scores.push(SScore{
                 idx,
@@ -828,7 +833,7 @@ async fn check_logged_in_no_auth() -> Result<(), EErrorResponse> {
 
 #[post("/login/<secret>")]
 async fn login(secret: &str, cookies: &rocket::http::CookieJar<'_>) -> Result<(), EErrorResponse> {
-    let cfg : SConfigFile = match confy::load("gamechooser2_server") {
+    let cfg : SConfigFile = match confy::load("gamechooser2_server", None) {
         Ok(c) => c,
         Err(_) => {
             return Err(EErrorResponse::DBError);

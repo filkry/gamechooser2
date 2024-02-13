@@ -122,11 +122,15 @@
                             <input type="checkbox" id="randomizer_screen_only_firsts" checked>
                             <label for="randomizer_screen_only_firsts">Only games never played before</label>
                         </li>
-                        <li>
-                            <input type="checkbox" id="randomizer_screen_allow_retro">
-                            <label for="randomizer_screen_allow_retro">Allow retro</label>
-                        </li>
                     </ul>
+                    <p>
+                        <label for="randomizer_screen_retro">Retro: </label>
+                        <select id="randomizer_screen_retro">
+                            <option value="any">Any</option>
+                            <option value="require_true">Require tag</option>
+                            <option value="require_false" selected="selected">Require no tag</option>
+                        </select>
+                    </p>
                     <p>
                         <label for="randomizer_screen_jp_practice">Japanese practice: </label>
                         <select id="randomizer_screen_jp_practice">
