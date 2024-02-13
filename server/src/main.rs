@@ -190,6 +190,7 @@ fn load_db() -> Result<SData, ()> {
             Ok(value)
         }
         else {
+            println!("No DB file at {}, loading default/empty", path.display());
             Ok(default_value)
         }
     }
