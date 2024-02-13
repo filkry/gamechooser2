@@ -46,6 +46,14 @@ pub struct SCompactGameCard {
     pub main_div: HtmlDivElement,
 }
 
+#[derive(Clone, Copy)]
+pub enum ECompactGameCardBadge {
+    None,
+    ReleaseDate,
+    HLTBSearch,
+    AliveState,
+}
+
 impl EGame {
     fn game_info(&self) -> &core::EGameInfo {
         match self {
@@ -65,6 +73,13 @@ impl EGame {
         match self {
             Self::GameInfo(_) => None,
             Self::CollectionGame(cg) => Some(&cg.custom_info),
+        }
+    }
+
+    fn alive(&self, config: &core::SConfig) -> Option<bool> {
+        match self {
+            Self::GameInfo(_) => None,
+            Self::CollectionGame(cg) => Some(cg.choose_state.alive(config)),
         }
     }
 }
@@ -264,7 +279,7 @@ impl SGameCard {
 }
 
 impl SCompactGameCard {
-    fn new_internal(game: EGame, show_release_date: bool, show_hltb_search: bool) -> Result<Self, JsError> {
+    fn new_internal(config: &core::SConfig, game: EGame, badge: ECompactGameCardBadge) -> Result<Self, JsError> {
         let document = document();
 
         let main_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
@@ -301,27 +316,48 @@ impl SCompactGameCard {
         let generated_info_div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
         info_column_div.append_child(&generated_info_div).to_jserr()?;
 
-        if show_release_date {
-            if let core::EReleaseDate::Known(date) = game.game_info().release_date() {
+        match badge {
+            ECompactGameCardBadge::None => (),
+            ECompactGameCardBadge::ReleaseDate => {
+                if let core::EReleaseDate::Known(date) = game.game_info().release_date() {
+                    let div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+                    div.set_class_name("compact_game_card_float_over_cover_container");
+                    cover_div.append_child(&div).to_jserr()?;
+
+                    let span = document.create_element_typed::<HtmlSpanElement>().to_jserr()?;
+                    span.set_inner_text(format!("{}", date.format("%Y-%m-%d")).as_str());
+                    span.set_class_name("compact_game_card_float_over_cover_tag");
+                    div.append_child(&span).to_jserr()?;
+                }
+            },
+            ECompactGameCardBadge::HLTBSearch => {
                 let div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
                 div.set_class_name("compact_game_card_float_over_cover_container");
                 cover_div.append_child(&div).to_jserr()?;
 
-                let span = document.create_element_typed::<HtmlSpanElement>().to_jserr()?;
-                span.set_inner_text(format!("{}", date.format("%Y-%m-%d")).as_str());
-                span.set_class_name("compact_game_card_float_over_cover_tag");
-                div.append_child(&span).to_jserr()?;
+                let a = create_hltb_search_link(game.game_info())?;
+                a.set_class_name("compact_game_card_float_over_cover_tag");
+                div.append_child(&a).to_jserr()?;
             }
-        }
+            ECompactGameCardBadge::AliveState => {
+                if let Some(alive_inner) = game.alive(config) {
+                    let div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
+                    div.set_class_name("compact_game_card_float_over_cover_container");
+                    cover_div.append_child(&div).to_jserr()?;
 
-        if show_hltb_search {
-            let div = document.create_element_typed::<HtmlDivElement>().to_jserr()?;
-            div.set_class_name("compact_game_card_float_over_cover_container");
-            cover_div.append_child(&div).to_jserr()?;
-
-            let a = create_hltb_search_link(game.game_info())?;
-            a.set_class_name("compact_game_card_float_over_cover_tag");
-            div.append_child(&a).to_jserr()?;
+                    let span = document.create_element_typed::<HtmlSpanElement>().to_jserr()?;
+                    if alive_inner{
+                        span.set_inner_text("Alive");
+                        span.set_attribute("style", "background-color: green").to_jserr()?;
+                    }
+                    else {
+                        span.set_inner_text("Dead");
+                        span.set_attribute("style", "background-color: red").to_jserr()?;
+                    }
+                    span.set_class_name("compact_game_card_float_over_cover_tag");
+                    div.append_child(&span).to_jserr()?;
+                }
+            }
         }
 
         // custom_info elements
@@ -362,8 +398,8 @@ impl SCompactGameCard {
         })
     }
 
-    pub fn new_from_collection_game(collection_game: &core::SCollectionGame, show_release_date: bool, show_hltb_search: bool) -> Result<Self, JsError> {
-        Self::new_internal(EGame::CollectionGame(collection_game.clone()), show_release_date, show_hltb_search)
+    pub fn new_from_collection_game(config: &core::SConfig, collection_game: &core::SCollectionGame, badge: ECompactGameCardBadge) -> Result<Self, JsError> {
+        Self::new_internal(config, EGame::CollectionGame(collection_game.clone()), badge)
     }
 }
 
