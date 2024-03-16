@@ -1225,15 +1225,11 @@ async fn enter_full_collection_screen() -> Result<(), JsError> {
             )
         },
         "to_buy" => {
-            SCollectionGameAndSessionStateFilter::with_session_filter(
-                SCollectionGameFilter::new()
-                    .require_alive(true)
-                    .require_released(true)
-                    .require_ownership(false)
-                    .into(),
-                SCollectionGameSessionStateFilter::new()
-                    .max_sessions(0),
-            )
+            SCollectionGameFilter::new()
+                .require_alive(true)
+                .require_released(true)
+                .require_ownership(false)
+                .into()
         },
         _ => {
             show_error(String::from("Invalid value from full_collection_filter select."))?;
