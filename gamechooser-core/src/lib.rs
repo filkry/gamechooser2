@@ -55,12 +55,14 @@ pub struct SSimpleStats {
     pub collection_couch_playable_tag: u32,
     pub collection_japanese_practice_tag: u32,
     pub collection_portable_playable_tag: u32,
+    pub collection_retro_tag: u32,
 
     pub selectable_owned: u32,
     pub selectable_played_before: u32,
     pub selectable_couch_playable_tag: u32,
     pub selectable_japanese_practice_tag: u32,
     pub selectable_portable_playable_tag: u32,
+    pub selectable_retro_tag: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

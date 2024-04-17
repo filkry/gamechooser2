@@ -734,12 +734,14 @@ async fn simple_stats() -> Result<RocketJson<core::SSimpleStats>, EErrorResponse
         collection_couch_playable_tag: 0,
         collection_japanese_practice_tag: 0,
         collection_portable_playable_tag: 0,
+        collection_retro_tag: 0,
 
         selectable_owned: 0,
         selectable_played_before: 0,
         selectable_couch_playable_tag: 0,
         selectable_japanese_practice_tag: 0,
         selectable_portable_playable_tag: 0,
+        selectable_retro_tag: 0,
     };
 
     let today = chrono::offset::Local::now().naive_local().date();
@@ -815,6 +817,14 @@ async fn simple_stats() -> Result<RocketJson<core::SSimpleStats>, EErrorResponse
 
             if selectable {
                 inc(&mut stats.selectable_portable_playable_tag);
+            }
+        }
+
+        if game.custom_info.tags.retro {
+            inc(&mut stats.collection_retro_tag);
+
+            if selectable {
+                inc(&mut stats.selectable_retro_tag);
             }
         }
     }

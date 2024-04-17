@@ -288,6 +288,9 @@ pub async fn show_stats() -> Result<(), JsError> {
     append_stat_header("h3", "Portable playable tag")?;
     stats::create_binary_percentage_chart(&stats_div, stats.selectable_portable_playable_tag, stats.collection_selectable)?;
 
+    append_stat_header("h3", "Retro tag")?;
+    stats::create_binary_percentage_chart(&stats_div, stats.selectable_retro_tag, stats.collection_selectable)?;
+
     swap_section_div("stats_div")
 }
 
@@ -1563,7 +1566,8 @@ pub async fn randomizer_screen_start() -> Result<(), JsError> {
                 "any" => (),
                 "8" => game_filter = game_filter.require_max_hltb_hours(8),
                 "12" => game_filter = game_filter.require_max_hltb_hours(12),
-                "20" => game_filter = game_filter.require_max_hltb_hours(20),
+                "25" => game_filter = game_filter.require_max_hltb_hours(25),
+                "50" => game_filter = game_filter.require_max_hltb_hours(50),
                 _ => {
                     show_error(String::from("Invalid value from randomizer_screen_game_length select."))?;
                 },
